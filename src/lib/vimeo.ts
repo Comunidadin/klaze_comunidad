@@ -1,7 +1,7 @@
 // Utilidades para trabajar con IDs de video de Vimeo a partir de distintos
 // formatos de entrada (ID plano, URL corta, URL con query, URL de player).
 
-const VIMEO_ID_PATTERN = /vimeo\.com\/(?:video\/)?(\d+)/;
+const VIMEO_ID_PATTERN = /(?:^|\/\/|\.)vimeo\.com\/(?:video\/)?(\d+)/;
 
 /**
  * Extrae el ID numérico de Vimeo de un input arbitrario.
