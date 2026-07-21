@@ -18,7 +18,7 @@ export function MemberCard({ usuario, onClick, className }: MemberCardProps) {
       type="button"
       onClick={onClick}
       className={cn(
-        "group flex flex-col items-center gap-3 rounded-2xl bg-card p-5 text-center ring-1 ring-foreground/10 transition-shadow duration-300 hover:shadow-lg hover:shadow-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "group flex cursor-pointer flex-col items-center gap-3 rounded-2xl bg-card p-5 text-center ring-1 ring-foreground/10 transition-shadow duration-300 hover:shadow-lg hover:shadow-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         className
       )}
     >

@@ -90,7 +90,7 @@ export function PostComposer({ comunidadId, categorias, open, onOpenChange }: Po
       <button
         type="button"
         onClick={() => onOpenChange(true)}
-        className="flex w-full items-center gap-3 rounded-2xl bg-card p-4 text-left ring-1 ring-foreground/10 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex w-full cursor-pointer items-center gap-3 rounded-2xl bg-card p-4 text-left ring-1 ring-foreground/10 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <Avatar size="sm">
           <AvatarImage src={user?.avatarUrl} alt={user?.nombre ?? ""} />
