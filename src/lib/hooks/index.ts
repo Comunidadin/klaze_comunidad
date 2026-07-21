@@ -43,3 +43,11 @@ export type {
 
 export { useLessonComments } from "@/lib/hooks/use-lesson-comments";
 export type { LessonCommentConAutor, UseLessonCommentsResult } from "@/lib/hooks/use-lesson-comments";
+
+export { usePlatform } from "@/lib/hooks/use-platform";
+export type {
+  ComunidadPlataforma,
+  CreadorPlataforma,
+  PlatformMetricas,
+  UsePlatformResult,
+} from "@/lib/hooks/use-platform";

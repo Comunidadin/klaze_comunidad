@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, SearchX, User as UserIcon } from "lucide-react";
+import { Lock, LogOut, SearchX, User as UserIcon } from "lucide-react";
 import { useCommunity } from "@/lib/hooks/use-community";
 import { useSession } from "@/lib/hooks/use-session";
 import { useThemeToggle } from "@/components/shared/theme-toggle";
 import { LevelBadge } from "@/components/shared/level-badge";
 import { EmptyState } from "@/components/shared/empty-state";
+import { Logo } from "@/components/shared/logo";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -70,6 +72,38 @@ export function MemberShell({ communitySlug, children }: MemberShellProps) {
   function handleLogout() {
     logout();
     router.replace("/login");
+  }
+
+  // Bloqueo de comunidad suspendida (T15): el superadmin la suspende desde
+  // `/plataforma/comunidades` (`cambiarEstadoComunidad`, override aplicado
+  // por `resolverComunidad` — ver `useCommunity`). Cualquier miembro no
+  // superadmin (incluido el creador dueño) pierde el área de miembros
+  // `/c/[slug]/*` mientras dure la suspensión; el propio superadmin puede
+  // seguir entrando para verificar/reactivar. A propósito NO se replica este
+  // check en `/admin` (panel del creador): el brief pide mantenerlo simple
+  // y solo bloquear el área de miembros, así el creador conserva acceso a
+  // su contenido para poder, por ejemplo, contactar a Klaze o revisar qué
+  // pasó — igual que la reactivación, ambos casos son responsabilidad del
+  // superadmin, no del alumno.
+  if (community.estado === "suspendida" && user?.rol !== "superadmin") {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-4 text-center">
+        <Logo />
+        <div className="mt-2 flex size-14 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+          <Lock className="size-7" />
+        </div>
+        <h1 className="max-w-sm font-display text-2xl font-bold tracking-tight text-foreground">
+          Esta comunidad está temporalmente suspendida
+        </h1>
+        <p className="max-w-sm text-sm text-pretty text-muted-foreground">
+          {community.nombre} no está disponible en este momento. Si crees que esto es un error,
+          contacta al equipo de Klaze.
+        </p>
+        <Button variant="outline" onClick={handleLogout} className="mt-2">
+          <LogOut className="size-4" /> Cerrar sesión
+        </Button>
+      </div>
+    );
   }
 
   return (

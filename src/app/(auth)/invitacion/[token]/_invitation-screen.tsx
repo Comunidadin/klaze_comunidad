@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { KeyRound, Loader2, MailQuestion, ShieldAlert, Sparkles, UserPlus } from "lucide-react";
+import { KeyRound, Loader2, Lock, MailQuestion, ShieldAlert, Sparkles, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { useHydrated } from "@/lib/hooks/use-session";
 import { useInvitation } from "@/lib/hooks/use-invitation";
@@ -152,6 +152,22 @@ export function InvitationScreen({ token }: InvitationScreenProps) {
         icono={ShieldAlert}
         titulo="Esta invitación ya fue usada"
         descripcion="Esta cuenta ya se creó. Inicia sesión con el correo con el que te invitaron."
+      />
+    );
+  }
+
+  // Bloqueo de comunidad suspendida (T15), mismo criterio que `MemberShell`:
+  // si el superadmin suspendió `comunidad` desde `/plataforma/comunidades`,
+  // una invitación pendiente no debe poder crear la cuenta (entraría
+  // directo a una comunidad bloqueada). Se revisa después de "ya fue
+  // usada" a propósito: si la cuenta ya existe, ese es el mensaje más
+  // relevante para quien reabre el enlace.
+  if (comunidad.estado === "suspendida") {
+    return (
+      <MensajeInvitacion
+        icono={Lock}
+        titulo="Esta comunidad está suspendida"
+        descripcion={`${comunidad.nombre} no está disponible en este momento, así que no podemos crear tu cuenta todavía. Vuelve a intentarlo más tarde.`}
       />
     );
   }

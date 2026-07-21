@@ -7,6 +7,7 @@ import type {
   Enrollment,
   Invitation,
   LessonProgress,
+  Plan,
   Post,
   PostComment,
   User,
@@ -123,6 +124,13 @@ export interface KlazeState {
   // del resultado final del merge).
   eventosEliminados: string[];
   proximoEventoId: number;
+  // --- T15: panel super-admin de plataforma -------------------------------
+  // Override completo de un `Plan`, keyed por `Plan.id`. A diferencia de
+  // `comunidadOverrides`/`cursosEditados` (que mergean parcialmente o
+  // distinguen "nuevo" de "editado"), acá solo hay 3 planes fijos que nunca
+  // se crean ni se borran — así que `guardarPlan` siempre reemplaza el plan
+  // completo, y `resolverPlan` lo aplica sobre `mockPlans` en `usePlatform`.
+  planOverrides: Record<string, Plan>;
 
   login: (email: string) => boolean;
   logout: () => void;
@@ -169,6 +177,18 @@ export interface KlazeState {
   siguienteEventoId: () => string;
   guardarEvento: (evento: CommunityEvent) => void;
   eliminarEvento: (eventoId: string) => void;
+  /**
+   * Suspende/reactiva una comunidad desde `/plataforma/comunidades`. Mismo
+   * mecanismo que `guardarComunidad` (override parcial en
+   * `comunidadOverrides`, aplicado por `resolverComunidad` en cada hook que
+   * resuelve una `Community`) — separada de esa acción porque la usa el
+   * superadmin, no el creador dueño, y su firma es más angosta (solo
+   * `estado`). `MemberShell` bloquea `/c/[slug]/*` a cualquier miembro no
+   * superadmin en cuanto `community.estado === "suspendida"`.
+   */
+  cambiarEstadoComunidad: (comunidadId: string, estado: Community["estado"]) => void;
+  /** Guarda un `Plan` editado desde `/plataforma/planes` — reemplazo completo en `planOverrides` (ver docstring del campo). */
+  guardarPlan: (plan: Plan) => void;
 }
 
 /**
@@ -243,6 +263,18 @@ export function resolverComunidad(
   return { ...base, ...override };
 }
 
+/**
+ * Aplica `overrides[base.id]` (si existe) sobre un `Plan` base de
+ * `mockPlans`. Punto único de verdad para el precio/límites vigentes de un
+ * plan — usarla en cualquier hook que resuelva un `Plan` (hoy solo
+ * `usePlatform`) en vez de leer `mockPlans` directamente, para que editar un
+ * plan desde `/plataforma/planes` se refleje en toda la app sin parches por
+ * pantalla.
+ */
+export function resolverPlan(base: Plan, overrides: Record<string, Plan>): Plan {
+  return overrides[base.id] ?? base;
+}
+
 export const useKlazeStore = create<KlazeState>()(
   persist(
     (set, get) => ({
@@ -268,6 +300,7 @@ export const useKlazeStore = create<KlazeState>()(
       eventosEditados: [],
       eventosEliminados: [],
       proximoEventoId: 1,
+      planOverrides: {},
 
       login: (email) => {
         const objetivo = email.trim().toLowerCase();
@@ -575,6 +608,21 @@ export const useKlazeStore = create<KlazeState>()(
           if (state.eventosEliminados.includes(eventoId)) return state;
           return { eventosEliminados: [...state.eventosEliminados, eventoId] };
         });
+      },
+
+      cambiarEstadoComunidad: (comunidadId, estado) => {
+        set((state) => ({
+          comunidadOverrides: {
+            ...state.comunidadOverrides,
+            [comunidadId]: { ...state.comunidadOverrides[comunidadId], estado },
+          },
+        }));
+      },
+
+      guardarPlan: (plan) => {
+        set((state) => ({
+          planOverrides: { ...state.planOverrides, [plan.id]: plan },
+        }));
       },
     }),
     {
