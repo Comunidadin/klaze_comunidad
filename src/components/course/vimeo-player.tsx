@@ -22,6 +22,16 @@ export interface VimeoPlayerProps {
  */
 export function VimeoPlayer({ vimeoId, title, className }: VimeoPlayerProps) {
   const [cargado, setCargado] = useState(false);
+  // El componente no siempre se remonta al navegar entre lecciones (App
+  // Router puede reutilizar la instancia), así que `cargado` sobreviviría
+  // de un video al siguiente y el skeleton no reaparecería. Reseteamos
+  // sincrónicamente durante el render cuando cambia `vimeoId` — mismo
+  // patrón que `useLessonComments` para "resetear estado en cambio de prop".
+  const [vimeoIdPrevio, setVimeoIdPrevio] = useState(vimeoId);
+  if (vimeoId !== vimeoIdPrevio) {
+    setVimeoIdPrevio(vimeoId);
+    setCargado(false);
+  }
 
   return (
     <div

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { mockUsers } from "@/lib/mocks/users";
 import { haceDias } from "@/lib/mocks/fechas";
+import { useKlazeStore } from "@/lib/store";
 import type { User } from "@/lib/types";
 
 export interface LessonCommentConAutor {
@@ -91,6 +92,11 @@ export interface UseLessonCommentsResult {
  * se pierde al recargar — no hay persistencia ni backend para comentarios.
  */
 export function useLessonComments(leccionId: string): UseLessonCommentsResult {
+  // Usuarios creados en runtime (alumnos que aceptaron invitación, T6) —
+  // `agregar` debe poder resolverlos como autor, igual que `use-session.ts`
+  // combina `mockUsers` + `usuariosCreados` para la sesión activa.
+  const usuariosCreados = useKlazeStore((s) => s.usuariosCreados);
+
   // Si `leccionId` cambia (navegación a otra lección) reseteamos el estado
   // sincrónicamente durante el render — patrón recomendado por React para
   // "resetear estado cuando cambia una prop" sin depender de que el
@@ -108,7 +114,10 @@ export function useLessonComments(leccionId: string): UseLessonCommentsResult {
   function agregar(userId: string, cuerpo: string) {
     const texto = cuerpo.trim();
     if (!texto) return;
-    const autor = mockUsers.find((u) => u.id === userId) ?? AUTOR_DESCONOCIDO;
+    const autor =
+      mockUsers.find((u) => u.id === userId) ??
+      usuariosCreados.find((u) => u.id === userId) ??
+      AUTOR_DESCONOCIDO;
     setComentarios((prev) => [
       ...prev,
       {

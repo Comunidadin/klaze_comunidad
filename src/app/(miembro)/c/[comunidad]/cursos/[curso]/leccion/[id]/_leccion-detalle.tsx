@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useCommunity } from "@/lib/hooks/use-community";
 import { useCourses, useLesson } from "@/lib/hooks/use-courses";
-import { useSession } from "@/lib/hooks/use-session";
+import { useHydrated, useSession } from "@/lib/hooks/use-session";
 import { useLessonComments } from "@/lib/hooks/use-lesson-comments";
 import { useKlazeStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
@@ -146,6 +146,7 @@ export function LeccionDetalle({ comunidadSlug, cursoSlug, leccionId }: LeccionD
   const { cursos } = useCourses(resultado?.community.id ?? "");
   const curso = cursos.find((c) => c.slug === cursoSlug);
   const leccionResult = useLesson(curso?.id ?? "", leccionId);
+  const hydrated = useHydrated();
   const { user } = useSession();
   const progreso = useKlazeStore((s) => s.progreso);
 
@@ -155,16 +156,28 @@ export function LeccionDetalle({ comunidadSlug, cursoSlug, leccionId }: LeccionD
   }, [progreso, user]);
 
   const [mostrarConfetti, setMostrarConfetti] = useState(false);
-  const progresoPrevioRef = useRef(curso?.progresoPct ?? 0);
+  // `null` = todavía no sembrado. Antes de hidratar, `useSession` devuelve
+  // `user: null`, así que `curso.progresoPct` vale 0 aunque el progreso real
+  // ya esté en 100% en localStorage — comparar contra ese 0 dispararía
+  // confetti en cada recarga de un curso ya completado. Por eso ignoramos
+  // toda comparación hasta el primer render post-hidratación, y ese primer
+  // render solo siembra el valor real sin disparar el efecto.
+  const progresoPrevioRef = useRef<number | null>(null);
+  const progresoPct = curso?.progresoPct;
 
   useEffect(() => {
-    if (!curso) return;
-    const anterior = progresoPrevioRef.current;
-    if (anterior < 100 && curso.progresoPct === 100) {
+    if (!hydrated || progresoPct === undefined) return;
+
+    if (progresoPrevioRef.current === null) {
+      progresoPrevioRef.current = progresoPct;
+      return;
+    }
+
+    if (progresoPrevioRef.current < 100 && progresoPct === 100) {
       setMostrarConfetti(true);
     }
-    progresoPrevioRef.current = curso.progresoPct;
-  }, [curso]);
+    progresoPrevioRef.current = progresoPct;
+  }, [hydrated, progresoPct]);
 
   if (!resultado) return null;
   const { community } = resultado;
