@@ -6,6 +6,7 @@ import {
   BarChart3,
   BookOpen,
   CalendarDays,
+  Globe,
   KeyRound,
   LayoutDashboard,
   MessagesSquare,
@@ -18,7 +19,7 @@ import { AdminShell, type AdminNavItem } from "@/components/shells/admin-shell";
 import { UserSwitcher } from "@/components/shared/user-switcher";
 import { FullScreenLoader } from "@/components/shared/full-screen-loader";
 
-const ITEMS: AdminNavItem[] = [
+const ITEMS_BASE: AdminNavItem[] = [
   { titulo: "Panel", href: "/admin", icono: LayoutDashboard },
   { titulo: "Alumnos", href: "/admin/alumnos", icono: Users },
   { titulo: "Accesos", href: "/admin/accesos", icono: KeyRound },
@@ -28,6 +29,15 @@ const ITEMS: AdminNavItem[] = [
   { titulo: "Reportes", href: "/admin/reportes", icono: BarChart3 },
   { titulo: "Configuración", href: "/admin/configuracion", icono: Settings },
 ];
+
+// Enlace cruzado: solo el superadmin (dueño de Klaze) ve el link a su panel
+// de plataforma desde el admin de "su" academia — un creador normal (p. ej.
+// Marta) no administra la plataforma y no debe verlo.
+const ITEM_PLATAFORMA: AdminNavItem = {
+  titulo: "Panel plataforma",
+  href: "/plataforma",
+  icono: Globe,
+};
 
 /**
  * Guard del grupo `(creador)`: solo `rol === "creador"` o `"superadmin"`
@@ -39,6 +49,8 @@ export default function CreadorLayout({ children }: { children: React.ReactNode 
   const { user } = useSession();
   const router = useRouter();
   const autorizado = user !== null && (user.rol === "creador" || user.rol === "superadmin");
+  const items =
+    user?.rol === "superadmin" ? [...ITEMS_BASE, ITEM_PLATAFORMA] : ITEMS_BASE;
 
   useEffect(() => {
     if (!hydrated) return;
@@ -57,7 +69,7 @@ export default function CreadorLayout({ children }: { children: React.ReactNode 
 
   return (
     <>
-      <AdminShell items={ITEMS} titulo="Panel de creador">
+      <AdminShell items={items} titulo="Panel de creador">
         {children}
       </AdminShell>
       <UserSwitcher />

@@ -24,7 +24,7 @@ export const mockCommunities: Community[] = [
       "Comunidad para emprendedores digitales que quieren lanzar, vender y escalar sus propios productos en línea.",
     logoUrl: "https://api.dicebear.com/7.x/shapes/svg?seed=academia-klaze",
     colorAcento: "#6366F1",
-    ownerId: "u-creador",
+    ownerId: "u-admin",
     plan: "pro",
     estado: "activa",
     nombresNiveles: NOMBRES_NIVELES,

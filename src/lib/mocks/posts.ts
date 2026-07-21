@@ -20,11 +20,11 @@ const principal: Post[] = [
   {
     id: "post-1",
     comunidadId: "com-principal",
-    autorId: "u-creador",
+    autorId: "u-admin",
     categoria: "Anuncios",
     titulo: "📌 Bienvenido a Academia Klaze — empieza aquí",
     cuerpo:
-      "¡Hola! Soy Daniel, fundador de Academia Klaze. Este es tu punto de partida: revisa el módulo 1 de Lanzamiento Digital Pro, preséntate en este post y cuéntanos en qué etapa de tu negocio estás. Estamos para acompañarte.",
+      "¡Hola! Soy Andrea, dueña de Klaze y de Academia Klaze. Este es tu punto de partida: revisa el módulo 1 de Lanzamiento Digital Pro, preséntate en este post y cuéntanos en qué etapa de tu negocio estás. Estamos para acompañarte.",
     fijado: true,
     likes: ["u-alumno", "u-m1", "u-m2", "u-m3", "u-m4", "u-m5", "u-m6", "u-m7", "u-m8", "u-m9"],
     comentarios: [

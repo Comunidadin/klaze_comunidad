@@ -1,6 +1,6 @@
 # Klaze V2
 
-Demo de frontend de **Klaze**, una plataforma de gestión de cursos en video y comunidades estilo Skool / Cademi / Hotmart Club. Es **multi-creador**: cada creador tiene su propia comunidad con cursos, feed, calendario y gamificación; el dueño de Klaze administra la plataforma completa desde un panel super-admin.
+Demo de frontend de **Klaze**, una plataforma de gestión de cursos en video y comunidades estilo Skool / Cademi / Hotmart Club. Es **multi-creador**: cada creador tiene su propia comunidad con cursos, feed, calendario y gamificación; el dueño de Klaze administra la plataforma completa desde un panel super-admin **y además es dueño de su propia academia** ("Academia Klaze"), demostrando la cuenta unificada dueño-de-plataforma + dueño-de-comunidad.
 
 Este repo es **solo frontend, con datos mock y sin backend**. Toda la interfaz y la copy están en español.
 
@@ -22,12 +22,14 @@ No hay contraseñas reales: `login()` solo valida que el correo exista. Cualquie
 | Correo | Rol | A dónde entra |
 |---|---|---|
 | `alumno@klaze.app` | Alumno | `/c/academia-klaze/inicio` (miembro de "Academia Klaze") |
-| `creador@klaze.app` | Creador | `/admin` (dueño de "Academia Klaze") |
-| `admin@klaze.app` | Super-admin | `/plataforma` |
+| `creador@klaze.app` | Creadora (Marta) | `/admin` (dueña de "Inglés con Marta" — comunidad secundaria, mucho menos contenido que la principal; útil para probar estados vacíos) |
+| `admin@klaze.app` | Super-admin (Andrea) | `/admin` (dueña de "Academia Klaze", uso diario) — con enlace cruzado a `/plataforma` desde el sidebar |
 
-Un cuarto usuario útil para probar estados vacíos: `marta@klaze.app` (creadora de la segunda comunidad, "Inglés con Marta" — `/c/ingles-con-marta`, mucho menos contenido que la comunidad principal).
+Modelo de roles: un `superadmin` puede además ser dueño de una comunidad (`ownerId` de `Community`) — hoy es el caso de `admin@klaze.app`, dueño de "Academia Klaze". `homePorRol` lo manda a `/admin` si tiene comunidad propia, o a `/plataforma` si no. Desde el admin de su academia ve un item de sidebar extra "Panel plataforma" (`/plataforma`); desde `/plataforma` ve "Mi academia" (`/admin`) — ambos enlaces cruzados solo aparecen para ese rol/condición, nunca para un creador normal como Marta.
 
-La pantalla de login trae botones de acceso rápido para los 3 correos de arriba. Además, dentro de cualquier zona logueada hay un selector flotante abajo a la derecha (`UserSwitcher`) para saltar entre los 3 usuarios semilla sin pasar por login.
+Daniel Restrepo (`u-creador`, fundador original de Academia Klaze antes de la reasignación a `admin@klaze.app`) sigue existiendo como usuario — hoy con rol `alumno` — y queda como autor de posts/comentarios históricos de la comunidad; ya no tiene chip de demo propio.
+
+La pantalla de login trae botones de acceso rápido para los 3 correos de arriba. Además, dentro de cualquier zona logueada hay un selector flotante abajo a la derecha (`UserSwitcher`) para saltar entre esos 3 usuarios semilla sin pasar por login.
 
 ### Flujo de invitación (demo end-to-end)
 
@@ -42,8 +44,8 @@ Cuatro zonas, cada una con su propio `layout.tsx` que actúa de guard de rol (re
 
 - **`(auth)`** — públicas: `/login`, `/registro` (alta de creador), `/recuperar`, `/invitacion/[token]`.
 - **`(miembro)`** — cualquier usuario logueado. `/perfil` vive a nivel de grupo; todo lo demás cuelga de `/c/[comunidad]/...`: `inicio` (feed), `cursos`, `cursos/[curso]`, `cursos/[curso]/leccion/[id]`, `calendario`, `miembros`, `ranking`.
-- **`(creador)`** — rol `creador` o `superadmin` (el superadmin también puede entrar a inspeccionar el admin de una comunidad). `/admin` (dashboard), `/admin/cursos`, `/admin/cursos/[curso]` (editor con módulos/lecciones + campo Vimeo), `/admin/alumnos`, `/admin/accesos` (invitaciones), `/admin/comunidad` (posts/categorías/niveles), `/admin/eventos`, `/admin/reportes`, `/admin/configuracion`.
-- **`(superadmin)`** — solo rol `superadmin`. `/plataforma` (dashboard), `/plataforma/comunidades`, `/plataforma/creadores`, `/plataforma/planes`.
+- **`(creador)`** — rol `creador` o `superadmin` (el superadmin también puede entrar a administrar el admin de su propia comunidad, hoy "Academia Klaze"). `/admin` (dashboard), `/admin/cursos`, `/admin/cursos/[curso]` (editor con módulos/lecciones + campo Vimeo), `/admin/alumnos`, `/admin/accesos` (invitaciones), `/admin/comunidad` (posts/categorías/niveles), `/admin/eventos`, `/admin/reportes`, `/admin/configuracion`. El sidebar agrega un item "Panel plataforma" (`/plataforma`) solo si el usuario es `superadmin`.
+- **`(superadmin)`** — solo rol `superadmin`. `/plataforma` (dashboard), `/plataforma/comunidades`, `/plataforma/creadores`, `/plataforma/planes`. El sidebar agrega un item "Mi academia" (`/admin`) solo si ese superadmin es dueño de alguna comunidad (`ownerId`).
 
 ## Arquitectura: mocks → hooks → páginas
 

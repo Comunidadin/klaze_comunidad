@@ -59,7 +59,11 @@ const BIOS = [
   "Contador de profesión, emprendedor de corazón.",
 ];
 
-// Tres usuarios semilla + el segundo creador de la comunidad secundaria.
+// Tres usuarios semilla (alumno, creador = Marta, superadmin = dueño de
+// Academia Klaze) + Daniel (u-creador), el fundador original de Academia
+// Klaze: hoy es alumno normal (rol "alumno") y queda como autor de contenido
+// histórico (posts/comentarios previos a la reasignación de ownerId a
+// u-admin), pero ya no tiene chip de demo ni panel propio.
 const seeds: User[] = [
   {
     id: "u-alumno",
@@ -75,11 +79,11 @@ const seeds: User[] = [
   },
   {
     id: "u-creador",
-    email: "creador@klaze.app",
+    email: "daniel.restrepo@klaze.app",
     nombre: "Daniel Restrepo",
     avatarUrl: "https://i.pravatar.cc/150?u=u-creador",
-    bio: "Fundador de Academia Klaze. Ayudo a emprendedores a lanzar su primer producto digital.",
-    rol: "creador",
+    bio: "Fundador original de Academia Klaze, hoy la disfruta como un alumno más. Sigue ayudando a emprendedores a lanzar su primer producto digital.",
+    rol: "alumno",
     comunidadIds: ["com-principal"],
     puntos: 0,
     nivel: 1,
@@ -90,7 +94,7 @@ const seeds: User[] = [
     email: "admin@klaze.app",
     nombre: "Andrea Salinas",
     avatarUrl: "https://i.pravatar.cc/150?u=u-admin",
-    bio: "Equipo de soporte de Klaze. Superviso comunidades y facturación.",
+    bio: "Dueña de Klaze y de Academia Klaze. Superviso comunidades y facturación de toda la plataforma.",
     rol: "superadmin",
     comunidadIds: ["com-principal", "com-esp"],
     puntos: 0,
@@ -99,7 +103,7 @@ const seeds: User[] = [
   },
   {
     id: "u-creador2",
-    email: "marta@klaze.app",
+    email: "creador@klaze.app",
     nombre: "Marta Gómez",
     avatarUrl: "https://i.pravatar.cc/150?u=u-creador2",
     bio: "Profesora de inglés bilingüe. Fundadora de Inglés con Marta.",

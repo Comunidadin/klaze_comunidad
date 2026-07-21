@@ -11,7 +11,7 @@ import { AuthFormCard } from "../_components/auth-form-card";
 
 const CUENTAS_DEMO = [
   { email: "alumno@klaze.app", etiqueta: "Alumno" },
-  { email: "creador@klaze.app", etiqueta: "Creador" },
+  { email: "creador@klaze.app", etiqueta: "Creadora" },
   { email: "admin@klaze.app", etiqueta: "Super-admin" },
 ];
 

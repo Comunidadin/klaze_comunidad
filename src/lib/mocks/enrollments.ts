@@ -12,6 +12,16 @@ export const mockEnrollments: Enrollment[] = [
     cursoIds: ["curso-1", "curso-2"],
     estado: "activo",
   },
+  // Daniel (u-creador): fundador original de Academia Klaze, hoy alumno
+  // más — acceso total como cualquier miembro para que aparezca coherente
+  // en el directorio de /admin/alumnos.
+  {
+    id: "enr-u-creador-principal",
+    userId: "u-creador",
+    comunidadId: "com-principal",
+    cursoIds: "todos",
+    estado: "activo",
+  },
   // Los 24 miembros tienen acceso a todos los cursos de la comunidad principal.
   ...miembrosPrincipal.map(
     (u): Enrollment => ({

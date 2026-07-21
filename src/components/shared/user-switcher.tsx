@@ -15,7 +15,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { UserRole } from "@/lib/types";
 
-const IDS_SEMILLA = ["u-alumno", "u-creador", "u-admin"] as const;
+// u-creador (Daniel) ya no es el chip de "creador": tras Cambio 1, esa
+// cuenta pasó a Marta (u-creador2, dueña de "Inglés con Marta") y Daniel
+// quedó como alumno normal — ver `mocks/users.ts`.
+const IDS_SEMILLA = ["u-alumno", "u-creador2", "u-admin"] as const;
 
 const USUARIOS_SEMILLA = IDS_SEMILLA.map((id) => mockUsers.find((u) => u.id === id)).filter(
   (u) => u != null
@@ -23,7 +26,7 @@ const USUARIOS_SEMILLA = IDS_SEMILLA.map((id) => mockUsers.find((u) => u.id === 
 
 const ETIQUETA_ROL: Record<UserRole, string> = {
   alumno: "Alumno",
-  creador: "Creador",
+  creador: "Creadora",
   superadmin: "Super-admin",
 };
 
