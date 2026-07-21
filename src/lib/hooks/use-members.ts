@@ -1,6 +1,6 @@
 "use client";
 
-import { aplicarPerfilOverride, useKlazeStore } from "@/lib/store";
+import { aplicarPerfilOverride, resolverEstadoEnrollment, useKlazeStore } from "@/lib/store";
 import { mockUsers } from "@/lib/mocks/users";
 import { mockEnrollments } from "@/lib/mocks/enrollments";
 import { mergeCursos } from "@/lib/hooks/use-courses";
@@ -63,7 +63,7 @@ export function useMembers(comunidadId: string): { miembros: MemberConEstado[] }
     .map((e) => {
       const usuario = todosLosUsuarios.find((u) => u.id === e.userId);
       if (!usuario) return null;
-      const estado = estadoOverrides[`${e.userId}:${comunidadId}`] ?? e.estado;
+      const estado = resolverEstadoEnrollment(e, estadoOverrides);
       const progresoPromedio = progresoPromedioDe(
         e.cursoIds,
         cursosComunidad,

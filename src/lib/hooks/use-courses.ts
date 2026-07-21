@@ -1,6 +1,6 @@
 "use client";
 
-import { useKlazeStore } from "@/lib/store";
+import { resolverEstadoEnrollment, useKlazeStore } from "@/lib/store";
 import { mockCourses } from "@/lib/mocks/courses";
 import { mockEnrollments } from "@/lib/mocks/enrollments";
 import { useSession } from "@/lib/hooks/use-session";
@@ -44,6 +44,7 @@ export function useCourses(comunidadId: string): { cursos: CourseConAcceso[] } {
   const cursosEditados = useKlazeStore((s) => s.cursosEditados);
   const enrollmentsExtra = useKlazeStore((s) => s.enrollmentsExtra);
   const progreso = useKlazeStore((s) => s.progreso);
+  const estadoOverrides = useKlazeStore((s) => s.estadoOverrides);
   const { user } = useSession();
 
   const cursos = mergeCursos(comunidadId, cursosEditados);
@@ -54,7 +55,7 @@ export function useCourses(comunidadId: string): { cursos: CourseConAcceso[] } {
         (e) =>
           e.userId === user.id &&
           e.comunidadId === comunidadId &&
-          e.estado === "activo"
+          resolverEstadoEnrollment(e, estadoOverrides) === "activo"
       )
     : undefined;
 

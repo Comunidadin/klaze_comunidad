@@ -78,7 +78,9 @@ export interface KlazeState {
   // (una sola membresía por par usuario+comunidad). Ver `cambiarEstadoAlumno`:
   // suspender/reactivar desde /admin/alumnos no muta `mockEnrollments` ni
   // `enrollmentsExtra` directamente, sino que agrega/actualiza esta entrada;
-  // `useMembers` la aplica como último paso al resolver el estado de cada fila.
+  // tanto `useMembers` (estado de cada fila) como `useCourses` (gate de
+  // acceso a cursos/lecciones) la aplican vía el helper `resolverEstadoEnrollment`
+  // para que suspender revoque acceso real, no solo el badge de admin.
   estadoOverrides: Record<string, Enrollment["estado"]>;
 
   login: (email: string) => boolean;
@@ -120,6 +122,24 @@ export function aplicarPerfilOverride<T extends User>(
   const override = overrides[usuario.id];
   if (!override) return usuario;
   return { ...usuario, nombre: override.nombre, bio: override.bio };
+}
+
+/**
+ * Resuelve el estado "efectivo" de un `Enrollment` aplicando `estadoOverrides`
+ * (ver `cambiarEstadoAlumno`). Punto único de verdad para cualquier código que
+ * decida acceso a partir de `Enrollment.estado` — usarla tanto en `useCourses`
+ * (gate de acceso a cursos/lecciones) como en `useMembers` (tabla de admin),
+ * para que suspender/reactivar desde /admin/alumnos revoque/restaure acceso
+ * real en toda la app y no solo el badge del panel de administración.
+ */
+export function resolverEstadoEnrollment(
+  enrollment: Enrollment,
+  estadoOverrides: Record<string, Enrollment["estado"]>
+): Enrollment["estado"] {
+  return (
+    estadoOverrides[`${enrollment.userId}:${enrollment.comunidadId}`] ??
+    enrollment.estado
+  );
 }
 
 export const useKlazeStore = create<KlazeState>()(

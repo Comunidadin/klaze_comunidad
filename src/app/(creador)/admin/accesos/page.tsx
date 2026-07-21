@@ -42,14 +42,23 @@ interface CorreosParseados {
   invalidos: string[]; // texto tal cual se escribió
 }
 
-/** Valida cada token, deduplica los válidos (case-insensitive) preservando el primer orden de aparición. */
+/**
+ * Valida cada token y deduplica tanto los válidos como los inválidos
+ * (case-insensitive), preservando el primer orden de aparición en ambos
+ * casos — así pegar el mismo correo mal escrito varias veces no lo repite
+ * en el aviso rojo.
+ */
 function parseCorreos(texto: string): CorreosParseados {
   const validos: string[] = [];
   const invalidos: string[] = [];
   const vistos = new Set<string>();
+  const invalidosVistos = new Set<string>();
 
   for (const token of tokenizarCorreos(texto)) {
     if (!esEmailValido(token)) {
+      const normalizadoInvalido = token.toLowerCase();
+      if (invalidosVistos.has(normalizadoInvalido)) continue;
+      invalidosVistos.add(normalizadoInvalido);
       invalidos.push(token);
       continue;
     }
