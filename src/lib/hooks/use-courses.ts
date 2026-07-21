@@ -40,6 +40,12 @@ export function mergeCursos(comunidadId: string, cursosEditados: Course[]): Cour
   return [...resultado, ...nuevos];
 }
 
+/**
+ * Cursos de la comunidad vistos por un miembro: solo `publicado: true` —
+ * un borrador nunca debe aparecer en el classroom, sin importar el acceso
+ * del usuario. Para el admin (que sí necesita ver y editar borradores),
+ * usar `useAdminCourses`, que opera sobre `mergeCursos` sin este filtro.
+ */
 export function useCourses(comunidadId: string): { cursos: CourseConAcceso[] } {
   const cursosEditados = useKlazeStore((s) => s.cursosEditados);
   const enrollmentsExtra = useKlazeStore((s) => s.enrollmentsExtra);
@@ -47,7 +53,7 @@ export function useCourses(comunidadId: string): { cursos: CourseConAcceso[] } {
   const estadoOverrides = useKlazeStore((s) => s.estadoOverrides);
   const { user } = useSession();
 
-  const cursos = mergeCursos(comunidadId, cursosEditados);
+  const cursos = mergeCursos(comunidadId, cursosEditados).filter((c) => c.publicado);
   const enrollments = [...mockEnrollments, ...enrollmentsExtra];
 
   const enrollment = user

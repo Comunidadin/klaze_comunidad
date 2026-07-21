@@ -15,6 +15,9 @@ export type {
   UseLessonResult,
 } from "@/lib/hooks/use-courses";
 
+export { useAdminCourse, useAdminCourses } from "@/lib/hooks/use-admin-courses";
+export type { CourseConAdmin } from "@/lib/hooks/use-admin-courses";
+
 export { useFeed } from "@/lib/hooks/use-feed";
 export type { PostConAutor } from "@/lib/hooks/use-feed";
 

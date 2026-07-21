@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { CheckCircle2, Clock, Lock, PlayCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { estadisticasCurso, formatDuracion } from "@/components/course/course-utils";
+import { CoursePortada } from "@/components/course/course-portada";
 import type { CourseConAcceso } from "@/lib/hooks/use-courses";
 
 export interface CourseCardProps {
@@ -99,13 +99,11 @@ export function CourseCard({ curso, comunidadSlug, nombreNivelRequerido }: Cours
       )}
 
       <div className="relative aspect-video w-full shrink-0 overflow-hidden bg-muted">
-        <Image
-          src={curso.portadaUrl}
-          alt=""
-          fill
-          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+        <CoursePortada
+          portadaUrl={curso.portadaUrl}
+          titulo={curso.titulo}
           className={cn(
-            "object-cover transition-transform duration-500",
+            "transition-transform duration-500",
             !bloqueado && "group-hover:scale-105",
             bloqueado && "scale-105 opacity-50 saturate-50 blur-[1px]"
           )}

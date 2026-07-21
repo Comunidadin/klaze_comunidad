@@ -14,7 +14,8 @@ import { mockUsers } from "@/lib/mocks/users";
 
 const CURSO_1_ID = "curso-1";
 
-function slugify(texto: string): string {
+/** Exportado porque `/admin/cursos` la reutiliza para derivar el slug de un curso nuevo. */
+export function slugify(texto: string): string {
   return texto
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
@@ -74,6 +75,16 @@ export interface KlazeState {
   // hook que resuelve un `User` (useSession, useMembers, useGamification)
   // aplica el override al final vía `aplicarPerfilOverride`.
   perfilOverrides: Record<string, PerfilOverride>;
+  // Contadores determinísticos para los IDs que genera el editor de cursos
+  // (T13) — mismo patrón que `proximoInviteId`: nunca `Math.random`, así los
+  // IDs son estables y no colisionan aunque se cree/borre varias veces en la
+  // misma sesión. `proximoLeccionId` es el más sensible de los tres: el ID
+  // de lección es la clave de `LessonProgress.leccionId` (sin `cursoId`), así
+  // que debe ser único en TODA la app, no solo dentro de un curso — por eso
+  // es un contador global y no algo derivado del curso/módulo que lo contiene.
+  proximoCursoId: number;
+  proximoModuloId: number;
+  proximoLeccionId: number;
   // Override persistido de `Enrollment.estado`, keyed por `${userId}:${comunidadId}`
   // (una sola membresía por par usuario+comunidad). Ver `cambiarEstadoAlumno`:
   // suspender/reactivar desde /admin/alumnos no muta `mockEnrollments` ni
@@ -96,6 +107,12 @@ export interface KlazeState {
   toggleLike: (postId: string) => void;
   comentar: (postId: string, cuerpo: string, parentId: string | null) => void;
   guardarCurso: (curso: Course) => void;
+  /** ID determinístico "curso-nuevo-N" para un curso creado desde /admin/cursos. */
+  siguienteCursoId: () => string;
+  /** ID determinístico "mod-N" para un módulo nuevo del editor. */
+  siguienteModuloId: () => string;
+  /** ID determinístico "lec-N" para una lección nueva del editor — único en toda la app (ver docstring de `proximoLeccionId`). */
+  siguienteLeccionId: () => string;
   registrarCreador: (
     nombre: string,
     email: string,
@@ -156,6 +173,9 @@ export const useKlazeStore = create<KlazeState>()(
       cursosEditados: [],
       comunidadesCreadas: [],
       proximoInviteId: 1,
+      proximoCursoId: 1,
+      proximoModuloId: 1,
+      proximoLeccionId: 1,
       perfilOverrides: {},
       estadoOverrides: {},
 
@@ -309,6 +329,24 @@ export const useKlazeStore = create<KlazeState>()(
             : [...state.cursosEditados, curso];
           return { cursosEditados };
         });
+      },
+
+      siguienteCursoId: () => {
+        const id = `curso-nuevo-${get().proximoCursoId}`;
+        set((s) => ({ proximoCursoId: s.proximoCursoId + 1 }));
+        return id;
+      },
+
+      siguienteModuloId: () => {
+        const id = `mod-${get().proximoModuloId}`;
+        set((s) => ({ proximoModuloId: s.proximoModuloId + 1 }));
+        return id;
+      },
+
+      siguienteLeccionId: () => {
+        const id = `lec-${get().proximoLeccionId}`;
+        set((s) => ({ proximoLeccionId: s.proximoLeccionId + 1 }));
+        return id;
       },
 
       registrarCreador: (nombre, email, nombreComunidad) => {

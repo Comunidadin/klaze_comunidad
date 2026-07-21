@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -36,6 +35,7 @@ import {
   moduloDeLeccion,
   modulosOrdenados,
 } from "@/components/course/course-utils";
+import { CoursePortada } from "@/components/course/course-portada";
 import type { Lesson } from "@/lib/types";
 
 export interface CursoDetalleProps {
@@ -125,14 +125,7 @@ export function CursoDetalle({ comunidadSlug, cursoSlug }: CursoDetalleProps) {
       {/* Hero */}
       <div className="relative overflow-hidden rounded-3xl bg-muted">
         <div className="relative aspect-[16/9] w-full sm:aspect-[3/1]">
-          <Image
-            src={curso.portadaUrl}
-            alt=""
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover"
-          />
+          <CoursePortada portadaUrl={curso.portadaUrl} titulo={curso.titulo} />
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/10" />
         </div>
 

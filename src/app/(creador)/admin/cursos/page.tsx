@@ -1,0 +1,218 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { BookOpen, Plus } from "lucide-react";
+import { useHydrated } from "@/lib/hooks/use-session";
+import { useMyCommunity } from "@/lib/hooks/use-my-community";
+import { useAdminCourses } from "@/lib/hooks/use-admin-courses";
+import { slugify, useKlazeStore } from "@/lib/store";
+import { AdminCourseCard } from "@/components/admin/admin-course-card";
+import { EmptyState } from "@/components/shared/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import type { Course } from "@/lib/types";
+
+function CursosSkeleton() {
+  return (
+    <div>
+      <div className="mb-6 flex items-center justify-between">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-8 w-36" />
+      </div>
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="aspect-[4/5] rounded-2xl sm:aspect-[3/4]" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * `/admin/cursos`: cuadrícula de todos los cursos de la comunidad (incluye
+ * borradores — `useAdminCourses`, a diferencia del `useCourses` que ve el
+ * classroom de miembros) + diálogo para crear uno nuevo. El curso nuevo
+ * nace como borrador (`publicado: false`) y navega directo al editor para
+ * que el creador arme su estructura.
+ */
+export default function AdminCursosPage() {
+  const hydrated = useHydrated();
+  const community = useMyCommunity();
+  const { cursos } = useAdminCourses(community?.id ?? "");
+  const guardarCurso = useKlazeStore((s) => s.guardarCurso);
+  const siguienteCursoId = useKlazeStore((s) => s.siguienteCursoId);
+  const router = useRouter();
+
+  const [dialogAbierto, setDialogAbierto] = useState(false);
+  const [titulo, setTitulo] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [precio, setPrecio] = useState("");
+  const [portadaUrl, setPortadaUrl] = useState("");
+
+  if (!hydrated) {
+    return <CursosSkeleton />;
+  }
+
+  if (!community) {
+    return (
+      <EmptyState
+        icono={BookOpen}
+        titulo="Todavía no tienes una comunidad"
+        descripcion="No encontramos ninguna comunidad asociada a tu cuenta."
+      />
+    );
+  }
+
+  function handleOpenChange(open: boolean) {
+    setDialogAbierto(open);
+    if (!open) {
+      setTitulo("");
+      setDescripcion("");
+      setPrecio("");
+      setPortadaUrl("");
+    }
+  }
+
+  function crearCurso() {
+    if (!community || !titulo.trim()) return;
+
+    const id = siguienteCursoId();
+    const numero = id.replace("curso-nuevo-", "");
+    const base = slugify(titulo) || "curso";
+
+    const curso: Course = {
+      id,
+      comunidadId: community.id,
+      slug: `${base}-${numero}`,
+      titulo: titulo.trim(),
+      descripcion: descripcion.trim(),
+      portadaUrl: portadaUrl.trim(),
+      precioReferencial: Math.max(0, Number(precio) || 0),
+      nivelRequerido: null,
+      modulos: [],
+      publicado: false,
+    };
+
+    guardarCurso(curso);
+    toast.success(`«${curso.titulo}» creado como borrador`);
+    handleOpenChange(false);
+    router.push(`/admin/cursos/${curso.id}`);
+  }
+
+  return (
+    <div>
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
+            Cursos
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {cursos.length} {cursos.length === 1 ? "curso" : "cursos"} en {community.nombre}.
+          </p>
+        </div>
+
+        <Dialog open={dialogAbierto} onOpenChange={handleOpenChange}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus /> Nuevo curso
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Nuevo curso</DialogTitle>
+              <DialogDescription>
+                Se crea como borrador — publícalo cuando esté listo desde el editor.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="nuevo-titulo">Título</Label>
+                <Input
+                  id="nuevo-titulo"
+                  value={titulo}
+                  onChange={(e) => setTitulo(e.target.value)}
+                  placeholder="Ej. Lanzamiento Digital Pro"
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="nuevo-descripcion">Descripción</Label>
+                <Textarea
+                  id="nuevo-descripcion"
+                  value={descripcion}
+                  onChange={(e) => setDescripcion(e.target.value)}
+                  placeholder="De qué trata el curso…"
+                  className="min-h-20"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="nuevo-precio">Precio referencial (USD)</Label>
+                  <Input
+                    id="nuevo-precio"
+                    type="number"
+                    min={0}
+                    value={precio}
+                    onChange={(e) => setPrecio(e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="nuevo-portada">URL de portada</Label>
+                  <Input
+                    id="nuevo-portada"
+                    value={portadaUrl}
+                    onChange={(e) => setPortadaUrl(e.target.value)}
+                    placeholder="https://…"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Sin portada, mostramos un fondo con la inicial del curso hasta que subas una imagen.
+              </p>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => handleOpenChange(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={crearCurso} disabled={!titulo.trim()}>
+                Crear curso
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {cursos.length === 0 ? (
+        <EmptyState
+          icono={BookOpen}
+          titulo="Todavía no tienes cursos"
+          descripcion="Crea tu primer curso para empezar a estructurar módulos y lecciones."
+          accion={{ label: "Nuevo curso", onClick: () => setDialogAbierto(true) }}
+        />
+      ) : (
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {cursos.map((curso) => (
+            <AdminCourseCard key={curso.id} curso={curso} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
