@@ -54,3 +54,24 @@ export function primeraLeccionPendiente(
   const lecciones = leccionesOrdenadas(curso);
   return lecciones.find((l) => !leccionesCompletadasIds.has(l.id)) ?? null;
 }
+
+export interface ProgresoModulo {
+  completadas: number;
+  total: number;
+  pct: number;
+}
+
+/**
+ * Progreso de un módulo individual — mismo cálculo que `progresoPct` de
+ * `useCourses` pero acotado a las lecciones de un único módulo, para las
+ * tarjetas de portada del grid de módulos.
+ */
+export function progresoDeModulo(
+  modulo: CourseModule,
+  leccionesCompletadasIds: Set<string>
+): ProgresoModulo {
+  const total = modulo.lecciones.length;
+  const completadas = modulo.lecciones.filter((l) => leccionesCompletadasIds.has(l.id)).length;
+  const pct = total === 0 ? 0 : Math.round((completadas / total) * 100);
+  return { completadas, total, pct };
+}

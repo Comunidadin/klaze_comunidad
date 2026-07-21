@@ -46,6 +46,8 @@ export interface CourseModule {
   titulo: string;
   orden: number;
   lecciones: Lesson[];
+  /** Portada vertical (~2:3) del módulo — Unsplash en mocks, URL libre desde el editor. Sin ella, fallback de gradiente con inicial (ver CoursePortada). */
+  portadaUrl?: string;
 }
 
 export interface Lesson {

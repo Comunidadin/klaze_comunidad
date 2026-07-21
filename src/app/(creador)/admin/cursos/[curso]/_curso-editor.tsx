@@ -21,6 +21,7 @@ import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { useAdminCourse } from "@/lib/hooks/use-admin-courses";
 import { useKlazeStore } from "@/lib/store";
 import { leccionesOrdenadas, moduloDeLeccion, modulosOrdenados } from "@/components/course/course-utils";
+import { CoursePortada } from "@/components/course/course-portada";
 import { LessonEditor } from "@/components/admin/lesson-editor";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -185,6 +186,15 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
     actualizarCurso((c) => ({
       ...c,
       modulos: c.modulos.map((m) => (m.id === moduloId ? { ...m, titulo } : m)),
+    }));
+  }
+
+  function actualizarPortadaModulo(moduloId: string, portadaUrl: string) {
+    actualizarCurso((c) => ({
+      ...c,
+      modulos: c.modulos.map((m) =>
+        m.id === moduloId ? { ...m, portadaUrl: portadaUrl.trim() ? portadaUrl : undefined } : m
+      ),
     }));
   }
 
@@ -380,6 +390,19 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
                         <Trash2 />
                       </Button>
                     </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 border-b border-border px-2.5 py-2">
+                    <div className="relative size-9 shrink-0 overflow-hidden rounded-md bg-muted ring-1 ring-foreground/10">
+                      <CoursePortada portadaUrl={modulo.portadaUrl ?? ""} titulo={modulo.titulo} />
+                    </div>
+                    <Input
+                      value={modulo.portadaUrl ?? ""}
+                      onChange={(e) => actualizarPortadaModulo(modulo.id, e.target.value)}
+                      placeholder="URL de portada del módulo (opcional)"
+                      aria-label={`URL de portada del módulo ${indiceModulo + 1}`}
+                      className="h-8 flex-1 text-xs"
+                    />
                   </div>
 
                   <div className="space-y-1 p-2">

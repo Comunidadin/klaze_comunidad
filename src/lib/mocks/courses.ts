@@ -66,6 +66,8 @@ const curso1: Course = {
       id: "c1-m1",
       titulo: "Fundamentos y validación de tu oferta",
       orden: 1,
+      portadaUrl:
+        "https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=560&fit=crop&q=80",
       lecciones: [
         video(
           "c1-m1-l1",
@@ -103,6 +105,8 @@ const curso1: Course = {
       id: "c1-m2",
       titulo: "Crea tu producto digital",
       orden: 2,
+      portadaUrl:
+        "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=560&fit=crop&q=80",
       lecciones: [
         video(
           "c1-m2-l5",
@@ -138,6 +142,8 @@ const curso1: Course = {
       id: "c1-m3",
       titulo: "Landing page y checkout",
       orden: 3,
+      portadaUrl:
+        "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400&h=560&fit=crop&q=80",
       lecciones: [
         video(
           "c1-m3-l9",
@@ -175,6 +181,8 @@ const curso1: Course = {
       id: "c1-m4",
       titulo: "Lanzamiento y primeras ventas",
       orden: 4,
+      portadaUrl:
+        "https://images.unsplash.com/photo-1552581234-26160f608093?w=400&h=560&fit=crop&q=80",
       lecciones: [
         video(
           "c1-m4-l13",
@@ -231,6 +239,8 @@ const curso2: Course = {
       id: "c2-m1",
       titulo: "Fundamentos de venta conversacional",
       orden: 1,
+      portadaUrl:
+        "https://images.unsplash.com/photo-1543269865-cbf427effbad?w=400&h=560&fit=crop&q=80",
       lecciones: [
         video("c2-m1-l1", "Por qué WhatsApp vende más que el email", 1, 10, "Las razones detrás de las tasas de apertura y respuesta de WhatsApp."),
         video("c2-m1-l2", "Configura tu WhatsApp Business como pro", 2, 12, "Catálogo, respuestas rápidas y etiquetas: la configuración base."),
