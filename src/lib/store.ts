@@ -71,6 +71,13 @@ export interface KlazeState {
   cursosEditados: Course[]; // overrides de cursos creados/editados en admin
   comunidadesCreadas: Community[]; // comunidades registradas por nuevos creadores
   proximoInviteId: number; // contador determinístico para tokens "inv-N"
+  // Contador determinístico para el id "post-nuevo-N" de `crearPost` — mismo
+  // patrón que `proximoInviteId`/`proximoLeccionId`: nunca derivar el N de
+  // `postsCreados.length`, porque `eliminarPost` quita posts de sesión de ese
+  // array y un largo que vuelve a bajar generaría IDs duplicados con posts
+  // que siguen vivos (keys de React y likes/comentarios keyed por postId
+  // contaminados entre posts distintos).
+  proximoPostId: number;
   // Overrides de nombre/bio editados desde /perfil, keyed por userId. Se
   // guardan aparte (en vez de mutar mockUsers/usuariosCreados) porque
   // mockUsers es un array estático importado en múltiples sitios: mutarlo
@@ -289,6 +296,7 @@ export const useKlazeStore = create<KlazeState>()(
       cursosEditados: [],
       comunidadesCreadas: [],
       proximoInviteId: 1,
+      proximoPostId: 1,
       proximoCursoId: 1,
       proximoModuloId: 1,
       proximoLeccionId: 1,
@@ -396,12 +404,15 @@ export const useKlazeStore = create<KlazeState>()(
         set((state) => {
           const nuevo: Post = {
             ...post,
-            id: `post-nuevo-${state.postsCreados.length + 1}`,
+            id: `post-nuevo-${state.proximoPostId}`,
             creadoEl: new Date().toISOString(),
             likes: [],
             comentarios: [],
           };
-          return { postsCreados: [...state.postsCreados, nuevo] };
+          return {
+            postsCreados: [...state.postsCreados, nuevo],
+            proximoPostId: state.proximoPostId + 1,
+          };
         });
       },
 

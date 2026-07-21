@@ -85,7 +85,7 @@ export function PostCard({ post, className }: PostCardProps) {
       </h3>
       <p
         className={cn(
-          "mt-1.5 text-sm text-pretty text-foreground/90",
+          "mt-1.5 text-sm whitespace-pre-line text-pretty text-foreground/90",
           !expandido && esLargo && "line-clamp-4"
         )}
       >

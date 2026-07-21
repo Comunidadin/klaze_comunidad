@@ -4,6 +4,7 @@ import { enrollmentCubreCurso, resolverEstadoEnrollment, useKlazeStore } from "@
 import { mockCourses } from "@/lib/mocks/courses";
 import { mockEnrollments } from "@/lib/mocks/enrollments";
 import { useSession } from "@/lib/hooks/use-session";
+import { nivelPorPuntos } from "@/lib/levels";
 import type { Course, Lesson } from "@/lib/types";
 
 export type AccesoCurso = "si" | "candado-nivel" | "sin-acceso";
@@ -91,7 +92,7 @@ export function useCourses(comunidadId: string): { cursos: CourseConAcceso[] } {
     const tieneEnrollment = !!enrollment && enrollmentCubreCurso(enrollment, curso.id);
 
     if (tieneEnrollment) {
-      const nivelUsuario = user?.nivel ?? 0;
+      const nivelUsuario = user ? nivelPorPuntos(user.puntos) : 0;
       acceso =
         curso.nivelRequerido === null || nivelUsuario >= curso.nivelRequerido
           ? "si"

@@ -42,7 +42,7 @@ Cuatro zonas, cada una con su propio `layout.tsx` que actúa de guard de rol (re
 
 - **`(auth)`** — públicas: `/login`, `/registro` (alta de creador), `/recuperar`, `/invitacion/[token]`.
 - **`(miembro)`** — cualquier usuario logueado. `/perfil` vive a nivel de grupo; todo lo demás cuelga de `/c/[comunidad]/...`: `inicio` (feed), `cursos`, `cursos/[curso]`, `cursos/[curso]/leccion/[id]`, `calendario`, `miembros`, `ranking`.
-- **`(creador)`** — solo rol `creador`. `/admin` (dashboard), `/admin/cursos`, `/admin/cursos/[curso]` (editor con módulos/lecciones + campo Vimeo), `/admin/alumnos`, `/admin/accesos` (invitaciones), `/admin/comunidad` (posts/categorías/niveles), `/admin/eventos`, `/admin/reportes`, `/admin/configuracion`.
+- **`(creador)`** — rol `creador` o `superadmin` (el superadmin también puede entrar a inspeccionar el admin de una comunidad). `/admin` (dashboard), `/admin/cursos`, `/admin/cursos/[curso]` (editor con módulos/lecciones + campo Vimeo), `/admin/alumnos`, `/admin/accesos` (invitaciones), `/admin/comunidad` (posts/categorías/niveles), `/admin/eventos`, `/admin/reportes`, `/admin/configuracion`.
 - **`(superadmin)`** — solo rol `superadmin`. `/plataforma` (dashboard), `/plataforma/comunidades`, `/plataforma/creadores`, `/plataforma/planes`.
 
 ## Arquitectura: mocks → hooks → páginas
@@ -56,7 +56,7 @@ src/lib/mocks/*.ts   →   src/lib/hooks/*.ts   →   páginas/componentes (src/
 - **`src/lib/mocks/`** es la única fuente de datos "de servidor" (usuarios, comunidades, cursos, posts, eventos, planes, fechas relativas al día de la demo). Son arrays/objetos TypeScript tipados con `src/lib/types.ts`.
 - **`src/lib/store.ts`** es el único estado mutable: sesión activa, invitaciones creadas/aceptadas, progreso de lecciones, posts/comentarios/likes creados en la demo, comunidades registradas en runtime, overrides de edición (niveles, categorías, color de acento, etc.). Persiste en `localStorage` bajo la clave `klaze-v2` (Zustand `persist`).
 - **`src/lib/hooks/`** (ver `src/lib/hooks/index.ts` para el listado completo — `useSession`, `useCourses`, `useFeed`, `useMembers`, `useGamification`, `usePlatform`, etc.) son el único punto donde un componente toca datos: mergean mock + store y devuelven la forma ya lista para pintar (progreso calculado, acceso resuelto, ranking ordenado...).
-- **Regla dura del proyecto:** ningún componente de `src/components` ni página de `src/app` importa `src/lib/mocks` directamente — siempre pasa por un hook.
+- **Regla dura del proyecto:** ningún componente de `src/components` ni página de `src/app` importa `src/lib/mocks` directamente — siempre pasa por un hook, con tres excepciones puntuales que aplican los mismos resolvers de `src/lib/store.ts`/`src/lib/hooks/` sobre el mock en línea en vez de vía un hook dedicado: `src/components/shared/user-switcher.tsx` (lista de usuarios semilla para saltar de sesión), `src/app/(creador)/admin/reportes/page.tsx` (enrollments para las métricas del reporte) y `src/app/(miembro)/perfil/page.tsx` (nombre de la comunidad del usuario).
 
 ### Dónde conectará el backend real
 
