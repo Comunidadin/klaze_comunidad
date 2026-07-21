@@ -18,6 +18,9 @@ export { useMembers } from "@/lib/hooks/use-members";
 
 export { useInvitations } from "@/lib/hooks/use-invitations";
 
+export { useInvitation } from "@/lib/hooks/use-invitation";
+export type { UseInvitationResult } from "@/lib/hooks/use-invitation";
+
 export { useEvents } from "@/lib/hooks/use-events";
 
 export { useGamification } from "@/lib/hooks/use-gamification";

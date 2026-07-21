@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useHydrated, useSession } from "@/lib/hooks/use-session";
 import { homePorRol } from "@/lib/routes";
 import { FullScreenLoader } from "@/components/shared/full-screen-loader";
@@ -18,18 +18,28 @@ import { AuthBrandPanel } from "./_components/auth-brand-panel";
  * anónimo) para no parpadear una pantalla de carga en cada visita — solo
  * aparece en el breve instante en que detectamos una sesión existente y
  * redirigimos.
+ *
+ * `/invitacion/[token]` (Task 6) queda excluida de este guard a propósito:
+ * un usuario ya logueado debe poder abrir su propio link de invitación
+ * (p. ej. el creador probando el link) sin que lo saquemos de la pantalla,
+ * y justo después de `aceptarInvitacion` la sesión pasa de null a un
+ * usuario nuevo — sin esta excepción este mismo guard competiría con el
+ * redirect explícito de la página hacia `/c/{slug}/cursos` y ganaría el
+ * redirect equivocado (`homePorRol` → `/c/{slug}/inicio`).
  */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   const hydrated = useHydrated();
   const { user } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
+  const esInvitacion = pathname?.startsWith("/invitacion") ?? false;
 
   useEffect(() => {
-    if (!hydrated || !user) return;
+    if (!hydrated || !user || esInvitacion) return;
     router.replace(homePorRol(user));
-  }, [hydrated, user, router]);
+  }, [hydrated, user, router, esInvitacion]);
 
-  if (hydrated && user) {
+  if (hydrated && user && !esInvitacion) {
     return <FullScreenLoader />;
   }
 
