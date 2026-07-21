@@ -276,7 +276,7 @@ const curso3: Course = {
         video("c3-m1-l1", "Cómo escalar a seis cifras", 1, 20, "El plan de escalamiento que separa a los negocios que crecen de los que se estancan."),
         video("c3-m1-l2", "Construye tu equipo sin perder cultura", 2, 18, "Primeras contrataciones: qué delegar primero y qué nunca soltar."),
         video("c3-m1-l3", "Negociación con partners y afiliados", 3, 15, "Cómo estructurar acuerdos de afiliados que benefician a ambas partes."),
-        video("c3-m1-l4", "Preguntas y respuestas con Daniel", 4, 22, "Sesión abierta de preguntas con el fundador de Academia Klaze."),
+        video("c3-m1-l4", "Preguntas y respuestas con Daniel", 4, 22, "Sesión abierta de preguntas con Daniel, fundador original de Academia Klaze y hoy alumno de la comunidad."),
       ],
     },
   ],
