@@ -159,6 +159,26 @@ export function resolverEstadoEnrollment(
   );
 }
 
+/**
+ * `true` si un `cursoIds` de enrollment (`"todos"` o una lista puntual) cubre
+ * `cursoId`. Punto único de verdad para "¿este acceso incluye este curso?" —
+ * usarla en cualquier código que decida acceso o cuente alumnos a partir de
+ * `Enrollment.cursoIds`/`Invitation.cursoIds`, para no reimplementar el
+ * mismo ternario `cursoIds === "todos" || cursoIds.includes(...)` en cada
+ * hook (ya divergió una vez entre `useCourses` y `useAdminCourses`).
+ */
+export function cursoIdsCubreCurso(
+  cursoIds: Enrollment["cursoIds"],
+  cursoId: string
+): boolean {
+  return cursoIds === "todos" || cursoIds.includes(cursoId);
+}
+
+/** Atajo de `cursoIdsCubreCurso` para un `Enrollment` completo. */
+export function enrollmentCubreCurso(enrollment: Enrollment, cursoId: string): boolean {
+  return cursoIdsCubreCurso(enrollment.cursoIds, cursoId);
+}
+
 export const useKlazeStore = create<KlazeState>()(
   persist(
     (set, get) => ({

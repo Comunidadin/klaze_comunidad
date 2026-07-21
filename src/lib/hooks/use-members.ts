@@ -1,9 +1,14 @@
 "use client";
 
-import { aplicarPerfilOverride, resolverEstadoEnrollment, useKlazeStore } from "@/lib/store";
+import {
+  aplicarPerfilOverride,
+  cursoIdsCubreCurso,
+  resolverEstadoEnrollment,
+  useKlazeStore,
+} from "@/lib/store";
 import { mockUsers } from "@/lib/mocks/users";
 import { mockEnrollments } from "@/lib/mocks/enrollments";
-import { mergeCursos } from "@/lib/hooks/use-courses";
+import { cursosVisiblesParaMiembro } from "@/lib/hooks/use-courses";
 import type { Course, Enrollment, LessonProgress, User } from "@/lib/types";
 
 export type MemberConEstado = User & {
@@ -17,7 +22,10 @@ export type MemberConEstado = User & {
  * (según `cursoIds` de su enrollment — "todos" o una lista puntual) calcula
  * `lecciones completadas / lecciones del curso`, y promedia esos ratios.
  * Un alumno sin cursos accesibles (comunidad recién creada, sin cursos aún)
- * queda en 0 en vez de NaN.
+ * queda en 0 en vez de NaN. `cursosComunidad` debe venir ya filtrada a
+ * cursos publicados (`cursosVisiblesParaMiembro`) — un borrador con
+ * lecciones no debe arrastrar hacia abajo el % de un alumno con acceso
+ * "todos" que ni siquiera puede verlo.
  */
 function progresoPromedioDe(
   cursoIds: Enrollment["cursoIds"],
@@ -25,10 +33,7 @@ function progresoPromedioDe(
   userId: string,
   progreso: LessonProgress[]
 ): number {
-  const cursosConAcceso =
-    cursoIds === "todos"
-      ? cursosComunidad
-      : cursosComunidad.filter((c) => cursoIds.includes(c.id));
+  const cursosConAcceso = cursosComunidad.filter((c) => cursoIdsCubreCurso(cursoIds, c.id));
 
   if (cursosConAcceso.length === 0) return 0;
 
@@ -57,7 +62,7 @@ export function useMembers(comunidadId: string): { miembros: MemberConEstado[] }
   const enrollments = [...mockEnrollments, ...enrollmentsExtra].filter(
     (e) => e.comunidadId === comunidadId
   );
-  const cursosComunidad = mergeCursos(comunidadId, cursosEditados);
+  const cursosComunidad = cursosVisiblesParaMiembro(comunidadId, cursosEditados);
 
   const miembros = enrollments
     .map((e) => {

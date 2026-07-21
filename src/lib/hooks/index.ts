@@ -8,7 +8,7 @@ export { useMyCommunity } from "@/lib/hooks/use-my-community";
 
 export { useAhora } from "@/lib/hooks/use-ahora";
 
-export { mergeCursos, useCourses, useLesson } from "@/lib/hooks/use-courses";
+export { cursosVisiblesParaMiembro, mergeCursos, useCourses, useLesson } from "@/lib/hooks/use-courses";
 export type {
   AccesoCurso,
   CourseConAcceso,

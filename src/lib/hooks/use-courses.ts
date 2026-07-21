@@ -1,6 +1,6 @@
 "use client";
 
-import { resolverEstadoEnrollment, useKlazeStore } from "@/lib/store";
+import { enrollmentCubreCurso, resolverEstadoEnrollment, useKlazeStore } from "@/lib/store";
 import { mockCourses } from "@/lib/mocks/courses";
 import { mockEnrollments } from "@/lib/mocks/enrollments";
 import { useSession } from "@/lib/hooks/use-session";
@@ -41,11 +41,22 @@ export function mergeCursos(comunidadId: string, cursosEditados: Course[]): Cour
 }
 
 /**
- * Cursos de la comunidad vistos por un miembro: solo `publicado: true` —
- * un borrador nunca debe aparecer en el classroom, sin importar el acceso
- * del usuario. Para el admin (que sí necesita ver y editar borradores),
- * usar `useAdminCourses`, que opera sobre `mergeCursos` sin este filtro.
+ * Cursos "publicados" de `comunidadId` — el subconjunto de `mergeCursos` que
+ * un miembro puede llegar a ver: un borrador nunca debe aparecer en el
+ * classroom, sin importar el acceso del usuario. Punto único de verdad para
+ * ese filtro — lo usa tanto `useCourses` (candado por acceso/nivel) como
+ * `useMembers` (progreso promedio: un borrador con lecciones no debe arrastrar
+ * hacia abajo el % de alumnos que ni siquiera pueden verlo). Para el admin,
+ * que sí necesita ver y editar borradores, usar `useAdminCourses`, que opera
+ * sobre `mergeCursos` sin este filtro.
  */
+export function cursosVisiblesParaMiembro(
+  comunidadId: string,
+  cursosEditados: Course[]
+): Course[] {
+  return mergeCursos(comunidadId, cursosEditados).filter((c) => c.publicado);
+}
+
 export function useCourses(comunidadId: string): { cursos: CourseConAcceso[] } {
   const cursosEditados = useKlazeStore((s) => s.cursosEditados);
   const enrollmentsExtra = useKlazeStore((s) => s.enrollmentsExtra);
@@ -53,7 +64,7 @@ export function useCourses(comunidadId: string): { cursos: CourseConAcceso[] } {
   const estadoOverrides = useKlazeStore((s) => s.estadoOverrides);
   const { user } = useSession();
 
-  const cursos = mergeCursos(comunidadId, cursosEditados).filter((c) => c.publicado);
+  const cursos = cursosVisiblesParaMiembro(comunidadId, cursosEditados);
   const enrollments = [...mockEnrollments, ...enrollmentsExtra];
 
   const enrollment = user
@@ -77,9 +88,7 @@ export function useCourses(comunidadId: string): { cursos: CourseConAcceso[] } {
       lecciones.length === 0 ? 0 : Math.round((completadas / lecciones.length) * 100);
 
     let acceso: AccesoCurso = "sin-acceso";
-    const tieneEnrollment =
-      !!enrollment &&
-      (enrollment.cursoIds === "todos" || enrollment.cursoIds.includes(curso.id));
+    const tieneEnrollment = !!enrollment && enrollmentCubreCurso(enrollment, curso.id);
 
     if (tieneEnrollment) {
       const nivelUsuario = user?.nivel ?? 0;

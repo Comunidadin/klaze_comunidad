@@ -1,6 +1,6 @@
 "use client";
 
-import { resolverEstadoEnrollment, useKlazeStore } from "@/lib/store";
+import { enrollmentCubreCurso, resolverEstadoEnrollment, useKlazeStore } from "@/lib/store";
 import { mockEnrollments } from "@/lib/mocks/enrollments";
 import { mergeCursos } from "@/lib/hooks/use-courses";
 import type { Course, Enrollment } from "@/lib/types";
@@ -13,8 +13,9 @@ export type CourseConAdmin = Course & {
 /**
  * Cuenta los enrollments de `comunidadId` cuyo estado efectivo (aplicando
  * `estadoOverrides`, ver `resolverEstadoEnrollment`) es "activo" y cuyo
- * `cursoIds` cubre `cursoId` — mismo criterio de acceso que usa `useCourses`
- * para el candado de un alumno, pero contado en vez de evaluado para uno solo.
+ * `cursoIds` cubre `cursoId` (`enrollmentCubreCurso`, store.ts) — mismo
+ * criterio de acceso que usa `useCourses` para el candado de un alumno, pero
+ * contado en vez de evaluado para uno solo.
  */
 function contarAlumnosConAcceso(
   cursoId: string,
@@ -26,7 +27,7 @@ function contarAlumnosConAcceso(
     (e) =>
       e.comunidadId === comunidadId &&
       resolverEstadoEnrollment(e, estadoOverrides) === "activo" &&
-      (e.cursoIds === "todos" || e.cursoIds.includes(cursoId))
+      enrollmentCubreCurso(e, cursoId)
   ).length;
 }
 
