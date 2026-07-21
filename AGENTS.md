@@ -1,3 +1,7 @@
+# AGENTS.md — Klaze V2
+
+Ver `CLAUDE.md` en la raíz del repo para las convenciones del proyecto (arquitectura mocks → hooks → páginas, estado/sesión, comandos, reglas de UI).
+
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 
