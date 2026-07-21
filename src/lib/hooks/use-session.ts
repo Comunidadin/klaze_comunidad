@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
-import { useKlazeStore } from "@/lib/store";
+import { aplicarPerfilOverride, useKlazeStore } from "@/lib/store";
 import { mockUsers } from "@/lib/mocks/users";
 import type { User } from "@/lib/types";
 
@@ -54,6 +54,7 @@ export function useSession(): UseSessionResult {
   const hydrated = useHydrated();
   const currentUserId = useKlazeStore((s) => s.currentUserId);
   const usuariosCreados = useKlazeStore((s) => s.usuariosCreados);
+  const perfilOverrides = useKlazeStore((s) => s.perfilOverrides);
   const login = useKlazeStore((s) => s.login);
   const logout = useKlazeStore((s) => s.logout);
 
@@ -61,10 +62,12 @@ export function useSession(): UseSessionResult {
     return { user: null, login, logout };
   }
 
-  const user =
+  const base =
     mockUsers.find((u) => u.id === currentUserId) ??
     usuariosCreados.find((u) => u.id === currentUserId) ??
     null;
+
+  const user = base ? aplicarPerfilOverride(base, perfilOverrides) : null;
 
   return { user, login, logout };
 }

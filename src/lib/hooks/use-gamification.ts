@@ -1,6 +1,6 @@
 "use client";
 
-import { useKlazeStore } from "@/lib/store";
+import { aplicarPerfilOverride, useKlazeStore } from "@/lib/store";
 import { mockUsers } from "@/lib/mocks/users";
 import { mockEnrollments } from "@/lib/mocks/enrollments";
 import { useSession } from "@/lib/hooks/use-session";
@@ -21,6 +21,7 @@ export function useGamification(comunidadId: string): {
 } {
   const usuariosCreados = useKlazeStore((s) => s.usuariosCreados);
   const enrollmentsExtra = useKlazeStore((s) => s.enrollmentsExtra);
+  const perfilOverrides = useKlazeStore((s) => s.perfilOverrides);
   const { user } = useSession();
 
   const todosLosUsuarios = [...mockUsers, ...usuariosCreados];
@@ -30,7 +31,8 @@ export function useGamification(comunidadId: string): {
 
   const miembros = enrollments
     .map((e) => todosLosUsuarios.find((u) => u.id === e.userId))
-    .filter((u): u is User => u !== undefined);
+    .filter((u): u is User => u !== undefined)
+    .map((u) => aplicarPerfilOverride(u, perfilOverrides));
 
   const ordenados = [...miembros].sort((a, b) => b.puntos - a.puntos);
 

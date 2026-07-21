@@ -49,6 +49,12 @@ const INVITACION_DEMO: Invitation = {
   creadaEl: "2026-07-13T12:00:00.000Z",
 };
 
+/** Override persistido de nombre/bio de un usuario (ver `actualizarPerfil`). */
+export interface PerfilOverride {
+  nombre: string;
+  bio: string;
+}
+
 export interface KlazeState {
   currentUserId: string | null;
   usuariosCreados: User[]; // alumnos que aceptaron invitación + creadores registrados
@@ -61,6 +67,13 @@ export interface KlazeState {
   cursosEditados: Course[]; // overrides de cursos creados/editados en admin
   comunidadesCreadas: Community[]; // comunidades registradas por nuevos creadores
   proximoInviteId: number; // contador determinístico para tokens "inv-N"
+  // Overrides de nombre/bio editados desde /perfil, keyed por userId. Se
+  // guardan aparte (en vez de mutar mockUsers/usuariosCreados) porque
+  // mockUsers es un array estático importado en múltiples sitios: mutarlo
+  // rompería la semántica de "mock" y complicaría el reset de estado. Cada
+  // hook que resuelve un `User` (useSession, useMembers, useGamification)
+  // aplica el override al final vía `aplicarPerfilOverride`.
+  perfilOverrides: Record<string, PerfilOverride>;
 
   login: (email: string) => boolean;
   logout: () => void;
@@ -80,6 +93,22 @@ export interface KlazeState {
     email: string,
     nombreComunidad: string
   ) => { user: User; community: Community };
+  actualizarPerfil: (nombre: string, bio: string) => void;
+}
+
+/**
+ * Aplica el override de perfil (si existe) de `usuario.id` sobre el objeto
+ * base. Usarla como último paso al resolver un `User` desde `mockUsers` /
+ * `usuariosCreados`, para que /perfil se refleje en useSession, useMembers
+ * y useGamification sin duplicar usuarios ni mutar los mocks.
+ */
+export function aplicarPerfilOverride<T extends User>(
+  usuario: T,
+  overrides: Record<string, PerfilOverride>
+): T {
+  const override = overrides[usuario.id];
+  if (!override) return usuario;
+  return { ...usuario, nombre: override.nombre, bio: override.bio };
 }
 
 export const useKlazeStore = create<KlazeState>()(
@@ -96,6 +125,7 @@ export const useKlazeStore = create<KlazeState>()(
       cursosEditados: [],
       comunidadesCreadas: [],
       proximoInviteId: 1,
+      perfilOverrides: {},
 
       login: (email) => {
         const objetivo = email.trim().toLowerCase();
@@ -289,6 +319,17 @@ export const useKlazeStore = create<KlazeState>()(
         }));
 
         return { user: nuevoUsuario, community: nuevaComunidad };
+      },
+
+      actualizarPerfil: (nombre, bio) => {
+        const userId = get().currentUserId;
+        if (!userId) return;
+        set((state) => ({
+          perfilOverrides: {
+            ...state.perfilOverrides,
+            [userId]: { nombre, bio },
+          },
+        }));
       },
     }),
     {
