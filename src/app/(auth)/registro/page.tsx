@@ -4,12 +4,11 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { Rocket } from "lucide-react";
 import { useKlazeStore } from "@/lib/store";
+import { esEmailValido } from "@/lib/validation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AuthFormCard } from "../_components/auth-form-card";
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface FormErrors {
   nombre?: string;
@@ -35,7 +34,7 @@ export default function RegistroPage() {
     const next: FormErrors = {};
     if (!nombre.trim()) next.nombre = "Cuéntanos cómo te llamas.";
     if (!email.trim()) next.email = "Tu correo es obligatorio.";
-    else if (!EMAIL_REGEX.test(email.trim())) next.email = "Ese correo no parece válido.";
+    else if (!esEmailValido(email)) next.email = "Ese correo no parece válido.";
     if (!nombreComunidad.trim()) next.nombreComunidad = "Dale un nombre a tu comunidad.";
     setErrors(next);
     return Object.keys(next).length === 0;

@@ -1,36 +1,13 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
 import { CalendarX2 } from "lucide-react";
 import { useCommunity } from "@/lib/hooks/use-community";
 import { useEvents } from "@/lib/hooks/use-events";
+import { useAhora } from "@/lib/hooks/use-ahora";
 import { EventCard } from "@/components/community/event-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { claveDia, formatFechaGrupo } from "@/lib/format-fecha";
 import type { CommunityEvent } from "@/lib/types";
-
-function subscribeNoop(): () => void {
-  return () => {};
-}
-
-function getAhoraCliente(): number {
-  return Date.now();
-}
-
-function getAhoraServidor(): number {
-  // En el server (y en el primer render del cliente antes de hidratar) no
-  // conocemos la hora real: devolvemos 0 para que todo se trate como
-  // "próximo" (nada se atenúa todavía). `useSyncExternalStore` recalcula
-  // con `getAhoraCliente` justo después de montar, igual que `useMounted`
-  // en theme-toggle.tsx — sin violar la regla de pureza de render
-  // (`Date.now()` no puede llamarse directamente en el cuerpo del componente).
-  return 0;
-}
-
-/** Marca de tiempo "ahora", resuelta de forma segura para SSR/hidratación. */
-function useAhora(): number {
-  return useSyncExternalStore(subscribeNoop, getAhoraCliente, getAhoraServidor);
-}
 
 export interface CalendarioListaProps {
   comunidadSlug: string;

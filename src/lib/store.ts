@@ -74,6 +74,12 @@ export interface KlazeState {
   // hook que resuelve un `User` (useSession, useMembers, useGamification)
   // aplica el override al final vía `aplicarPerfilOverride`.
   perfilOverrides: Record<string, PerfilOverride>;
+  // Override persistido de `Enrollment.estado`, keyed por `${userId}:${comunidadId}`
+  // (una sola membresía por par usuario+comunidad). Ver `cambiarEstadoAlumno`:
+  // suspender/reactivar desde /admin/alumnos no muta `mockEnrollments` ni
+  // `enrollmentsExtra` directamente, sino que agrega/actualiza esta entrada;
+  // `useMembers` la aplica como último paso al resolver el estado de cada fila.
+  estadoOverrides: Record<string, Enrollment["estado"]>;
 
   login: (email: string) => boolean;
   logout: () => void;
@@ -94,6 +100,11 @@ export interface KlazeState {
     nombreComunidad: string
   ) => { user: User; community: Community };
   actualizarPerfil: (nombre: string, bio: string) => void;
+  cambiarEstadoAlumno: (
+    userId: string,
+    comunidadId: string,
+    estado: Enrollment["estado"]
+  ) => void;
 }
 
 /**
@@ -126,6 +137,7 @@ export const useKlazeStore = create<KlazeState>()(
       comunidadesCreadas: [],
       proximoInviteId: 1,
       perfilOverrides: {},
+      estadoOverrides: {},
 
       login: (email) => {
         const objetivo = email.trim().toLowerCase();
@@ -328,6 +340,15 @@ export const useKlazeStore = create<KlazeState>()(
           perfilOverrides: {
             ...state.perfilOverrides,
             [userId]: { nombre, bio },
+          },
+        }));
+      },
+
+      cambiarEstadoAlumno: (userId, comunidadId, estado) => {
+        set((state) => ({
+          estadoOverrides: {
+            ...state.estadoOverrides,
+            [`${userId}:${comunidadId}`]: estado,
           },
         }));
       },

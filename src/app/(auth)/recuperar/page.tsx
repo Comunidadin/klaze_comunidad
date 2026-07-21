@@ -6,9 +6,8 @@ import { ArrowLeft, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { esEmailValido } from "@/lib/validation";
 import { AuthFormCard } from "../_components/auth-form-card";
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * Recuperar contraseña: solo UI, sin lógica real. Pide el correo y, al
@@ -26,7 +25,7 @@ export default function RecuperarPage() {
       setError("Ingresa tu correo para continuar.");
       return;
     }
-    if (!EMAIL_REGEX.test(valor)) {
+    if (!esEmailValido(valor)) {
       setError("Ese correo no parece válido.");
       return;
     }

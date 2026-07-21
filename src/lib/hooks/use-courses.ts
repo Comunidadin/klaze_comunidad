@@ -17,8 +17,12 @@ function leccionesDeCurso(curso: Course): Lesson[] {
   return curso.modulos.flatMap((m) => m.lecciones);
 }
 
-/** Aplica los overrides de `cursosEditados` (admin) sobre los mocks base. */
-function mergeCursos(comunidadId: string, cursosEditados: Course[]): Course[] {
+/**
+ * Aplica los overrides de `cursosEditados` (admin) sobre los mocks base.
+ * Exportada porque `useMembers` la reutiliza para calcular el progreso
+ * promedio por alumno sobre el mismo set de cursos "reales" de la comunidad.
+ */
+export function mergeCursos(comunidadId: string, cursosEditados: Course[]): Course[] {
   const base = mockCourses.filter((c) => c.comunidadId === comunidadId);
   const overridesMismaComunidad = cursosEditados.filter(
     (c) => c.comunidadId === comunidadId

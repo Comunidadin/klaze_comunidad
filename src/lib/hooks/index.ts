@@ -4,7 +4,11 @@ export type { UseSessionResult } from "@/lib/hooks/use-session";
 export { useCommunity } from "@/lib/hooks/use-community";
 export type { UseCommunityResult } from "@/lib/hooks/use-community";
 
-export { useCourses, useLesson } from "@/lib/hooks/use-courses";
+export { useMyCommunity } from "@/lib/hooks/use-my-community";
+
+export { useAhora } from "@/lib/hooks/use-ahora";
+
+export { mergeCursos, useCourses, useLesson } from "@/lib/hooks/use-courses";
 export type {
   AccesoCurso,
   CourseConAcceso,
@@ -15,6 +19,7 @@ export { useFeed } from "@/lib/hooks/use-feed";
 export type { PostConAutor } from "@/lib/hooks/use-feed";
 
 export { useMembers } from "@/lib/hooks/use-members";
+export type { MemberConEstado } from "@/lib/hooks/use-members";
 
 export { useUsuarios } from "@/lib/hooks/use-users";
 export type { UseUsuariosResult } from "@/lib/hooks/use-users";
