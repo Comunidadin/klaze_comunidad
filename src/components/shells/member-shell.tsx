@@ -33,6 +33,12 @@ export interface MemberShellProps {
   children: React.ReactNode;
 }
 
+/** Igual que el helper homónimo de `AdminShell`: activo en la ruta exacta o en cualquier subruta. */
+function esActivo(pathname: string | null, href: string): boolean {
+  if (!pathname) return false;
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 /**
  * Shell del área de miembros: header sticky con logo/nombre de la
  * comunidad, tabs de navegación estilo Skool y menú de avatar. Aplica
@@ -92,11 +98,12 @@ export function MemberShell({ communitySlug, children }: MemberShellProps) {
           <nav className="flex items-center gap-1 overflow-x-auto">
             {TABS.map((tab) => {
               const href = `/c/${community.slug}/${tab.segmento}`;
-              const activo = pathname?.startsWith(href) ?? false;
+              const activo = esActivo(pathname, href);
               return (
                 <Link
                   key={tab.segmento}
                   href={href}
+                  aria-current={activo ? "page" : undefined}
                   className={cn(
                     "shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
                     activo && "bg-primary/10 text-primary"

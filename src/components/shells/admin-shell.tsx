@@ -60,6 +60,7 @@ export function AdminShell({ items, titulo, children }: AdminShellProps) {
               key={item.href}
               href={item.href}
               onClick={onNavigate}
+              aria-current={activo ? "page" : undefined}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
                 activo && "bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary",
@@ -85,8 +86,13 @@ export function AdminShell({ items, titulo, children }: AdminShellProps) {
           colapsado ? "w-16" : "w-60"
         )}
       >
-        <div className={cn("flex h-16 items-center px-4", colapsado ? "justify-center" : "justify-between")}>
-          {!colapsado && <Logo size="sm" href="/" />}
+        <div
+          className={cn(
+            "flex h-16 items-center px-4",
+            colapsado ? "flex-col justify-center gap-1 px-0" : "justify-between"
+          )}
+        >
+          <Logo size="sm" href="/" soloMonograma={colapsado} />
           <Button
             variant="ghost"
             size="icon-sm"
