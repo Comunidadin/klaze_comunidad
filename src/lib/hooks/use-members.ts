@@ -26,8 +26,12 @@ export type MemberConEstado = User & {
  * cursos publicados (`cursosVisiblesParaMiembro`) — un borrador con
  * lecciones no debe arrastrar hacia abajo el % de un alumno con acceso
  * "todos" que ni siquiera puede verlo.
+ *
+ * Exportada porque `/admin/reportes` la reutiliza para calcular el % de
+ * avance de un curso puntual — mismo cálculo, solo que ahí se le pasa
+ * `cursosComunidad` con un único curso en vez de todos los del alumno.
  */
-function progresoPromedioDe(
+export function progresoPromedioDe(
   cursoIds: Enrollment["cursoIds"],
   cursosComunidad: Course[],
   userId: string,

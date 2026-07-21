@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { ArrowLeft, LogOut, Save } from "lucide-react";
 import { useSession } from "@/lib/hooks/use-session";
 import { useGamification } from "@/lib/hooks/use-gamification";
-import { useKlazeStore } from "@/lib/store";
+import { resolverComunidad, useKlazeStore } from "@/lib/store";
 import { mockCommunities } from "@/lib/mocks/communities";
 import { homePorRol } from "@/lib/routes";
 import { NIVEL_MAXIMO, puntosParaNivel } from "@/lib/levels";
@@ -48,14 +48,20 @@ function PerfilContenido({ user }: { user: User }) {
   const logout = useKlazeStore((s) => s.logout);
   const actualizarPerfil = useKlazeStore((s) => s.actualizarPerfil);
   const comunidadesCreadas = useKlazeStore((s) => s.comunidadesCreadas);
+  const comunidadOverrides = useKlazeStore((s) => s.comunidadOverrides);
 
   // Un usuario puede pertenecer a varias comunidades (`comunidadIds`). Para
   // decidir de qué comunidad tomar los nombres de nivel usamos la primera
   // (`comunidadIds[0]`) como su "comunidad principal" — mismo criterio que
   // `homePorRol` en src/lib/routes.ts usa para decidir a dónde redirigir.
+  // Se resuelve vía `resolverComunidad` para que un nombre de nivel editado
+  // desde /admin/comunidad se refleje acá sin un parche local.
   const todasLasComunidades = [...mockCommunities, ...comunidadesCreadas];
-  const comunidadPrincipal =
+  const comunidadBase =
     todasLasComunidades.find((c) => c.id === user.comunidadIds[0]) ?? todasLasComunidades[0];
+  const comunidadPrincipal = comunidadBase
+    ? resolverComunidad(comunidadBase, comunidadOverrides)
+    : undefined;
 
   const { miNivel, puntosParaSiguiente } = useGamification(comunidadPrincipal?.id ?? "");
 

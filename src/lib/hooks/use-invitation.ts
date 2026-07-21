@@ -1,6 +1,6 @@
 "use client";
 
-import { useKlazeStore } from "@/lib/store";
+import { resolverComunidad, useKlazeStore } from "@/lib/store";
 import { mockCommunities } from "@/lib/mocks/communities";
 import { useCourses } from "@/lib/hooks/use-courses";
 import type { Community, Course, Invitation } from "@/lib/types";
@@ -28,14 +28,16 @@ export interface UseInvitationResult {
 export function useInvitation(token: string): UseInvitationResult | null {
   const invitaciones = useKlazeStore((s) => s.invitaciones);
   const comunidadesCreadas = useKlazeStore((s) => s.comunidadesCreadas);
+  const comunidadOverrides = useKlazeStore((s) => s.comunidadOverrides);
 
   const invitacion = invitaciones.find((inv) => inv.token === token) ?? null;
 
-  const comunidad = invitacion
+  const comunidadBase = invitacion
     ? (comunidadesCreadas.find((c) => c.id === invitacion.comunidadId) ??
       mockCommunities.find((c) => c.id === invitacion.comunidadId) ??
       null)
     : null;
+  const comunidad = comunidadBase ? resolverComunidad(comunidadBase, comunidadOverrides) : null;
 
   // Hooks siempre se llaman en el mismo orden: `useCourses` corre en cada
   // render (con comunidadId vacío si aún no hay invitación resuelta) y el

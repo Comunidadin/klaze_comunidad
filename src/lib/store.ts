@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {
   Community,
+  CommunityEvent,
   Course,
   Enrollment,
   Invitation,
@@ -11,6 +12,7 @@ import type {
   User,
 } from "@/lib/types";
 import { mockUsers } from "@/lib/mocks/users";
+import { mockPosts } from "@/lib/mocks/posts";
 
 const CURSO_1_ID = "curso-1";
 
@@ -93,6 +95,34 @@ export interface KlazeState {
   // acceso a cursos/lecciones) la aplican vía el helper `resolverEstadoEnrollment`
   // para que suspender revoque acceso real, no solo el badge de admin.
   estadoOverrides: Record<string, Enrollment["estado"]>;
+  // --- T14: moderación de comunidad, eventos y configuración -------------
+  // IDs de posts eliminados desde /admin/comunidad. Solo aplica a posts del
+  // seed (`mockPosts`): un post creado en sesión se quita directamente de
+  // `postsCreados` en `eliminarPost` (ver docstring de esa acción), así que
+  // nunca termina acá.
+  postsEliminados: string[];
+  // Un solo post fijado por comunidad — fijar reemplaza al anterior (mock o
+  // ya fijado en sesión). `useFeed` lo aplica sobre `Post.fijado`: si la
+  // comunidad tiene entrada acá, ignora el `fijado` del seed por completo.
+  postFijadoPorComunidad: Record<string, string>;
+  // Override parcial de `Community`, keyed por comunidadId. Punto único de
+  // verdad para nombre/logoUrl/colorAcento (`guardarComunidad`),
+  // `categorias` (`guardarCategorias`) y `nombresNiveles`
+  // (`guardarNombresNiveles`) — todo hook que resuelve una `Community`
+  // (useCommunity, useMyCommunity, useInvitation) lo aplica vía
+  // `resolverComunidad`, así ninguna pantalla necesita su propio parche.
+  comunidadOverrides: Record<string, Partial<Community>>;
+  // Eventos creados/editados desde /admin/eventos — mismo patrón que
+  // `cursosEditados`: un `CommunityEvent` cuyo `id` coincide con uno de
+  // `mockEvents` es una edición (lo reemplaza); uno sin match es un evento
+  // nuevo. `useEvents` hace el merge (ver `mergeEventos`).
+  eventosEditados: CommunityEvent[];
+  // IDs de eventos eliminados — cubre tanto eventos del seed como eventos
+  // creados en sesión (a diferencia de los posts, acá no hace falta separar
+  // por origen: `useEvents` simplemente excluye cualquier id presente acá
+  // del resultado final del merge).
+  eventosEliminados: string[];
+  proximoEventoId: number;
 
   login: (email: string) => boolean;
   logout: () => void;
@@ -124,6 +154,21 @@ export interface KlazeState {
     comunidadId: string,
     estado: Enrollment["estado"]
   ) => void;
+  /** Elimina un post (mock -> `postsEliminados`; creado en sesión -> se quita de `postsCreados`). */
+  eliminarPost: (postId: string) => void;
+  /** Fija `postId` en su comunidad, reemplazando cualquier fijado anterior (solo 1 por comunidad). */
+  fijarPost: (postId: string) => void;
+  guardarCategorias: (comunidadId: string, categorias: string[]) => void;
+  /** `nombres` debe traer los 9 nombres de nivel, en orden (nivel 1..9). */
+  guardarNombresNiveles: (comunidadId: string, nombres: string[]) => void;
+  guardarComunidad: (
+    comunidadId: string,
+    cambios: Partial<Pick<Community, "nombre" | "logoUrl" | "colorAcento">>
+  ) => void;
+  /** ID determinístico "evt-nuevo-N" para un evento nuevo creado desde /admin/eventos. */
+  siguienteEventoId: () => string;
+  guardarEvento: (evento: CommunityEvent) => void;
+  eliminarEvento: (eventoId: string) => void;
 }
 
 /**
@@ -179,6 +224,25 @@ export function enrollmentCubreCurso(enrollment: Enrollment, cursoId: string): b
   return cursoIdsCubreCurso(enrollment.cursoIds, cursoId);
 }
 
+/**
+ * Aplica `comunidadOverrides[base.id]` (si existe) sobre una `Community`
+ * base (mock o de `comunidadesCreadas`). Punto único de verdad para
+ * nombre/logoUrl/colorAcento/categorias/nombresNiveles editados desde
+ * `/admin/comunidad` y `/admin/configuracion` — usarla en cualquier hook que
+ * resuelva una `Community` (`useCommunity`, `useMyCommunity`,
+ * `useInvitation`) en vez de leer los campos del mock/creada directamente,
+ * para que un solo cambio (p. ej. `colorAcento`) se refleje en toda la app
+ * sin parches por pantalla.
+ */
+export function resolverComunidad(
+  base: Community,
+  overrides: Record<string, Partial<Community>>
+): Community {
+  const override = overrides[base.id];
+  if (!override) return base;
+  return { ...base, ...override };
+}
+
 export const useKlazeStore = create<KlazeState>()(
   persist(
     (set, get) => ({
@@ -198,6 +262,12 @@ export const useKlazeStore = create<KlazeState>()(
       proximoLeccionId: 1,
       perfilOverrides: {},
       estadoOverrides: {},
+      postsEliminados: [],
+      postFijadoPorComunidad: {},
+      comunidadOverrides: {},
+      eventosEditados: [],
+      eventosEliminados: [],
+      proximoEventoId: 1,
 
       login: (email) => {
         const objetivo = email.trim().toLowerCase();
@@ -429,6 +499,82 @@ export const useKlazeStore = create<KlazeState>()(
             [`${userId}:${comunidadId}`]: estado,
           },
         }));
+      },
+
+      eliminarPost: (postId) => {
+        set((state) => {
+          const esCreadoEnSesion = state.postsCreados.some((p) => p.id === postId);
+          if (esCreadoEnSesion) {
+            return { postsCreados: state.postsCreados.filter((p) => p.id !== postId) };
+          }
+          if (state.postsEliminados.includes(postId)) return state;
+          return { postsEliminados: [...state.postsEliminados, postId] };
+        });
+      },
+
+      fijarPost: (postId) => {
+        // Se resuelve la comunidad del post ANTES de `set` (no dentro del
+        // callback) porque necesita `mockPosts` + el `postsCreados` vigente:
+        // un post recién creado en esta misma sesión debe poder fijarse
+        // igual que uno del seed.
+        const post = [...mockPosts, ...get().postsCreados].find((p) => p.id === postId);
+        if (!post) return;
+        set((state) => ({
+          postFijadoPorComunidad: {
+            ...state.postFijadoPorComunidad,
+            [post.comunidadId]: postId,
+          },
+        }));
+      },
+
+      guardarCategorias: (comunidadId, categorias) => {
+        set((state) => ({
+          comunidadOverrides: {
+            ...state.comunidadOverrides,
+            [comunidadId]: { ...state.comunidadOverrides[comunidadId], categorias },
+          },
+        }));
+      },
+
+      guardarNombresNiveles: (comunidadId, nombres) => {
+        set((state) => ({
+          comunidadOverrides: {
+            ...state.comunidadOverrides,
+            [comunidadId]: { ...state.comunidadOverrides[comunidadId], nombresNiveles: nombres },
+          },
+        }));
+      },
+
+      guardarComunidad: (comunidadId, cambios) => {
+        set((state) => ({
+          comunidadOverrides: {
+            ...state.comunidadOverrides,
+            [comunidadId]: { ...state.comunidadOverrides[comunidadId], ...cambios },
+          },
+        }));
+      },
+
+      siguienteEventoId: () => {
+        const id = `evt-nuevo-${get().proximoEventoId}`;
+        set((s) => ({ proximoEventoId: s.proximoEventoId + 1 }));
+        return id;
+      },
+
+      guardarEvento: (evento) => {
+        set((state) => {
+          const existe = state.eventosEditados.some((e) => e.id === evento.id);
+          const eventosEditados = existe
+            ? state.eventosEditados.map((e) => (e.id === evento.id ? evento : e))
+            : [...state.eventosEditados, evento];
+          return { eventosEditados };
+        });
+      },
+
+      eliminarEvento: (eventoId) => {
+        set((state) => {
+          if (state.eventosEliminados.includes(eventoId)) return state;
+          return { eventosEliminados: [...state.eventosEliminados, eventoId] };
+        });
       },
     }),
     {

@@ -1,9 +1,13 @@
 "use client";
 
-import { useKlazeStore } from "@/lib/store";
+import { resolverComunidad, useKlazeStore } from "@/lib/store";
+import { mockCommunities } from "@/lib/mocks/communities";
 import { mockPosts } from "@/lib/mocks/posts";
 import { mockUsers } from "@/lib/mocks/users";
 import type { Post, PostComment, User } from "@/lib/types";
+
+/** Categoría de respaldo — nunca se puede eliminar ni renombrar desde /admin/comunidad (ver esa página). */
+const CATEGORIA_RESPALDO = "General";
 
 export type PostConAutor = Post & { autor: User };
 
@@ -70,18 +74,33 @@ export function useFeed(
   const likesDados = useKlazeStore((s) => s.likesDados);
   const comentariosCreados = useKlazeStore((s) => s.comentariosCreados);
   const usuariosCreados = useKlazeStore((s) => s.usuariosCreados);
+  const postsEliminados = useKlazeStore((s) => s.postsEliminados);
+  const postFijadoPorComunidad = useKlazeStore((s) => s.postFijadoPorComunidad);
+  const comunidadesCreadas = useKlazeStore((s) => s.comunidadesCreadas);
+  const comunidadOverrides = useKlazeStore((s) => s.comunidadOverrides);
 
   const todosLosUsuarios = [...mockUsers, ...usuariosCreados];
 
-  let posts = [...mockPosts, ...postsCreados].filter(
-    (p) => p.comunidadId === comunidadId
+  // Categorías "efectivas" de la comunidad (con overrides de
+  // /admin/comunidad ya aplicados) — se usan para remapear a "General"
+  // cualquier post cuya categoría original ya no exista (categoría
+  // eliminada, ver `guardarCategorias`). "General" nunca es eliminable
+  // (regla de esa pantalla), así que el remapeo siempre cae en una
+  // categoría real.
+  const comunidadBase =
+    comunidadesCreadas.find((c) => c.id === comunidadId) ??
+    mockCommunities.find((c) => c.id === comunidadId);
+  const categoriasComunidad = comunidadBase
+    ? resolverComunidad(comunidadBase, comunidadOverrides).categorias
+    : [];
+
+  const fijadoOverride = postFijadoPorComunidad[comunidadId];
+
+  const posts = [...mockPosts, ...postsCreados].filter(
+    (p) => p.comunidadId === comunidadId && !postsEliminados.includes(p.id)
   );
 
-  if (categoria) {
-    posts = posts.filter((p) => p.categoria === categoria);
-  }
-
-  const conMergeDeLikesYComentarios: Post[] = posts.map((post) => {
+  let conMergeDeLikesYComentarios: Post[] = posts.map((post) => {
     // likesDados actúa como un conjunto de "toggles": si el par (post,user)
     // está presente, invierte el estado base (lo agrega si no estaba, lo
     // quita si ya estaba en el mock).
@@ -98,12 +117,29 @@ export function useFeed(
       post.id
     );
 
+    const categoriaEfectiva = categoriasComunidad.includes(post.categoria)
+      ? post.categoria
+      : CATEGORIA_RESPALDO;
+
+    // Si la comunidad tiene un post fijado en sesión, reemplaza por
+    // completo al `fijado` del seed (incluido "des-fijar" el que traía el
+    // mock) — solo puede haber uno.
+    const fijado = fijadoOverride ? post.id === fijadoOverride : post.fijado;
+
     return {
       ...post,
       likes: Array.from(likes),
       comentarios,
+      categoria: categoriaEfectiva,
+      fijado,
     };
   });
+
+  if (categoria) {
+    conMergeDeLikesYComentarios = conMergeDeLikesYComentarios.filter(
+      (p) => p.categoria === categoria
+    );
+  }
 
   const conAutor: PostConAutor[] = conMergeDeLikesYComentarios.map((post) => ({
     ...post,
