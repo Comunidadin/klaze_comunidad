@@ -27,7 +27,11 @@ export type { UseInvitationResult } from "@/lib/hooks/use-invitation";
 export { useEvents } from "@/lib/hooks/use-events";
 
 export { useGamification } from "@/lib/hooks/use-gamification";
-export type { RankingEntry } from "@/lib/hooks/use-gamification";
+export type {
+  PeriodoRanking,
+  RankingEntry,
+  UseGamificationResult,
+} from "@/lib/hooks/use-gamification";
 
 export { useLessonComments } from "@/lib/hooks/use-lesson-comments";
 export type { LessonCommentConAutor, UseLessonCommentsResult } from "@/lib/hooks/use-lesson-comments";
