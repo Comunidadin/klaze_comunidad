@@ -30,23 +30,17 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
-import { formatDuracion, leccionesOrdenadas } from "@/components/course/course-utils";
-import type { Course, CourseModule, Lesson } from "@/lib/types";
+import {
+  formatDuracion,
+  leccionesOrdenadas,
+  moduloDeLeccion,
+  modulosOrdenados,
+} from "@/components/course/course-utils";
+import type { Lesson } from "@/lib/types";
 
 export interface CursoDetalleProps {
   comunidadSlug: string;
   cursoSlug: string;
-}
-
-function moduloDeLeccion(curso: Course, leccionId: string): CourseModule | undefined {
-  return curso.modulos.find((m) => m.lecciones.some((l) => l.id === leccionId));
-}
-
-/** Módulos ordenados, cada uno con sus lecciones ordenadas y duración total. */
-function modulosOrdenados(curso: Course): CourseModule[] {
-  return [...curso.modulos]
-    .sort((a, b) => a.orden - b.orden)
-    .map((m) => ({ ...m, lecciones: [...m.lecciones].sort((x, y) => x.orden - y.orden) }));
 }
 
 /**

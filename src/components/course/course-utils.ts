@@ -1,10 +1,22 @@
-import type { Course, Lesson } from "@/lib/types";
+import type { Course, CourseModule, Lesson } from "@/lib/types";
 
 /** Todas las lecciones de un curso, en el orden en que aparecen (módulo → lección). */
 export function leccionesOrdenadas(curso: Course): Lesson[] {
   return [...curso.modulos]
     .sort((a, b) => a.orden - b.orden)
     .flatMap((m) => [...m.lecciones].sort((x, y) => x.orden - y.orden));
+}
+
+/** Módulos ordenados, cada uno con sus lecciones ordenadas. */
+export function modulosOrdenados(curso: Course): CourseModule[] {
+  return [...curso.modulos]
+    .sort((a, b) => a.orden - b.orden)
+    .map((m) => ({ ...m, lecciones: [...m.lecciones].sort((x, y) => x.orden - y.orden) }));
+}
+
+/** El módulo que contiene una lección dada, o `undefined` si no pertenece al curso. */
+export function moduloDeLeccion(curso: Course, leccionId: string): CourseModule | undefined {
+  return curso.modulos.find((m) => m.lecciones.some((l) => l.id === leccionId));
 }
 
 export interface EstadisticasCurso {

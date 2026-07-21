@@ -1,0 +1,387 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  CheckCircle2,
+  Circle,
+  Clock,
+  FileDown,
+  Lock,
+  MessageCircle,
+  PanelRightOpen,
+  ChevronLeft,
+  ChevronRight,
+  Send,
+  SearchX,
+} from "lucide-react";
+import { useCommunity } from "@/lib/hooks/use-community";
+import { useCourses, useLesson } from "@/lib/hooks/use-courses";
+import { useSession } from "@/lib/hooks/use-session";
+import { useLessonComments } from "@/lib/hooks/use-lesson-comments";
+import { useKlazeStore } from "@/lib/store";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { EmptyState } from "@/components/shared/empty-state";
+import { Confetti } from "@/components/shared/confetti";
+import { VimeoPlayer } from "@/components/course/vimeo-player";
+import { LessonSidebar } from "@/components/course/lesson-sidebar";
+import { leccionesOrdenadas, moduloDeLeccion } from "@/components/course/course-utils";
+import { cn } from "@/lib/utils";
+
+export interface LeccionDetalleProps {
+  comunidadSlug: string;
+  cursoSlug: string;
+  leccionId: string;
+}
+
+/** Renderiza `contenido` (texto plano con `\n\n` entre bloques) con tipografía
+ * legible sin depender de `@tailwindcss/typography`: detecta listas
+ * numeradas ("1. ...") por bloque y el resto lo trata como párrafo. */
+function ContenidoTexto({ contenido }: { contenido: string }) {
+  const bloques = contenido.split("\n\n");
+
+  return (
+    <div className="space-y-4 text-[15px] leading-relaxed text-pretty text-foreground/90">
+      {bloques.map((bloque, i) => {
+        const lineas = bloque.split("\n").filter((l) => l.trim().length > 0);
+        const esLista = lineas.length > 0 && lineas.every((l) => /^\d+\.\s/.test(l.trim()));
+
+        if (esLista) {
+          return (
+            <ol
+              key={i}
+              className="list-decimal space-y-2 pl-5 marker:font-semibold marker:text-primary"
+            >
+              {lineas.map((l, j) => (
+                <li key={j}>{l.trim().replace(/^\d+\.\s*/, "")}</li>
+              ))}
+            </ol>
+          );
+        }
+
+        return <p key={i}>{bloque}</p>;
+      })}
+    </div>
+  );
+}
+
+function SeccionComentarios({ leccionId }: { leccionId: string }) {
+  const { user } = useSession();
+  const { comentarios, agregar } = useLessonComments(leccionId);
+  const [texto, setTexto] = useState("");
+
+  function enviar() {
+    if (!user || !texto.trim()) return;
+    agregar(user.id, texto);
+    setTexto("");
+  }
+
+  return (
+    <div className="rounded-2xl bg-card p-5 ring-1 ring-foreground/10 sm:p-6">
+      <h2 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold text-foreground">
+        <MessageCircle className="size-4" /> Comentarios ({comentarios.length})
+      </h2>
+
+      <div className="space-y-4">
+        {comentarios.length === 0 && (
+          <p className="text-sm text-muted-foreground">Sé el primero en comentar esta lección.</p>
+        )}
+        {comentarios.map((c) => (
+          <div key={c.id} className="flex gap-3">
+            <Avatar size="sm">
+              <AvatarImage src={c.autor.avatarUrl} alt={c.autor.nombre} />
+              <AvatarFallback>{c.autor.nombre[0]}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <span className="text-sm font-medium text-foreground">{c.autor.nombre}</span>
+              <p className="mt-0.5 text-sm text-pretty text-muted-foreground">{c.cuerpo}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 flex gap-3 border-t border-border pt-5">
+        <Avatar size="sm" className="mt-0.5">
+          <AvatarImage src={user?.avatarUrl} alt={user?.nombre ?? ""} />
+          <AvatarFallback>{user?.nombre?.[0] ?? "?"}</AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1 space-y-2">
+          <Textarea
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            placeholder="Escribe un comentario…"
+            className="min-h-20"
+          />
+          <div className="flex justify-end">
+            <Button size="sm" onClick={enviar} disabled={!texto.trim()}>
+              <Send /> Comentar
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Player de lección: video de Vimeo o contenido de texto, marcar como
+ * completada, navegación anterior/siguiente (cruza módulos), recursos y
+ * comentarios. Sidebar de temario en columna derecha (desktop) o `Sheet`
+ * (móvil). Si el curso o la lección no existen, o el usuario no tiene
+ * acceso, muestra un `EmptyState` en su lugar.
+ */
+export function LeccionDetalle({ comunidadSlug, cursoSlug, leccionId }: LeccionDetalleProps) {
+  const resultado = useCommunity(comunidadSlug);
+  const { cursos } = useCourses(resultado?.community.id ?? "");
+  const curso = cursos.find((c) => c.slug === cursoSlug);
+  const leccionResult = useLesson(curso?.id ?? "", leccionId);
+  const { user } = useSession();
+  const progreso = useKlazeStore((s) => s.progreso);
+
+  const leccionesCompletadasIds = useMemo(() => {
+    if (!user) return new Set<string>();
+    return new Set(progreso.filter((p) => p.userId === user.id).map((p) => p.leccionId));
+  }, [progreso, user]);
+
+  const [mostrarConfetti, setMostrarConfetti] = useState(false);
+  const progresoPrevioRef = useRef(curso?.progresoPct ?? 0);
+
+  useEffect(() => {
+    if (!curso) return;
+    const anterior = progresoPrevioRef.current;
+    if (anterior < 100 && curso.progresoPct === 100) {
+      setMostrarConfetti(true);
+    }
+    progresoPrevioRef.current = curso.progresoPct;
+  }, [curso]);
+
+  if (!resultado) return null;
+  const { community } = resultado;
+
+  if (!curso) {
+    return (
+      <EmptyState
+        icono={SearchX}
+        titulo="Curso no encontrado"
+        descripcion="El curso al que pertenece esta lección no existe o fue eliminado."
+        accion={{ label: "Volver a cursos", href: `/c/${comunidadSlug}/cursos` }}
+        className="mx-auto max-w-lg"
+      />
+    );
+  }
+
+  if (curso.acceso !== "si") {
+    const nombreNivel =
+      curso.acceso === "candado-nivel" && curso.nivelRequerido
+        ? community.nombresNiveles[curso.nivelRequerido - 1]
+        : null;
+
+    return (
+      <EmptyState
+        icono={Lock}
+        titulo={
+          curso.acceso === "candado-nivel" ? "Este curso está bloqueado" : "No tienes acceso a este curso"
+        }
+        descripcion={
+          curso.acceso === "candado-nivel"
+            ? `Se desbloquea en nivel ${curso.nivelRequerido}${nombreNivel ? ` — ${nombreNivel}` : ""}. Sigue participando en la comunidad para subir de nivel.`
+            : `Habla con el equipo de ${community.nombre} para obtener acceso. Valor referencial: $${curso.precioReferencial}.`
+        }
+        accion={{ label: "Volver a cursos", href: `/c/${comunidadSlug}/cursos` }}
+        className="mx-auto max-w-lg"
+      />
+    );
+  }
+
+  if (!leccionResult) {
+    return (
+      <EmptyState
+        icono={SearchX}
+        titulo="Lección no encontrada"
+        descripcion="La lección que buscas no existe o fue eliminada de este curso."
+        accion={{ label: "Volver al curso", href: `/c/${comunidadSlug}/cursos/${curso.slug}` }}
+        className="mx-auto max-w-lg"
+      />
+    );
+  }
+
+  const { leccion, completada, toggle } = leccionResult;
+  const moduloActual = moduloDeLeccion(curso, leccion.id);
+
+  const ordenGlobal = leccionesOrdenadas(curso);
+  const indiceActual = ordenGlobal.findIndex((l) => l.id === leccion.id);
+  const anterior = indiceActual > 0 ? ordenGlobal[indiceActual - 1] : null;
+  const siguiente =
+    indiceActual >= 0 && indiceActual < ordenGlobal.length - 1 ? ordenGlobal[indiceActual + 1] : null;
+
+  const sidebar = (
+    <LessonSidebar
+      curso={curso}
+      comunidadSlug={comunidadSlug}
+      leccionActualId={leccion.id}
+      leccionesCompletadasIds={leccionesCompletadasIds}
+    />
+  );
+
+  return (
+    <div className="lg:grid lg:grid-cols-[1fr_20rem] lg:items-start lg:gap-8">
+      <div className="min-w-0 space-y-6">
+        {/* Encabezado: volver al curso, título, meta, temario móvil */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <Link
+              href={`/c/${comunidadSlug}/cursos/${curso.slug}`}
+              className="mb-1 inline-block text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
+            >
+              ← {curso.titulo}
+            </Link>
+            <h1 className="text-balance font-display text-xl font-bold text-foreground sm:text-2xl">
+              {leccion.titulo}
+            </h1>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <Badge variant="outline" className="gap-1">
+                <Clock className="size-3" /> {leccion.duracionMin} min
+              </Badge>
+              {moduloActual && <span className="truncate">{moduloActual.titulo}</span>}
+            </div>
+          </div>
+
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm" className="shrink-0 lg:hidden">
+                <PanelRightOpen /> Temario
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="w-full gap-0 p-0 sm:max-w-sm">
+              <SheetHeader className="shrink-0 border-b border-border">
+                <SheetTitle>Contenido del curso</SheetTitle>
+              </SheetHeader>
+              {sidebar}
+            </SheetContent>
+          </Sheet>
+        </div>
+
+        {/* Player o contenido de texto */}
+        {leccion.tipo === "video" && leccion.vimeoId ? (
+          <VimeoPlayer vimeoId={leccion.vimeoId} title={leccion.titulo} />
+        ) : (
+          <div className="rounded-2xl bg-card p-5 ring-1 ring-foreground/10 sm:p-8">
+            <ContenidoTexto contenido={leccion.contenido} />
+          </div>
+        )}
+
+        {leccion.tipo === "video" && leccion.contenido && (
+          <p className="text-sm text-pretty text-muted-foreground">{leccion.contenido}</p>
+        )}
+
+        {/* Completar + navegación */}
+        <div className="flex flex-col gap-4 rounded-2xl bg-card p-4 ring-1 ring-foreground/10 sm:flex-row sm:items-center sm:justify-between">
+          <Button
+            onClick={toggle}
+            variant={completada ? "default" : "outline"}
+            className={cn(completada && "bg-accent text-accent-foreground hover:bg-accent/90")}
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              {completada ? (
+                <motion.span
+                  key="check"
+                  initial={{ scale: 0.4, opacity: 0, rotate: -45 }}
+                  animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                  exit={{ scale: 0.4, opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 22 }}
+                  className="inline-flex"
+                >
+                  <CheckCircle2 className="size-4" />
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="circle"
+                  initial={{ scale: 0.4, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.4, opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 22 }}
+                  className="inline-flex"
+                >
+                  <Circle className="size-4" />
+                </motion.span>
+              )}
+            </AnimatePresence>
+            {completada ? "Completada" : "Marcar como completada"}
+          </Button>
+
+          <div className="flex items-center gap-2">
+            {anterior ? (
+              <Button asChild variant="outline">
+                <Link href={`/c/${comunidadSlug}/cursos/${curso.slug}/leccion/${anterior.id}`}>
+                  <ChevronLeft /> Anterior
+                </Link>
+              </Button>
+            ) : (
+              <Button variant="outline" disabled>
+                <ChevronLeft /> Anterior
+              </Button>
+            )}
+            {siguiente ? (
+              <Button asChild>
+                <Link href={`/c/${comunidadSlug}/cursos/${curso.slug}/leccion/${siguiente.id}`}>
+                  Siguiente <ChevronRight />
+                </Link>
+              </Button>
+            ) : (
+              <Button disabled>
+                Siguiente <ChevronRight />
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Recursos */}
+        {leccion.recursos.length > 0 && (
+          <div className="rounded-2xl bg-card p-5 ring-1 ring-foreground/10 sm:p-6">
+            <h2 className="mb-3 font-display text-sm font-semibold text-foreground">
+              Recursos descargables
+            </h2>
+            <ul className="space-y-2">
+              {leccion.recursos.map((r) => (
+                <li key={r.url}>
+                  <a
+                    href={r.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 rounded-lg border border-border px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <FileDown className="size-4 shrink-0 text-primary" />
+                    <span className="truncate">{r.nombre}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Comentarios */}
+        <SeccionComentarios leccionId={leccion.id} />
+      </div>
+
+      {/* Temario — desktop */}
+      <aside className="hidden lg:sticky lg:top-24 lg:block">
+        <div className="max-h-[calc(100vh-7rem)] overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/10">
+          {sidebar}
+        </div>
+      </aside>
+
+      {mostrarConfetti && <Confetti onDone={() => setMostrarConfetti(false)} />}
+    </div>
+  );
+}
