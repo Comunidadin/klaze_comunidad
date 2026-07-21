@@ -10,7 +10,7 @@ import { UserSwitcher } from "@/components/shared/user-switcher";
 import { FullScreenLoader } from "@/components/shared/full-screen-loader";
 
 const ITEMS: AdminNavItem[] = [
-  { titulo: "Dashboard", href: "/plataforma", icono: LayoutDashboard },
+  { titulo: "Panel", href: "/plataforma", icono: LayoutDashboard },
   { titulo: "Comunidades", href: "/plataforma/comunidades", icono: Building2 },
   { titulo: "Creadores", href: "/plataforma/creadores", icono: Users },
   { titulo: "Planes", href: "/plataforma/planes", icono: CreditCard },

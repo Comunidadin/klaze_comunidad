@@ -52,6 +52,7 @@ function camposDe(plan: Plan): CamposPlan {
  * o `null` si no pasa la validación — el llamador decide el mensaje.
  */
 function numeroValido(valor: string, minimo: 0 | 1): number | null {
+  if (valor.trim() === "") return null;
   const n = Number(valor);
   if (Number.isNaN(n) || n < minimo) return null;
   return Math.round(n);

@@ -25,6 +25,7 @@ interface CampoNuevoComentarioProps {
   onCambiar: (valor: string) => void;
   onEnviar: () => void;
   placeholder: string;
+  ariaLabel: string;
   autoFocus?: boolean;
 }
 
@@ -34,6 +35,7 @@ function CampoNuevoComentario({
   onCambiar,
   onEnviar,
   placeholder,
+  ariaLabel,
   autoFocus,
 }: CampoNuevoComentarioProps) {
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -51,6 +53,7 @@ function CampoNuevoComentario({
         onKeyDown={handleKeyDown}
         rows={1}
         placeholder={placeholder}
+        aria-label={ariaLabel}
         autoFocus={autoFocus}
         className="min-h-8 py-1.5"
       />
@@ -144,6 +147,7 @@ export function CommentThread({ postId, comentarios, className }: CommentThreadP
                         onCambiar={setTextoRespuesta}
                         onEnviar={() => enviarRespuesta(raiz.id)}
                         placeholder={`Responder a ${autorRaiz.nombre}…`}
+                        ariaLabel={`Responder a ${autorRaiz.nombre}`}
                         autoFocus
                       />
                     </div>
@@ -198,6 +202,7 @@ export function CommentThread({ postId, comentarios, className }: CommentThreadP
           onCambiar={setTextoNuevo}
           onEnviar={enviarNuevo}
           placeholder="Escribe un comentario…"
+          ariaLabel="Escribe un comentario"
         />
       </div>
     </div>

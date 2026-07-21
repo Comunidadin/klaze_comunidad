@@ -246,9 +246,9 @@ const principal: Post[] = [
     comunidadId: "com-principal",
     autorId: "u-m22",
     categoria: "Wins",
-    titulo: "Llegué a nivel Constructor esta semana",
+    titulo: "Llegué a nivel Práctico esta semana",
     cuerpo:
-      "Entre comentarios, likes y terminar el curso de Ventas por WhatsApp subí a nivel Constructor. Poco a poco se siente el avance.",
+      "Entre comentarios, likes y terminar el curso de Ventas por WhatsApp subí a nivel Práctico. Poco a poco se siente el avance.",
     fijado: false,
     likes: ["u-m4", "u-m18"],
     comentarios: [],

@@ -19,7 +19,7 @@ import { UserSwitcher } from "@/components/shared/user-switcher";
 import { FullScreenLoader } from "@/components/shared/full-screen-loader";
 
 const ITEMS: AdminNavItem[] = [
-  { titulo: "Dashboard", href: "/admin", icono: LayoutDashboard },
+  { titulo: "Panel", href: "/admin", icono: LayoutDashboard },
   { titulo: "Alumnos", href: "/admin/alumnos", icono: Users },
   { titulo: "Accesos", href: "/admin/accesos", icono: KeyRound },
   { titulo: "Cursos", href: "/admin/cursos", icono: BookOpen },

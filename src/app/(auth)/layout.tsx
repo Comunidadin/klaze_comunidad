@@ -13,19 +13,21 @@ import { AuthBrandPanel } from "./_components/auth-brand-panel";
  *
  * También hace de guard inverso al de los grupos protegidos: si ya hay
  * sesión, no tiene sentido dejar a alguien parado en /login, /registro o
- * /recuperar, así que lo mandamos a su home por rol. No mostramos el
- * loader mientras el store no ha hidratado (caso más común: visitante
- * anónimo) para no parpadear una pantalla de carga en cada visita — solo
- * aparece en el breve instante en que detectamos una sesión existente y
- * redirigimos.
+ * /recuperar, así que lo mandamos a su home por rol. Igual que los guards
+ * de T4 ((miembro)/(creador)/(superadmin)), mostramos `FullScreenLoader`
+ * mientras el store no ha hidratado: la alternativa (renderizar el form de
+ * inmediato) deja ver un flash del login a un usuario que en realidad ya
+ * tiene sesión activa, apenas antes de que la hidratación lo redirija.
  *
- * `/invitacion/[token]` (Task 6) queda excluida de este guard a propósito:
- * un usuario ya logueado debe poder abrir su propio link de invitación
- * (p. ej. el creador probando el link) sin que lo saquemos de la pantalla,
- * y justo después de `aceptarInvitacion` la sesión pasa de null a un
- * usuario nuevo — sin esta excepción este mismo guard competiría con el
- * redirect explícito de la página hacia `/c/{slug}/cursos` y ganaría el
- * redirect equivocado (`homePorRol` → `/c/{slug}/inicio`).
+ * `/invitacion/[token]` (Task 6) queda excluida de este guard —tanto del
+ * loader por hidratación como del redirect— a propósito: un usuario ya
+ * logueado debe poder abrir su propio link de invitación (p. ej. el
+ * creador probando el link) sin que lo saquemos de la pantalla, y justo
+ * después de `aceptarInvitacion` la sesión pasa de null a un usuario
+ * nuevo — sin esta excepción este mismo guard competiría con el redirect
+ * explícito de la página hacia `/c/{slug}/cursos` y ganaría el redirect
+ * equivocado (`homePorRol` → `/c/{slug}/inicio`). La pantalla de
+ * invitación maneja su propio estado de carga vía `useHydrated` interno.
  */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   const hydrated = useHydrated();
@@ -39,7 +41,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     router.replace(homePorRol(user));
   }, [hydrated, user, router, esInvitacion]);
 
-  if (hydrated && user && !esInvitacion) {
+  if (!esInvitacion && (!hydrated || user)) {
     return <FullScreenLoader />;
   }
 

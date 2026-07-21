@@ -34,6 +34,7 @@ import {
   leccionesOrdenadas,
   moduloDeLeccion,
   modulosOrdenados,
+  primeraLeccionPendiente,
 } from "@/components/course/course-utils";
 import { CoursePortada } from "@/components/course/course-portada";
 import type { Lesson } from "@/lib/types";
@@ -101,7 +102,7 @@ export function CursoDetalle({ comunidadSlug, cursoSlug }: CursoDetalleProps) {
   const modulos = modulosOrdenados(curso);
   const lecciones = leccionesOrdenadas(curso);
   const numCompletadas = lecciones.filter((l) => leccionesCompletadasIds.has(l.id)).length;
-  const primeraPendiente = lecciones.find((l) => !leccionesCompletadasIds.has(l.id));
+  const primeraPendiente = primeraLeccionPendiente(curso, leccionesCompletadasIds) ?? undefined;
 
   let ctaLabel = "Comenzar curso";
   let ctaIcon = Play;

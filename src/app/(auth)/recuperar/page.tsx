@@ -79,8 +79,13 @@ export default function RecuperarPage() {
               if (error) setError(null);
             }}
             aria-invalid={!!error}
+            aria-describedby={error ? "email-error" : undefined}
           />
-          {error && <p className="text-xs text-destructive">{error}</p>}
+          {error && (
+            <p id="email-error" role="alert" className="text-xs text-destructive">
+              {error}
+            </p>
+          )}
         </div>
 
         <Button type="submit" className="w-full" size="lg">

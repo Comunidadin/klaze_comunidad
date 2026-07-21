@@ -52,8 +52,11 @@ function PerfilContenido({ user }: { user: User }) {
 
   // Un usuario puede pertenecer a varias comunidades (`comunidadIds`). Para
   // decidir de qué comunidad tomar los nombres de nivel usamos la primera
-  // (`comunidadIds[0]`) como su "comunidad principal" — mismo criterio que
-  // `homePorRol` en src/lib/routes.ts usa para decidir a dónde redirigir.
+  // (`comunidadIds[0]`) como su "comunidad principal" — misma intención que
+  // `homePorRol` en src/lib/routes.ts (llevar al usuario a "su" comunidad
+  // por defecto), pero con un algoritmo distinto: `homePorRol` recorre la
+  // lista de comunidades y toma la primera que el usuario tenga en
+  // `comunidadIds`, mientras que aquí tomamos directamente `comunidadIds[0]`.
   // Se resuelve vía `resolverComunidad` para que un nombre de nivel editado
   // desde /admin/comunidad se refleje acá sin un parche local.
   const todasLasComunidades = [...mockCommunities, ...comunidadesCreadas];

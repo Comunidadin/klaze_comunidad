@@ -73,8 +73,13 @@ export default function RegistroPage() {
               if (errors.nombre) setErrors((prev) => ({ ...prev, nombre: undefined }));
             }}
             aria-invalid={!!errors.nombre}
+            aria-describedby={errors.nombre ? "nombre-error" : undefined}
           />
-          {errors.nombre && <p className="text-xs text-destructive">{errors.nombre}</p>}
+          {errors.nombre && (
+            <p id="nombre-error" role="alert" className="text-xs text-destructive">
+              {errors.nombre}
+            </p>
+          )}
         </div>
 
         <div className="space-y-1.5">
@@ -90,8 +95,13 @@ export default function RegistroPage() {
               if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
             }}
             aria-invalid={!!errors.email}
+            aria-describedby={errors.email ? "email-error" : undefined}
           />
-          {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
+          {errors.email && (
+            <p id="email-error" role="alert" className="text-xs text-destructive">
+              {errors.email}
+            </p>
+          )}
         </div>
 
         <div className="space-y-1.5">
@@ -106,9 +116,12 @@ export default function RegistroPage() {
                 setErrors((prev) => ({ ...prev, nombreComunidad: undefined }));
             }}
             aria-invalid={!!errors.nombreComunidad}
+            aria-describedby={errors.nombreComunidad ? "nombreComunidad-error" : undefined}
           />
           {errors.nombreComunidad && (
-            <p className="text-xs text-destructive">{errors.nombreComunidad}</p>
+            <p id="nombreComunidad-error" role="alert" className="text-xs text-destructive">
+              {errors.nombreComunidad}
+            </p>
           )}
         </div>
 

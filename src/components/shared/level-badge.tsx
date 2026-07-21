@@ -25,7 +25,7 @@ export function LevelBadge({ nivel, size = "md", className }: LevelBadgeProps) {
       title={`Nivel ${nivel}`}
     >
       <span
-        className="absolute inset-0 bg-accent drop-shadow-[0_1px_2px_rgb(0_0_0_/_0.15)]"
+        className="absolute inset-0 bg-accent drop-shadow-sm"
         style={{ clipPath: HEXAGONO }}
       />
       <span className="relative flex size-full items-center justify-center font-display font-bold tabular-nums text-accent-foreground">

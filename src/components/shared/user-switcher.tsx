@@ -17,8 +17,8 @@ import type { UserRole } from "@/lib/types";
 
 const IDS_SEMILLA = ["u-alumno", "u-creador", "u-admin"] as const;
 
-const USUARIOS_SEMILLA = IDS_SEMILLA.map(
-  (id) => mockUsers.find((u) => u.id === id)!
+const USUARIOS_SEMILLA = IDS_SEMILLA.map((id) => mockUsers.find((u) => u.id === id)).filter(
+  (u) => u != null
 );
 
 const ETIQUETA_ROL: Record<UserRole, string> = {
