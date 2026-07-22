@@ -1,6 +1,8 @@
-# CLAUDE.md — Klaze V2
+# CLAUDE.md
 
-Guía para trabajar en este repo. Ver `README.md` para la descripción de producto, usuarios semilla y mapa de rutas completos — este archivo se enfoca en convenciones para escribir código aquí.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+Ver `README.md` para la descripción de producto, usuarios semilla, mapa de rutas y flujo de invitación — este archivo se enfoca en convenciones para escribir código aquí. Ojo: la versión de Next.js de este repo puede diferir de tu entrenamiento — ver el aviso en `AGENTS.md` (docs en `node_modules/next/dist/docs/`).
 
 ## Qué es esto
 
@@ -29,11 +31,32 @@ src/lib/mocks/*.ts  →  src/lib/hooks/*.ts  →  src/app/** y src/components/**
 
 Al añadir un mock nuevo, respeta los tipos de `src/lib/types.ts` y mantén los IDs deterministas (`curso-1`, `u-m22`, `post-15`, etc.) — varios hooks y componentes los referencian por convención de prefijo (`u-` usuarios, `com-` comunidades, `curso-`/`c{n}-m{n}` cursos/módulos, `post-` posts).
 
+## Resolvers centrales — extiéndelos, no los rodees
+
+Las ediciones/acciones del admin no mutan mocks: se guardan como **overrides** en el store y se aplican en un único punto de verdad exportado desde `src/lib/store.ts` / `src/lib/hooks/use-courses.ts`:
+
+- `resolverComunidad(...)` — aplica overrides de comunidad (nombre, color, estado suspendida, categorías, niveles). Lo usan `useCommunity`, `useMyCommunity`, `useInvitation`, `usePlatform`.
+- `resolverEstadoEnrollment(...)` — estado efectivo de un alumno (activo/invitado/suspendido). Suspender DEBE revocar acceso real, no solo cambiar un badge.
+- `enrollmentCubreCurso(...)` / `cursoIdsCubreCurso(...)` — criterio único de "este enrollment cubre este curso".
+- `cursosVisiblesParaMiembro(...)` — merge mocks+editados filtrando `publicado`; TODO consumidor de cara al miembro (incluido cálculo de progreso en admin) pasa por aquí para que los borradores nunca se filtren.
+
+Si agregas un consumidor nuevo de comunidad/enrollment/cursos, usa estos helpers. Cada bug importante que encontró la revisión de este repo fue un consumidor que re-derivó esta lógica por su cuenta.
+
+## Determinismo
+
+- **Seeds** (`src/lib/mocks/`): cero `Math.random()`/`Date.now()`; fechas derivadas de la fecha base fija en `src/lib/mocks/fechas.ts`; datos generados por índice.
+- **IDs creados en runtime** (posts, invitaciones, cursos/módulos/lecciones): contadores persistidos en el store (`proximoInviteId`, `proximoPostId`, `siguienteCursoId`...). Nunca `array.length + 1` (colisiona tras eliminar) ni `Math.random`. Sigue el patrón existente si necesitas un ID nuevo.
+- Excepción: `new Date().toISOString()` sí se usa para `creadoEl` de entidades creadas por el usuario en sesión — es estado real, no seed.
+
+## Selectores de Zustand (React 19)
+
+`getSnapshot` debe devolver referencias estables: **no hagas `.filter()`/`.map()` ni crees objetos dentro del selector** (`useKlazeStore(s => s.x.filter(...))` crashea con el invariante de `useSyncExternalStore`). Selecciona el array crudo y deriva con `useMemo` en el hook. Ver `use-invitations.ts` y `use-ahora.ts`, que se corrigieron exactamente por esto.
+
 ## Estado y sesión
 
 - `src/lib/store.ts` es el único estado mutable de la app (Zustand + `persist`, clave de `localStorage`: `klaze-v2`). Ahí viven: sesión activa, invitaciones, progreso de lecciones, posts/comentarios/likes creados en la demo, comunidades registradas en runtime, overrides de edición admin.
 - `useSession()` / `useHydrated()` (`src/lib/hooks/use-session.ts`) son el punto de entrada para saber quién está logueado y si el store ya hidrató desde `localStorage`. **Todo layout de grupo de rutas debe gatear en `!hydrated` antes de decidir un redirect** — mira `src/app/(miembro)/layout.tsx` como referencia canónica del patrón (`if (!hydrated || !user) return <FullScreenLoader />`).
-- Los 4 layouts de grupo (`(auth)`, `(miembro)`, `(creador)`, `(superadmin)`) son los guards de rol. No dupliques lógica de redirect dentro de páginas hijas.
+- Los 4 layouts de grupo (`(auth)`, `(miembro)`, `(creador)`, `(superadmin)`) son los guards de rol. No dupliques lógica de redirect dentro de páginas hijas. Matices: `(creador)` admite `creador` Y `superadmin` (el superadmin puede ser dueño de una comunidad — hoy admin@klaze.app es dueño de Academia Klaze); `/invitacion` está excluida del redirect de ya-logueado en `(auth)`; el destino post-login vive en `homePorRol` (`src/lib/routes.ts`) — no dupliques esa tabla.
 
 ## Convenciones de UI
 
