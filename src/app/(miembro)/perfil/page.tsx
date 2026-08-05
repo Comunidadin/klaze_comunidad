@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { ArrowLeft, LogOut, Save } from "lucide-react";
 import { useSession } from "@/lib/hooks/use-session";
 import { useGamification } from "@/lib/hooks/use-gamification";
-import { resolverComunidad, useKlazeStore } from "@/lib/store";
+import { resolverComunidad, useAppStore } from "@/lib/store";
 import { mockCommunities } from "@/lib/mocks/communities";
 import { homePorRol } from "@/lib/routes";
 import { NIVEL_MAXIMO, puntosParaNivel } from "@/lib/levels";
@@ -45,10 +45,10 @@ export default function PerfilPage() {
 
 function PerfilContenido({ user }: { user: User }) {
   const router = useRouter();
-  const logout = useKlazeStore((s) => s.logout);
-  const actualizarPerfil = useKlazeStore((s) => s.actualizarPerfil);
-  const comunidadesCreadas = useKlazeStore((s) => s.comunidadesCreadas);
-  const comunidadOverrides = useKlazeStore((s) => s.comunidadOverrides);
+  const logout = useAppStore((s) => s.logout);
+  const actualizarPerfil = useAppStore((s) => s.actualizarPerfil);
+  const comunidadesCreadas = useAppStore((s) => s.comunidadesCreadas);
+  const comunidadOverrides = useAppStore((s) => s.comunidadOverrides);
 
   // Un usuario puede pertenecer a varias comunidades (`comunidadIds`). Para
   // decidir de qué comunidad tomar los nombres de nivel usamos la primera

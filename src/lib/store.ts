@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import type {
   Community,
   CommunityEvent,
+  CommunitySection,
   Course,
   Enrollment,
   Invitation,
@@ -14,6 +15,7 @@ import type {
 } from "@/lib/types";
 import { mockUsers } from "@/lib/mocks/users";
 import { mockPosts } from "@/lib/mocks/posts";
+import { crearSeccionesDefault } from "@/lib/mocks/espacios";
 
 const CURSO_1_ID = "curso-1";
 
@@ -40,8 +42,6 @@ const NOMBRES_NIVELES_DEFAULT = [
   "Leyenda",
 ];
 
-const CATEGORIAS_DEFAULT = ["Anuncios", "General", "Wins", "Preguntas"];
-
 // Invitación pre-sembrada para poder probar /invitacion/inv-demo (Task 6)
 // sin depender de haber generado una invitación primero.
 const INVITACION_DEMO: Invitation = {
@@ -59,7 +59,7 @@ export interface PerfilOverride {
   bio: string;
 }
 
-export interface KlazeState {
+export interface AppState {
   currentUserId: string | null;
   usuariosCreados: User[]; // alumnos que aceptaron invitación + creadores registrados
   invitaciones: Invitation[];
@@ -115,7 +115,7 @@ export interface KlazeState {
   postFijadoPorComunidad: Record<string, string>;
   // Override parcial de `Community`, keyed por comunidadId. Punto único de
   // verdad para nombre/logoUrl/colorAcento (`guardarComunidad`),
-  // `categorias` (`guardarCategorias`) y `nombresNiveles`
+  // `secciones` (`guardarSecciones`) y `nombresNiveles`
   // (`guardarNombresNiveles`) — todo hook que resuelve una `Community`
   // (useCommunity, useMyCommunity, useInvitation) lo aplica vía
   // `resolverComunidad`, así ninguna pantalla necesita su propio parche.
@@ -173,7 +173,6 @@ export interface KlazeState {
   eliminarPost: (postId: string) => void;
   /** Fija `postId` en su comunidad, reemplazando cualquier fijado anterior (solo 1 por comunidad). */
   fijarPost: (postId: string) => void;
-  guardarCategorias: (comunidadId: string, categorias: string[]) => void;
   /** `nombres` debe traer los 9 nombres de nivel, en orden (nivel 1..9). */
   guardarNombresNiveles: (comunidadId: string, nombres: string[]) => void;
   guardarComunidad: (
@@ -196,6 +195,28 @@ export interface KlazeState {
   cambiarEstadoComunidad: (comunidadId: string, estado: Community["estado"]) => void;
   /** Guarda un `Plan` editado desde `/plataforma/planes` — reemplazo completo en `planOverrides` (ver docstring del campo). */
   guardarPlan: (plan: Plan) => void;
+  // --- Cambio 2: espacios de comunidad (layout de 3 columnas) -------------
+  /**
+   * Última visita de cada espacio (espacioId -> ISO), keyed por espacioId
+   * global (no por comunidad+espacio: dos comunidades nunca comparten un
+   * alumno viendo el mismo id de espacio en la práctica, y mantenerlo simple
+   * evita una clave compuesta). El contador de "no leídos" de
+   * `useEspacios` cuenta los posts de ese espacio con `creadoEl` posterior a
+   * esta fecha; sin entrada, cuenta todos.
+   */
+  espaciosVistos: Record<string, string>;
+  marcarEspacioVisto: (espacioId: string) => void;
+  /** Contador determinístico para el id "esp-nuevo-N" de un espacio creado desde `/admin/comunidad` — mismo patrón que `proximoEventoId`. */
+  proximoEspacioId: number;
+  siguienteEspacioId: () => string;
+  /**
+   * Reemplaza por completo `Community.secciones` de `comunidadId` en el
+   * override (mismo patrón que `guardarCategorias` antes de este cambio):
+   * el editor de `/admin/comunidad` mantiene su propio estado local de
+   * secciones/espacios y llama esta acción en cada cambio (agregar,
+   * renombrar, eliminar), así que no hace falta un merge parcial acá.
+   */
+  guardarSecciones: (comunidadId: string, secciones: CommunitySection[]) => void;
 }
 
 /**
@@ -254,7 +275,7 @@ export function enrollmentCubreCurso(enrollment: Enrollment, cursoId: string): b
 /**
  * Aplica `comunidadOverrides[base.id]` (si existe) sobre una `Community`
  * base (mock o de `comunidadesCreadas`). Punto único de verdad para
- * nombre/logoUrl/colorAcento/categorias/nombresNiveles editados desde
+ * nombre/logoUrl/colorAcento/secciones/nombresNiveles editados desde
  * `/admin/comunidad` y `/admin/configuracion` — usarla en cualquier hook que
  * resuelva una `Community` (`useCommunity`, `useMyCommunity`,
  * `useInvitation`) en vez de leer los campos del mock/creada directamente,
@@ -282,7 +303,7 @@ export function resolverPlan(base: Plan, overrides: Record<string, Plan>): Plan 
   return overrides[base.id] ?? base;
 }
 
-export const useKlazeStore = create<KlazeState>()(
+export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       currentUserId: null,
@@ -309,6 +330,8 @@ export const useKlazeStore = create<KlazeState>()(
       eventosEliminados: [],
       proximoEventoId: 1,
       planOverrides: {},
+      espaciosVistos: {},
+      proximoEspacioId: 1,
 
       login: (email) => {
         const objetivo = email.trim().toLowerCase();
@@ -507,12 +530,12 @@ export const useKlazeStore = create<KlazeState>()(
           nombre: nombreComunidad,
           descripcion: "",
           logoUrl: `https://api.dicebear.com/7.x/shapes/svg?seed=${idComunidad}`,
-          colorAcento: "#6366F1",
+          colorAcento: "#06ABEB", // cian de la marca (mismo valor que `--brand`)
           ownerId: idUsuario,
           plan: "starter",
           estado: "activa",
           nombresNiveles: NOMBRES_NIVELES_DEFAULT,
-          categorias: CATEGORIAS_DEFAULT,
+          secciones: crearSeccionesDefault(),
           creadoEl: new Date().toISOString(),
         };
 
@@ -571,11 +594,11 @@ export const useKlazeStore = create<KlazeState>()(
         }));
       },
 
-      guardarCategorias: (comunidadId, categorias) => {
+      guardarSecciones: (comunidadId, secciones) => {
         set((state) => ({
           comunidadOverrides: {
             ...state.comunidadOverrides,
-            [comunidadId]: { ...state.comunidadOverrides[comunidadId], categorias },
+            [comunidadId]: { ...state.comunidadOverrides[comunidadId], secciones },
           },
         }));
       },
@@ -635,9 +658,21 @@ export const useKlazeStore = create<KlazeState>()(
           planOverrides: { ...state.planOverrides, [plan.id]: plan },
         }));
       },
+
+      marcarEspacioVisto: (espacioId) => {
+        set((state) => ({
+          espaciosVistos: { ...state.espaciosVistos, [espacioId]: new Date().toISOString() },
+        }));
+      },
+
+      siguienteEspacioId: () => {
+        const id = `esp-nuevo-${get().proximoEspacioId}`;
+        set((s) => ({ proximoEspacioId: s.proximoEspacioId + 1 }));
+        return id;
+      },
     }),
     {
-      name: "klaze-v2",
+      name: "intercambio-v1",
       skipHydration: true,
     }
   )

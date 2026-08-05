@@ -60,14 +60,14 @@ const BIOS = [
 ];
 
 // Tres usuarios semilla (alumno, creador = Marta, superadmin = dueño de
-// Academia Klaze) + Daniel (u-creador), el fundador original de Academia
-// Klaze: hoy es alumno normal (rol "alumno") y queda como autor de contenido
+// Comunidad del Intercambio) + Daniel (u-creador), el fundador original de Academia
+// Comunidad del Intercambio: hoy es alumno normal (rol "alumno") y queda como autor de contenido
 // histórico (posts/comentarios previos a la reasignación de ownerId a
 // u-admin), pero ya no tiene chip de demo ni panel propio.
 const seeds: User[] = [
   {
     id: "u-alumno",
-    email: "alumno@klaze.app",
+    email: "alumno@intercambio.app",
     nombre: "Laura Jiménez",
     avatarUrl: "https://i.pravatar.cc/150?u=u-alumno",
     bio: "Vendo cursos de repostería y quiero profesionalizar mi comunidad.",
@@ -79,10 +79,10 @@ const seeds: User[] = [
   },
   {
     id: "u-creador",
-    email: "daniel.restrepo@klaze.app",
+    email: "daniel.restrepo@intercambio.app",
     nombre: "Daniel Restrepo",
     avatarUrl: "https://i.pravatar.cc/150?u=u-creador",
-    bio: "Fundador original de Academia Klaze, hoy la disfruta como un alumno más. Sigue ayudando a emprendedores a lanzar su primer producto digital.",
+    bio: "Fundador original de Comunidad del Intercambio, hoy la disfruta como un alumno más. Sigue ayudando a emprendedores a lanzar su primer producto digital.",
     rol: "alumno",
     comunidadIds: ["com-principal"],
     puntos: 0,
@@ -91,10 +91,10 @@ const seeds: User[] = [
   },
   {
     id: "u-admin",
-    email: "admin@klaze.app",
+    email: "admin@intercambio.app",
     nombre: "Andrea Salinas",
     avatarUrl: "https://i.pravatar.cc/150?u=u-admin",
-    bio: "Dueña de Klaze y de Academia Klaze. Superviso comunidades y facturación de toda la plataforma.",
+    bio: "Fundadora de Comunidad del Intercambio. Superviso las comunidades y la facturación de toda la plataforma.",
     rol: "superadmin",
     comunidadIds: ["com-principal", "com-esp"],
     puntos: 0,
@@ -103,7 +103,7 @@ const seeds: User[] = [
   },
   {
     id: "u-creador2",
-    email: "creador@klaze.app",
+    email: "creador@intercambio.app",
     nombre: "Marta Gómez",
     avatarUrl: "https://i.pravatar.cc/150?u=u-creador2",
     bio: "Profesora de inglés bilingüe. Fundadora de Inglés con Marta.",

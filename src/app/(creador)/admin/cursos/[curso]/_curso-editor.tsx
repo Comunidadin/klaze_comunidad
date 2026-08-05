@@ -19,7 +19,7 @@ import {
 import { useHydrated } from "@/lib/hooks/use-session";
 import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { useAdminCourse } from "@/lib/hooks/use-admin-courses";
-import { useKlazeStore } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
 import { leccionesOrdenadas, moduloDeLeccion, modulosOrdenados } from "@/components/course/course-utils";
 import { CoursePortada } from "@/components/course/course-portada";
 import { LessonEditor } from "@/components/admin/lesson-editor";
@@ -105,9 +105,9 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
   const hydrated = useHydrated();
   const community = useMyCommunity();
   const cursoOriginal = useAdminCourse(community?.id ?? "", cursoId);
-  const guardarCursoEnStore = useKlazeStore((s) => s.guardarCurso);
-  const siguienteModuloId = useKlazeStore((s) => s.siguienteModuloId);
-  const siguienteLeccionId = useKlazeStore((s) => s.siguienteLeccionId);
+  const guardarCursoEnStore = useAppStore((s) => s.guardarCurso);
+  const siguienteModuloId = useAppStore((s) => s.siguienteModuloId);
+  const siguienteLeccionId = useAppStore((s) => s.siguienteLeccionId);
   const router = useRouter();
 
   const [cursoIdCargado, setCursoIdCargado] = useState<string | null>(null);

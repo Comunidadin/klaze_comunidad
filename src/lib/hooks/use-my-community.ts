@@ -1,6 +1,6 @@
 "use client";
 
-import { resolverComunidad, useKlazeStore } from "@/lib/store";
+import { resolverComunidad, useAppStore } from "@/lib/store";
 import { mockCommunities } from "@/lib/mocks/communities";
 import { useSession } from "@/lib/hooks/use-session";
 import type { Community } from "@/lib/types";
@@ -18,8 +18,8 @@ import type { Community } from "@/lib/types";
  * asumir que siempre hay una.
  */
 export function useMyCommunity(): Community | null {
-  const comunidadesCreadas = useKlazeStore((s) => s.comunidadesCreadas);
-  const comunidadOverrides = useKlazeStore((s) => s.comunidadOverrides);
+  const comunidadesCreadas = useAppStore((s) => s.comunidadesCreadas);
+  const comunidadOverrides = useAppStore((s) => s.comunidadOverrides);
   const { user } = useSession();
 
   if (!user) return null;

@@ -1,6 +1,6 @@
 "use client";
 
-import { resolverComunidad, useKlazeStore } from "@/lib/store";
+import { resolverComunidad, useAppStore } from "@/lib/store";
 import { mockCommunities } from "@/lib/mocks/communities";
 import { useCourses } from "@/lib/hooks/use-courses";
 import type { Community, Course, Invitation } from "@/lib/types";
@@ -26,9 +26,9 @@ export interface UseInvitationResult {
  * los títulos de los cursos incluidos.
  */
 export function useInvitation(token: string): UseInvitationResult | null {
-  const invitaciones = useKlazeStore((s) => s.invitaciones);
-  const comunidadesCreadas = useKlazeStore((s) => s.comunidadesCreadas);
-  const comunidadOverrides = useKlazeStore((s) => s.comunidadOverrides);
+  const invitaciones = useAppStore((s) => s.invitaciones);
+  const comunidadesCreadas = useAppStore((s) => s.comunidadesCreadas);
+  const comunidadOverrides = useAppStore((s) => s.comunidadOverrides);
 
   const invitacion = invitaciones.find((inv) => inv.token === token) ?? null;
 

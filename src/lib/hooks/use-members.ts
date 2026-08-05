@@ -3,8 +3,9 @@
 import {
   aplicarPerfilOverride,
   cursoIdsCubreCurso,
+  enrollmentCubreCurso,
   resolverEstadoEnrollment,
-  useKlazeStore,
+  useAppStore,
 } from "@/lib/store";
 import { mockUsers } from "@/lib/mocks/users";
 import { mockEnrollments } from "@/lib/mocks/enrollments";
@@ -54,17 +55,24 @@ export function progresoPromedioDe(
   return Math.round(promedio * 100);
 }
 
-export function useMembers(comunidadId: string): { miembros: MemberConEstado[] } {
-  const usuariosCreados = useKlazeStore((s) => s.usuariosCreados);
-  const enrollmentsExtra = useKlazeStore((s) => s.enrollmentsExtra);
-  const perfilOverrides = useKlazeStore((s) => s.perfilOverrides);
-  const estadoOverrides = useKlazeStore((s) => s.estadoOverrides);
-  const cursosEditados = useKlazeStore((s) => s.cursosEditados);
-  const progreso = useKlazeStore((s) => s.progreso);
+/**
+ * Miembros de `comunidadId` o, si se pasa `cursoId` (Cambio 3: "Miembros" es
+ * ahora una pestaña por curso), solo quienes tienen acceso a ESE curso
+ * (`enrollmentCubreCurso`, punto único de verdad para ese criterio). Sin
+ * `cursoId` conserva el comportamiento histórico (directorio completo de la
+ * comunidad), que es lo que sigue usando `/admin/alumnos` y `/admin/reportes`.
+ */
+export function useMembers(comunidadId: string, cursoId?: string): { miembros: MemberConEstado[] } {
+  const usuariosCreados = useAppStore((s) => s.usuariosCreados);
+  const enrollmentsExtra = useAppStore((s) => s.enrollmentsExtra);
+  const perfilOverrides = useAppStore((s) => s.perfilOverrides);
+  const estadoOverrides = useAppStore((s) => s.estadoOverrides);
+  const cursosEditados = useAppStore((s) => s.cursosEditados);
+  const progreso = useAppStore((s) => s.progreso);
 
   const todosLosUsuarios = [...mockUsers, ...usuariosCreados];
   const enrollments = [...mockEnrollments, ...enrollmentsExtra].filter(
-    (e) => e.comunidadId === comunidadId
+    (e) => e.comunidadId === comunidadId && (!cursoId || enrollmentCubreCurso(e, cursoId))
   );
   const cursosComunidad = cursosVisiblesParaMiembro(comunidadId, cursosEditados);
 

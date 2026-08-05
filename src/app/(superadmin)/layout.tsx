@@ -18,7 +18,7 @@ const ITEMS_BASE: AdminNavItem[] = [
 ];
 
 // Enlace cruzado: solo cuando el superadmin es dueño de alguna comunidad
-// (hoy, u-admin con "Academia Klaze") ve el link a su propio admin — un
+// (hoy, u-admin con "Comunidad del Intercambio") ve el link a su propio admin — un
 // superadmin sin comunidad propia no tiene a dónde ir con este link.
 const ITEM_MI_ACADEMIA: AdminNavItem = {
   titulo: "Mi academia",

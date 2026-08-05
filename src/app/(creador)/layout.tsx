@@ -30,7 +30,7 @@ const ITEMS_BASE: AdminNavItem[] = [
   { titulo: "Configuración", href: "/admin/configuracion", icono: Settings },
 ];
 
-// Enlace cruzado: solo el superadmin (dueño de Klaze) ve el link a su panel
+// Enlace cruzado: solo el superadmin (dueño de Comunidad del Intercambio) ve el link a su panel
 // de plataforma desde el admin de "su" academia — un creador normal (p. ej.
 // Marta) no administra la plataforma y no debe verlo.
 const ITEM_PLATAFORMA: AdminNavItem = {

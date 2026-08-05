@@ -291,7 +291,7 @@ export default function AccesosPage() {
                       </TableCell>
                       <TableCell>
                         {inv.estado === "aceptada" ? (
-                          <Badge className="border-transparent bg-accent/15 text-accent">
+                          <Badge className="border-transparent bg-brand/15 text-brand">
                             Aceptada
                           </Badge>
                         ) : (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useKlazeStore } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
 import type { Invitation } from "@/lib/types";
 
 export function useInvitations(comunidadId: string): {
@@ -15,8 +15,8 @@ export function useInvitations(comunidadId: string): {
   // getSnapshot should be cached to avoid an infinite loop"). El mismo
   // patrón (seleccionar el array crudo, filtrar afuera) ya lo siguen
   // `useMembers` y `useCourses`.
-  const todasLasInvitaciones = useKlazeStore((s) => s.invitaciones);
-  const crearInvitaciones = useKlazeStore((s) => s.crearInvitaciones);
+  const todasLasInvitaciones = useAppStore((s) => s.invitaciones);
+  const crearInvitaciones = useAppStore((s) => s.crearInvitaciones);
 
   const invitaciones = todasLasInvitaciones.filter((inv) => inv.comunidadId === comunidadId);
 

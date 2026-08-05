@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Save, Settings } from "lucide-react";
 import { useHydrated } from "@/lib/hooks/use-session";
 import { useMyCommunity } from "@/lib/hooks/use-my-community";
-import { useKlazeStore } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,12 +24,15 @@ function ConfiguracionSkeleton() {
   );
 }
 
+// El primero es el cian de la marca (`--brand`): es el color por defecto de
+// una comunidad nueva, ver `registrarComunidad` en `src/lib/store.ts`. El
+// resto son alternativas para que cada creador diferencie la suya.
 const COLORES_PRESET = [
+  { nombre: "Cian", valor: "#06ABEB" },
   { nombre: "Índigo", valor: "#6366F1" },
   { nombre: "Naranja", valor: "#F97316" },
   { nombre: "Esmeralda", valor: "#10B981" },
   { nombre: "Rosa", valor: "#EC4899" },
-  { nombre: "Cielo", valor: "#0EA5E9" },
   { nombre: "Ámbar", valor: "#F59E0B" },
 ];
 
@@ -108,7 +111,7 @@ function PreviewEncabezado({ nombre, logoUrl, colorAcento }: PreviewEncabezadoPr
 export default function ConfiguracionPage() {
   const hydrated = useHydrated();
   const community = useMyCommunity();
-  const guardarComunidad = useKlazeStore((s) => s.guardarComunidad);
+  const guardarComunidad = useAppStore((s) => s.guardarComunidad);
 
   if (!hydrated) {
     return <ConfiguracionSkeleton />;

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useHydrated, useSession } from "@/lib/hooks/use-session";
+import { useMarcaAuth } from "@/lib/hooks/use-marca-auth";
 import { homePorRol } from "@/lib/routes";
 import { FullScreenLoader } from "@/components/shared/full-screen-loader";
 import { AuthBrandPanel } from "./_components/auth-brand-panel";
@@ -25,8 +26,7 @@ import { AuthBrandPanel } from "./_components/auth-brand-panel";
  * creador probando el link) sin que lo saquemos de la pantalla, y justo
  * después de `aceptarInvitacion` la sesión pasa de null a un usuario
  * nuevo — sin esta excepción este mismo guard competiría con el redirect
- * explícito de la página hacia `/c/{slug}/cursos` y ganaría el redirect
- * equivocado (`homePorRol` → `/c/{slug}/inicio`). La pantalla de
+ * explícito de la página hacia `/c/{slug}/cursos`. La pantalla de
  * invitación maneja su propio estado de carga vía `useHydrated` interno.
  */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -45,10 +45,31 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     return <FullScreenLoader />;
   }
 
+  return <AuthSplit>{children}</AuthSplit>;
+}
+
+/**
+ * Split-screen de auth: portada a sangre a la izquierda (video de la
+ * comunidad) y formulario a la derecha.
+ *
+ * El panel del formulario lleva la clase `light` siempre, sin importar el
+ * tema del usuario. No es un descuido: la pantalla de entrada es una
+ * portada de marca —cian sobre blanco, como el logo— y se ve igual para
+ * todo el mundo. Poner `light` como ancestro basta para que todos los
+ * tokens (`bg-background`, `text-foreground`, los `Input`, el `Button`)
+ * usen sus valores claros sin tocar una sola de las páginas hijas; ese
+ * selector se declara junto a `:root` en `globals.css`.
+ *
+ * Va en un componente aparte porque los hooks no pueden ir después de los
+ * `return` tempranos del guard de arriba.
+ */
+function AuthSplit({ children }: { children: React.ReactNode }) {
+  const marca = useMarcaAuth();
+
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
-      <AuthBrandPanel />
-      <div className="flex items-center justify-center px-6 py-12 sm:px-10">
+    <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
+      <AuthBrandPanel videoUrl={marca.videoUrl} posterUrl={marca.posterUrl} />
+      <div className="light flex items-center justify-center bg-background px-6 py-12 text-foreground sm:px-10">
         <div className="w-full max-w-sm">{children}</div>
       </div>
     </div>

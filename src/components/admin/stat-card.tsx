@@ -40,7 +40,7 @@ export function StatCard({ titulo, valor, delta, icono: Icono, className }: Stat
             <p
               className={cn(
                 "mt-1.5 inline-flex items-center gap-1 text-xs font-medium",
-                esPositivo ? "text-accent" : "text-destructive"
+                esPositivo ? "text-brand" : "text-destructive"
               )}
             >
               {esPositivo ? (

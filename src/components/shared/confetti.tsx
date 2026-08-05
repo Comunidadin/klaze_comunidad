@@ -36,8 +36,8 @@ const PARTICULAS: Particula[] = Array.from({ length: NUM_PARTICULAS }, (_, i) =>
     yVh: Math.sin(angulo) * distancia * 0.6 - 18,
     rotate: seed(i, 3) * 720 - 360,
     delay: seed(i, 4) * 0.25,
-    // Alterna índigo (--primary) y lima (--accent), la pareja de acento de Klaze.
-    color: i % 2 === 0 ? "var(--primary)" : "var(--accent)",
+    // Alterna índigo (--primary) y lima (--accent), la pareja de acento de Comunidad del Intercambio.
+    color: i % 2 === 0 ? "var(--primary)" : "var(--brand)",
     width: 5 + seed(i, 5) * 5,
     height: 8 + seed(i, 6) * 6,
   };

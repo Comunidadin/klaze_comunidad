@@ -1,6 +1,6 @@
 "use client";
 
-import { enrollmentCubreCurso, resolverEstadoEnrollment, useKlazeStore } from "@/lib/store";
+import { enrollmentCubreCurso, resolverEstadoEnrollment, useAppStore } from "@/lib/store";
 import { mockEnrollments } from "@/lib/mocks/enrollments";
 import { mergeCursos } from "@/lib/hooks/use-courses";
 import type { Course, Enrollment } from "@/lib/types";
@@ -40,9 +40,9 @@ function contarAlumnosConAcceso(
  * admin de la lista.
  */
 export function useAdminCourses(comunidadId: string): { cursos: CourseConAdmin[] } {
-  const cursosEditados = useKlazeStore((s) => s.cursosEditados);
-  const enrollmentsExtra = useKlazeStore((s) => s.enrollmentsExtra);
-  const estadoOverrides = useKlazeStore((s) => s.estadoOverrides);
+  const cursosEditados = useAppStore((s) => s.cursosEditados);
+  const enrollmentsExtra = useAppStore((s) => s.enrollmentsExtra);
+  const estadoOverrides = useAppStore((s) => s.estadoOverrides);
 
   const cursos = mergeCursos(comunidadId, cursosEditados);
   const enrollments = [...mockEnrollments, ...enrollmentsExtra];

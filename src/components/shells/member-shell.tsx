@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Lock, LogOut, SearchX, User as UserIcon } from "lucide-react";
 import { useCommunity } from "@/lib/hooks/use-community";
 import { useSession } from "@/lib/hooks/use-session";
@@ -19,15 +19,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
-
-const TABS = [
-  { label: "Inicio", segmento: "inicio" },
-  { label: "Cursos", segmento: "cursos" },
-  { label: "Calendario", segmento: "calendario" },
-  { label: "Miembros", segmento: "miembros" },
-  { label: "Ranking", segmento: "ranking" },
-] as const;
 
 export interface MemberShellProps {
   /** Slug de la comunidad (segmento `[comunidad]` de la ruta). */
@@ -35,22 +26,21 @@ export interface MemberShellProps {
   children: React.ReactNode;
 }
 
-/** Igual que el helper homónimo de `AdminShell`: activo en la ruta exacta o en cualquier subruta. */
-function esActivo(pathname: string | null, href: string): boolean {
-  if (!pathname) return false;
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
-
 /**
- * Shell del área de miembros: header sticky con logo/nombre de la
- * comunidad, tabs de navegación estilo Skool y menú de avatar. Aplica
- * `colorAcento` de la comunidad como `--community-accent` para
- * personalización visual por comunidad.
+ * Shell del área de miembros: header sticky con logo/nombre de la comunidad
+ * y menú de avatar. Aplica `colorAcento` de la comunidad como
+ * `--community-accent` para personalización visual por comunidad.
+ *
+ * Desde Cambio 3 el nivel superior del área de miembros es solo la lista de
+ * cursos — ya no hay tabs de Inicio/Calendario/Miembros/Ranking a este
+ * nivel (esas 4 pantallas viven ahora DENTRO de cada curso, ver
+ * `cursos/[curso]/(tabs)/_curso-tabs-shell.tsx`), así que este shell dejó de
+ * necesitar la nav de tabs y el layout de 3 columnas que tenía antes: es una
+ * sola columna centrada para toda página de `/c/[comunidad]/*`.
  */
 export function MemberShell({ communitySlug, children }: MemberShellProps) {
   const resultado = useCommunity(communitySlug);
   const { user, logout } = useSession();
-  const pathname = usePathname();
   const router = useRouter();
   const { Icono: IconoTema, etiqueta: etiquetaTema, toggle: toggleTema } = useThemeToggle();
 
@@ -82,7 +72,7 @@ export function MemberShell({ communitySlug, children }: MemberShellProps) {
   // seguir entrando para verificar/reactivar. A propósito NO se replica este
   // check en `/admin` (panel del creador): el brief pide mantenerlo simple
   // y solo bloquear el área de miembros, así el creador conserva acceso a
-  // su contenido para poder, por ejemplo, contactar a Klaze o revisar qué
+  // su contenido para poder, por ejemplo, contactar a Comunidad del Intercambio o revisar qué
   // pasó — igual que la reactivación, ambos casos son responsabilidad del
   // superadmin, no del alumno.
   if (community.estado === "suspendida" && user?.rol !== "superadmin") {
@@ -97,7 +87,7 @@ export function MemberShell({ communitySlug, children }: MemberShellProps) {
         </h1>
         <p className="max-w-sm text-sm text-pretty text-muted-foreground">
           {community.nombre} no está disponible en este momento. Si crees que esto es un error,
-          contacta al equipo de Klaze.
+          contacta al equipo de Comunidad del Intercambio.
         </p>
         <Button variant="outline" onClick={handleLogout} className="mt-2">
           <LogOut className="size-4" /> Cerrar sesión
@@ -114,8 +104,8 @@ export function MemberShell({ communitySlug, children }: MemberShellProps) {
       <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur supports-backdrop-filter:bg-card/85">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
           <Link
-            href={`/c/${community.slug}/inicio`}
-            className="flex min-w-0 items-center gap-2.5 outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
+            href={`/c/${community.slug}/cursos`}
+            className="flex min-w-0 items-center gap-2.5 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- logo mock (dicebear) sin dominio configurado en next/image */}
             <img
@@ -128,26 +118,6 @@ export function MemberShell({ communitySlug, children }: MemberShellProps) {
               {community.nombre}
             </span>
           </Link>
-
-          <nav className="flex items-center gap-1 overflow-x-auto">
-            {TABS.map((tab) => {
-              const href = `/c/${community.slug}/${tab.segmento}`;
-              const activo = esActivo(pathname, href);
-              return (
-                <Link
-                  key={tab.segmento}
-                  href={href}
-                  aria-current={activo ? "page" : undefined}
-                  className={cn(
-                    "shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-                    activo && "bg-primary/10 text-primary"
-                  )}
-                >
-                  {tab.label}
-                </Link>
-              );
-            })}
-          </nav>
 
           <div className="flex shrink-0 items-center gap-3">
             {user && <LevelBadge nivel={user.nivel} size="sm" />}

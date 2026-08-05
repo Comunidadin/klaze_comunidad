@@ -1,16 +1,16 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
-import { aplicarPerfilOverride, useKlazeStore } from "@/lib/store";
+import { aplicarPerfilOverride, useAppStore } from "@/lib/store";
 import { mockUsers } from "@/lib/mocks/users";
 import type { User } from "@/lib/types";
 
 function subscribeHydration(onChange: () => void): () => void {
-  return useKlazeStore.persist.onFinishHydration(onChange);
+  return useAppStore.persist.onFinishHydration(onChange);
 }
 
 function getHydratedSnapshot(): boolean {
-  return useKlazeStore.persist.hasHydrated();
+  return useAppStore.persist.hasHydrated();
 }
 
 function getServerHydratedSnapshot(): boolean {
@@ -32,7 +32,7 @@ export function useHydrated(): boolean {
   );
 
   useEffect(() => {
-    useKlazeStore.persist.rehydrate();
+    useAppStore.persist.rehydrate();
   }, []);
 
   return hydrated;
@@ -52,11 +52,11 @@ export interface UseSessionResult {
  */
 export function useSession(): UseSessionResult {
   const hydrated = useHydrated();
-  const currentUserId = useKlazeStore((s) => s.currentUserId);
-  const usuariosCreados = useKlazeStore((s) => s.usuariosCreados);
-  const perfilOverrides = useKlazeStore((s) => s.perfilOverrides);
-  const login = useKlazeStore((s) => s.login);
-  const logout = useKlazeStore((s) => s.logout);
+  const currentUserId = useAppStore((s) => s.currentUserId);
+  const usuariosCreados = useAppStore((s) => s.usuariosCreados);
+  const perfilOverrides = useAppStore((s) => s.perfilOverrides);
+  const login = useAppStore((s) => s.login);
+  const logout = useAppStore((s) => s.logout);
 
   if (!hydrated || !currentUserId) {
     return { user: null, login, logout };

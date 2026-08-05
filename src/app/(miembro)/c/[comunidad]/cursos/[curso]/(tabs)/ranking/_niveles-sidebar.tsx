@@ -64,7 +64,7 @@ export function NivelesSidebar({ comunidadId, nombresNiveles, miNivel }: Niveles
                 key={nivel}
                 className={cn(
                   "flex items-center gap-2.5 rounded-lg px-2 py-1.5",
-                  esActual && "bg-accent/15 ring-1 ring-accent/40"
+                  esActual && "bg-brand/15 ring-1 ring-brand/40"
                 )}
               >
                 <LevelBadge nivel={nivel} size="sm" className={cn(!alcanzado && "opacity-40")} />

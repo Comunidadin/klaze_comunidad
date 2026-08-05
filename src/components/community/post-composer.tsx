@@ -2,10 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
-import { PenSquare } from "lucide-react";
 import { useSession } from "@/lib/hooks/use-session";
-import { useKlazeStore } from "@/lib/store";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,35 +23,53 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { CommunitySpace } from "@/lib/types";
 
 export interface PostComposerProps {
   comunidadId: string;
-  /** `community.categorias` — nunca hardcodeadas, cada comunidad define las suyas. */
-  categorias: string[];
+  /** Curso dentro del cual se crea la publicación (Cambio 3). */
+  cursoId: string;
+  /** Espacios en los que el usuario actual puede publicar (ya filtrados por `soloLectura`/dueño, ver `Feed`). */
+  espacios: CommunitySpace[];
+  /** Espacio preseleccionado — el de la página actual si se abrió desde `/espacio/[slug]`, si no el primero de la lista. */
+  espacioIdPorDefecto?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 /**
- * Composer del feed: una fila colapsada tipo "input falso" (avatar +
- * placeholder "¿Qué quieres compartir?") que al clickear abre un Dialog con
- * título, cuerpo y categoría. Controlado desde afuera (`open`/`onOpenChange`)
- * para que el estado vacío por categoría también pueda abrirlo con su CTA.
+ * Dialog de "crear publicación": título, cuerpo y espacio de destino. Se
+ * abre desde el botón "Nueva publicación" del encabezado del feed (`Feed`) o
+ * desde el CTA del estado vacío — es puramente controlado (`open`/
+ * `onOpenChange`), sin trigger propio.
  */
-export function PostComposer({ comunidadId, categorias, open, onOpenChange }: PostComposerProps) {
+export function PostComposer({
+  comunidadId,
+  cursoId,
+  espacios,
+  espacioIdPorDefecto,
+  open,
+  onOpenChange,
+}: PostComposerProps) {
   const { user } = useSession();
-  const crearPost = useKlazeStore((s) => s.crearPost);
+  const crearPost = useAppStore((s) => s.crearPost);
 
-  const categoriaDefault = categorias.includes("General") ? "General" : (categorias[0] ?? "");
+  const espacioDefault = espacioIdPorDefecto ?? espacios[0]?.id ?? "";
 
   const [titulo, setTitulo] = useState("");
   const [cuerpo, setCuerpo] = useState("");
-  const [categoria, setCategoria] = useState(categoriaDefault);
+  const [espacioId, setEspacioId] = useState(espacioDefault);
 
+  // `Feed` remonta por completo al navegar entre la pestaña "Comunidad"
+  // agregada y `.../comunidad/espacio/[slug]` (son páginas distintas), así
+  // que `espacioDefault` no cambia mientras este componente sigue montado —
+  // no hace falta sincronizarlo en un efecto. `resetear()` (llamado al
+  // cerrar el Dialog, ver `handleOpenChange`) ya deja `espacioId` listo para
+  // la próxima apertura.
   function resetear() {
     setTitulo("");
     setCuerpo("");
-    setCategoria(categoriaDefault);
+    setEspacioId(espacioDefault);
   }
 
   function handleOpenChange(siguienteAbierto: boolean) {
@@ -74,8 +90,9 @@ export function PostComposer({ comunidadId, categorias, open, onOpenChange }: Po
 
     crearPost({
       comunidadId,
+      cursoId,
       autorId: user.id,
-      categoria: categoria || categoriaDefault,
+      espacioId: espacioId || espacioDefault,
       titulo: tituloLimpio,
       cuerpo: cuerpoLimpio,
       fijado: false,
@@ -86,76 +103,61 @@ export function PostComposer({ comunidadId, categorias, open, onOpenChange }: Po
   }
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => onOpenChange(true)}
-        className="flex w-full cursor-pointer items-center gap-3 rounded-2xl bg-card p-4 text-left ring-1 ring-foreground/10 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <Avatar size="sm">
-          <AvatarImage src={user?.avatarUrl} alt={user?.nombre ?? ""} />
-          <AvatarFallback>{user?.nombre?.[0] ?? "?"}</AvatarFallback>
-        </Avatar>
-        <span className="flex-1 text-sm text-muted-foreground">¿Qué quieres compartir?</span>
-        <PenSquare className="size-4 shrink-0 text-muted-foreground" />
-      </button>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Crear publicación</DialogTitle>
+            <DialogDescription>
+              Compártelo con el resto de la comunidad — aparece en el feed al instante.
+            </DialogDescription>
+          </DialogHeader>
 
-      <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-lg">
-          <form onSubmit={handleSubmit}>
-            <DialogHeader>
-              <DialogTitle>Crear publicación</DialogTitle>
-              <DialogDescription>
-                Compártelo con el resto de la comunidad — aparece en el feed al instante.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="mt-4 space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="post-titulo">Título</Label>
-                <Input
-                  id="post-titulo"
-                  value={titulo}
-                  onChange={(e) => setTitulo(e.target.value)}
-                  placeholder="Un título claro y directo"
-                  autoFocus
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="post-cuerpo">Cuerpo</Label>
-                <Textarea
-                  id="post-cuerpo"
-                  value={cuerpo}
-                  onChange={(e) => setCuerpo(e.target.value)}
-                  rows={5}
-                  placeholder="Cuéntanos con detalle…"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="post-categoria">Categoría</Label>
-                <Select value={categoria} onValueChange={setCategoria}>
-                  <SelectTrigger id="post-categoria" className="w-full">
-                    <SelectValue placeholder="Elige una categoría" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categorias.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          <div className="mt-4 space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="post-titulo">Título</Label>
+              <Input
+                id="post-titulo"
+                value={titulo}
+                onChange={(e) => setTitulo(e.target.value)}
+                placeholder="Un título claro y directo"
+                autoFocus
+              />
             </div>
 
-            <DialogFooter className="mt-2">
-              <Button type="submit">Publicar</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </>
+            <div className="space-y-1.5">
+              <Label htmlFor="post-cuerpo">Cuerpo</Label>
+              <Textarea
+                id="post-cuerpo"
+                value={cuerpo}
+                onChange={(e) => setCuerpo(e.target.value)}
+                rows={5}
+                placeholder="Cuéntanos con detalle…"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="post-espacio">Espacio</Label>
+              <Select value={espacioId} onValueChange={setEspacioId}>
+                <SelectTrigger id="post-espacio" className="w-full">
+                  <SelectValue placeholder="Elige un espacio" />
+                </SelectTrigger>
+                <SelectContent>
+                  {espacios.map((espacio) => (
+                    <SelectItem key={espacio.id} value={espacio.id}>
+                      <span aria-hidden="true">{espacio.icono}</span> {espacio.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-2">
+            <Button type="submit">Publicar</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

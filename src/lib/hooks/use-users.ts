@@ -1,6 +1,6 @@
 "use client";
 
-import { aplicarPerfilOverride, useKlazeStore } from "@/lib/store";
+import { aplicarPerfilOverride, useAppStore } from "@/lib/store";
 import { mockUsers } from "@/lib/mocks/users";
 import type { User } from "@/lib/types";
 
@@ -29,8 +29,8 @@ export interface UseUsuariosResult {
  * misma regla que ya siguen `useSession`/`useMembers`/`useGamification`.
  */
 export function useUsuarios(): UseUsuariosResult {
-  const usuariosCreados = useKlazeStore((s) => s.usuariosCreados);
-  const perfilOverrides = useKlazeStore((s) => s.perfilOverrides);
+  const usuariosCreados = useAppStore((s) => s.usuariosCreados);
+  const perfilOverrides = useAppStore((s) => s.perfilOverrides);
 
   const todosLosUsuarios = [...mockUsers, ...usuariosCreados];
 

@@ -23,11 +23,11 @@ export function generarICS(evento: CommunityEvent): string {
   const lineas = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Klaze//Calendario de comunidad//ES",
+    "PRODID:-//Comunidad del Intercambio//Calendario de comunidad//ES",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
-    `UID:${evento.id}@klaze.app`,
+    `UID:${evento.id}@intercambio.app`,
     `DTSTAMP:${formatFechaICS(ahora)}`,
     `DTSTART:${formatFechaICS(inicio)}`,
     `DTEND:${formatFechaICS(fin)}`,

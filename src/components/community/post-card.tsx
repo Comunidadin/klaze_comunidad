@@ -4,14 +4,15 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Heart, MessageCircle } from "lucide-react";
 import { useSession } from "@/lib/hooks/use-session";
-import { useKlazeStore } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
+import { useEspacios } from "@/lib/hooks/use-espacios";
+import { contarComentariosPost, type PostConAutor } from "@/lib/hooks/use-feed";
 import { CommentThread } from "@/components/community/comment-thread";
 import { LevelBadge } from "@/components/shared/level-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { tiempoRelativo } from "@/lib/fechas-ui";
 import { cn } from "@/lib/utils";
-import type { PostConAutor } from "@/lib/hooks/use-feed";
 
 export interface PostCardProps {
   post: PostConAutor;
@@ -21,28 +22,25 @@ export interface PostCardProps {
 /** Umbral de caracteres desde el que el cuerpo se recorta y aparece "Ver más". */
 const CUERPO_LARGO_UMBRAL = 220;
 
-/** Cuenta comentarios raíz + respuestas (modelo fijo de 2 niveles). */
-function contarComentarios(post: PostConAutor): number {
-  return post.comentarios.reduce((total, raiz) => total + 1 + raiz.respuestas.length, 0);
-}
-
 /**
- * Tarjeta de post del feed: autor + nivel + tiempo relativo, categoría,
+ * Tarjeta de post del feed: autor + nivel + tiempo relativo, espacio,
  * título/cuerpo (con "ver más" si es largo), like animado y comentarios
  * expandibles inline. Los posts fijados llevan borde índigo + indicador
  * "📌 Fijado" — la jerarquía visual que hace evidente qué leer primero.
- * Reutilizada por la moderación de comunidad (T14) para vista previa de posts.
+ * Reutilizada por la moderación de comunidad para vista previa de posts.
  */
 export function PostCard({ post, className }: PostCardProps) {
   const { user } = useSession();
-  const toggleLike = useKlazeStore((s) => s.toggleLike);
+  const toggleLike = useAppStore((s) => s.toggleLike);
+  const { secciones } = useEspacios(post.comunidadId);
 
   const [expandido, setExpandido] = useState(false);
   const [mostrarComentarios, setMostrarComentarios] = useState(false);
 
   const yaDioLike = user !== null && post.likes.includes(user.id);
   const esLargo = post.cuerpo.length > CUERPO_LARGO_UMBRAL;
-  const totalComentarios = contarComentarios(post);
+  const totalComentarios = contarComentariosPost(post);
+  const espacio = secciones.flatMap((s) => s.espacios).find((e) => e.id === post.espacioId);
 
   function handleLike() {
     if (!user) return;
@@ -75,9 +73,11 @@ export function PostCard({ post, className }: PostCardProps) {
           </div>
           <span className="text-xs text-muted-foreground">{tiempoRelativo(post.creadoEl)}</span>
         </div>
-        <Badge variant="secondary" className="shrink-0">
-          {post.categoria}
-        </Badge>
+        {espacio && (
+          <Badge variant="secondary" className="shrink-0">
+            <span aria-hidden="true">{espacio.icono}</span> {espacio.nombre}
+          </Badge>
+        )}
       </div>
 
       <h3 className="mt-3 font-display text-base font-semibold text-balance text-foreground">

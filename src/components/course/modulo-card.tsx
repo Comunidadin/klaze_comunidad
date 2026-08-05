@@ -37,7 +37,7 @@ export function ModuloCard({ modulo, numero, progreso, seleccionado, onSeleccion
       className={cn(
         "group relative flex aspect-[2/3] w-full flex-col overflow-hidden rounded-2xl bg-card text-left ring-1 ring-foreground/10 transition-all duration-300",
         "hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        seleccionado && "ring-2 ring-accent shadow-lg shadow-accent/15"
+        seleccionado && "ring-2 ring-brand shadow-lg shadow-brand/15"
       )}
     >
       <CoursePortada
@@ -57,7 +57,7 @@ export function ModuloCard({ modulo, numero, progreso, seleccionado, onSeleccion
       </span>
 
       {completo && (
-        <Badge className="absolute top-2 right-2 z-10 gap-1 border-0 bg-accent text-accent-foreground">
+        <Badge className="absolute top-2 right-2 z-10 gap-1 border-0 bg-brand text-brand-foreground">
           <CheckCircle2 className="size-3" /> Completo
         </Badge>
       )}
@@ -75,7 +75,7 @@ export function ModuloCard({ modulo, numero, progreso, seleccionado, onSeleccion
           <div className="mt-0.5 flex flex-col gap-1">
             <div className="h-1 w-full overflow-hidden rounded-full bg-white/20">
               <motion.div
-                className="h-full rounded-full bg-accent"
+                className="h-full rounded-full bg-brand"
                 initial={{ width: 0 }}
                 animate={{ width: `${progreso.pct}%` }}
                 transition={{ duration: 0.7, ease: "easeOut" }}

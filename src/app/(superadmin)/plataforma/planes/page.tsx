@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Save, Sparkles } from "lucide-react";
 import { useHydrated } from "@/lib/hooks/use-session";
 import { usePlatform } from "@/lib/hooks/use-platform";
-import { useKlazeStore } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
 import { formatUSD } from "@/lib/format-moneda";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -59,7 +59,7 @@ function numeroValido(valor: string, minimo: 0 | 1): number | null {
 }
 
 function PlanCard({ plan }: { plan: Plan }) {
-  const guardarPlan = useKlazeStore((s) => s.guardarPlan);
+  const guardarPlan = useAppStore((s) => s.guardarPlan);
   const [campos, setCampos] = useState<CamposPlan>(camposDe(plan));
 
   function actualizar<K extends keyof CamposPlan>(campo: K, valor: string) {
@@ -161,7 +161,7 @@ function PlanCard({ plan }: { plan: Plan }) {
 }
 
 /**
- * `/plataforma/planes`: catálogo editable de los 3 planes de Klaze — precio
+ * `/plataforma/planes`: catálogo editable de los 3 planes de Comunidad del Intercambio — precio
  * mensual y límites (comunidades/alumnos/cursos) por tarjeta, cada una con
  * su propio botón "Guardar" (`guardarPlan`, ver validación en
  * `numeroValido`). El nombre del plan es fijo a propósito: es la identidad

@@ -18,8 +18,11 @@ export type {
 export { useAdminCourse, useAdminCourses } from "@/lib/hooks/use-admin-courses";
 export type { CourseConAdmin } from "@/lib/hooks/use-admin-courses";
 
-export { useFeed } from "@/lib/hooks/use-feed";
-export type { PostConAutor } from "@/lib/hooks/use-feed";
+export { useFeed, contarComentariosPost } from "@/lib/hooks/use-feed";
+export type { PostConAutor, OrdenFeed } from "@/lib/hooks/use-feed";
+
+export { useEspacios } from "@/lib/hooks/use-espacios";
+export type { EspacioConNoLeidos, SeccionConEspacios } from "@/lib/hooks/use-espacios";
 
 export { useMembers } from "@/lib/hooks/use-members";
 export type { MemberConEstado } from "@/lib/hooks/use-members";

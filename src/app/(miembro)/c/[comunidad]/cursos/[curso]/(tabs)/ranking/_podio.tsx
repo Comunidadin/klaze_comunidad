@@ -17,25 +17,27 @@ export interface PodioProps {
 // tres pedestales por abajo (items-end) manteniendo alturas distintas.
 const RANGO_ESTILOS = {
   1: {
-    avatarRing: "ring-accent",
+    avatarRing: "ring-brand",
     avatarSize: "size-20 sm:size-24",
-    numeral: "text-accent/25",
-    pedestal: "h-28 sm:h-32 bg-accent/15 ring-accent/40 text-foreground",
+    numeral: "text-brand/25",
+    pedestal: "h-28 sm:h-32 bg-brand/15 ring-brand/40 text-foreground",
     orden: "order-2",
   },
+  // 2º y 3º no usan oro/plata/bronce: la paleta de la marca es cian, negro y
+  // blanco, así que el podio baja en intensidad de cian en vez de cambiar de
+  // color (el ámbar de bronce quedaba fuera de paleta).
   2: {
-    avatarRing: "ring-foreground/20",
+    avatarRing: "ring-primary/35",
     avatarSize: "size-14 sm:size-16",
-    numeral: "text-muted-foreground/20",
-    pedestal: "h-18 sm:h-20 bg-muted ring-border text-foreground",
+    numeral: "text-primary/20",
+    pedestal: "h-18 sm:h-20 bg-primary/10 ring-primary/25 text-foreground",
     orden: "order-1",
   },
   3: {
-    avatarRing: "ring-amber-600/40 dark:ring-amber-400/30",
+    avatarRing: "ring-foreground/15",
     avatarSize: "size-14 sm:size-16",
-    numeral: "text-amber-600/15 dark:text-amber-400/15",
-    pedestal:
-      "h-14 sm:h-16 bg-amber-500/10 ring-amber-600/25 text-foreground dark:bg-amber-400/10 dark:ring-amber-400/25",
+    numeral: "text-muted-foreground/20",
+    pedestal: "h-14 sm:h-16 bg-muted ring-border text-foreground",
     orden: "order-3",
   },
 } as const;
@@ -64,7 +66,7 @@ export function Podio({ entries, miUserId }: PodioProps) {
           >
             <div className="flex flex-col items-center gap-1.5">
               {esPrimero && (
-                <Crown className="size-5 fill-accent text-accent" aria-hidden="true" />
+                <Crown className="size-5 fill-brand text-brand" aria-hidden="true" />
               )}
               <div className={cn("relative flex items-center justify-center", estilos.avatarSize)}>
                 <span

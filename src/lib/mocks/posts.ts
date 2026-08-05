@@ -13,18 +13,19 @@ function comentario(
 }
 
 // ---------------------------------------------------------------------------
-// Comunidad principal — 20 posts (1 fijado) repartidos en 4 categorías
+// Comunidad principal — 20 posts (1 fijado) repartidos en varios espacios
 // ---------------------------------------------------------------------------
 
 const principal: Post[] = [
   {
     id: "post-1",
     comunidadId: "com-principal",
+    cursoId: "curso-1",
     autorId: "u-admin",
-    categoria: "Anuncios",
-    titulo: "📌 Bienvenido a Academia Klaze — empieza aquí",
+    espacioId: "esp-anuncios-curso-1",
+    titulo: "📌 Bienvenido a Comunidad del Intercambio — empieza aquí",
     cuerpo:
-      "¡Hola! Soy Andrea, dueña de Klaze y de Academia Klaze. Este es tu punto de partida: revisa el módulo 1 de Lanzamiento Digital Pro, preséntate en este post y cuéntanos en qué etapa de tu negocio estás. Estamos para acompañarte.",
+      "¡Hola! Soy Andrea, fundadora de Comunidad del Intercambio. Este es tu punto de partida: revisa el módulo 1 de Lanzamiento Digital Pro, preséntate en este post y cuéntanos en qué etapa de tu negocio estás. Estamos para acompañarte.",
     fijado: true,
     likes: ["u-alumno", "u-m1", "u-m2", "u-m3", "u-m4", "u-m5", "u-m6", "u-m7", "u-m8", "u-m9"],
     comentarios: [
@@ -41,8 +42,9 @@ const principal: Post[] = [
   {
     id: "post-2",
     comunidadId: "com-principal",
+    cursoId: "curso-1",
     autorId: "u-creador",
-    categoria: "Anuncios",
+    espacioId: "esp-anuncios-curso-1",
     titulo: "Nueva lección disponible: 'Checklist antes de publicar tu landing'",
     cuerpo:
       "Acabo de subir una lección corta con el checklist exacto que uso antes de publicar cualquier landing. Está en el módulo 3 de Lanzamiento Digital Pro. Revísenla antes de publicar la suya.",
@@ -59,8 +61,9 @@ const principal: Post[] = [
   {
     id: "post-3",
     comunidadId: "com-principal",
+    cursoId: "curso-3",
     autorId: "u-creador",
-    categoria: "Anuncios",
+    espacioId: "esp-anuncios-curso-3",
     titulo: "Mentoría Élite abre cupos este viernes",
     cuerpo:
       "Para quienes ya alcanzaron nivel Aprendiz o más: el viernes abrimos 15 cupos nuevos de Mentoría Élite. Es un espacio pequeño para negocios que ya están vendiendo y quieren escalar.",
@@ -72,8 +75,9 @@ const principal: Post[] = [
   {
     id: "post-4",
     comunidadId: "com-principal",
+    cursoId: "curso-2",
     autorId: "u-admin",
-    categoria: "Anuncios",
+    espacioId: "esp-anuncios-curso-2",
     titulo: "Mantenimiento programado el sábado a medianoche",
     cuerpo:
       "El sábado a las 12:00 a.m. haremos mantenimiento de la plataforma por unos 20 minutos. Es posible que el video se vea afectado brevemente. Gracias por su paciencia.",
@@ -85,8 +89,9 @@ const principal: Post[] = [
   {
     id: "post-5",
     comunidadId: "com-principal",
+    cursoId: "curso-1",
     autorId: "u-m1",
-    categoria: "General",
+    espacioId: "esp-bienvenida-curso-1",
     titulo: "¿Alguien más grabando su primer curso desde el celular?",
     cuerpo:
       "Estoy grabando todo con mi celular siguiendo la lección de iluminación y sonido. Se ve mejor de lo que esperaba. ¿Tips extra de quienes ya pasaron por esto?",
@@ -101,8 +106,9 @@ const principal: Post[] = [
   {
     id: "post-6",
     comunidadId: "com-principal",
+    cursoId: "curso-1",
     autorId: "u-m3",
-    categoria: "General",
+    espacioId: "esp-bienvenida-curso-1",
     titulo: "Mi rutina de contenido semanal (la comparto por si sirve)",
     cuerpo:
       "Lunes: planeo 3 ideas. Miércoles: grabo. Viernes: publico y respondo comentarios. Me ha ayudado a no improvisar cada día. ¿Cómo organizan ustedes el suyo?",
@@ -120,8 +126,9 @@ const principal: Post[] = [
   {
     id: "post-7",
     comunidadId: "com-principal",
+    cursoId: "curso-1",
     autorId: "u-m7",
-    categoria: "General",
+    espacioId: "esp-general-curso-1",
     titulo: "Lo que más me costó del módulo 2",
     cuerpo:
       "Sinceramente el precio fue lo que más me costó decidir. Terminé usando el ejercicio de anclaje de la lección 8 y me ayudó a no regalar mi trabajo.",
@@ -135,8 +142,9 @@ const principal: Post[] = [
   {
     id: "post-8",
     comunidadId: "com-principal",
+    cursoId: "curso-1",
     autorId: "u-m11",
-    categoria: "General",
+    espacioId: "esp-general-curso-1",
     titulo: "Herramienta gratuita que uso para diseñar mis portadas",
     cuerpo:
       "Uso Canva con las plantillas que recomienda Daniel en la lección 7. En 20 minutos tuve una portada que se ve profesional sin pagar nada.",
@@ -148,8 +156,9 @@ const principal: Post[] = [
   {
     id: "post-9",
     comunidadId: "com-principal",
+    cursoId: "curso-2",
     autorId: "u-m14",
-    categoria: "General",
+    espacioId: "esp-general-curso-2",
     titulo: "Recomendación de libro para quienes venden por WhatsApp",
     cuerpo:
       "Después del curso de Ventas por WhatsApp me metí a leer más sobre venta conversacional. Si alguien quiere referencias en español, tengo un par guardadas.",
@@ -165,8 +174,9 @@ const principal: Post[] = [
   {
     id: "post-10",
     comunidadId: "com-principal",
+    cursoId: "curso-2",
     autorId: "u-m20",
-    categoria: "General",
+    espacioId: "esp-general-curso-2",
     titulo: "¿Cómo organizan su calendario de contenido?",
     cuerpo:
       "Estoy probando Notion pero se me hace pesado. ¿Alguien usa algo más simple, tipo una hoja de cálculo?",
@@ -178,8 +188,9 @@ const principal: Post[] = [
   {
     id: "post-11",
     comunidadId: "com-principal",
+    cursoId: "curso-1",
     autorId: "u-m2",
-    categoria: "Wins",
+    espacioId: "esp-wins-curso-1",
     titulo: "¡Cerré mi primera venta gracias al módulo 3!",
     cuerpo:
       "Publiqué mi landing el lunes siguiendo el checklist exacto y el jueves ya tenía mi primera venta. Todavía no lo puedo creer, gracias a toda la comunidad por el empujón.",
@@ -197,8 +208,9 @@ const principal: Post[] = [
   {
     id: "post-12",
     comunidadId: "com-principal",
+    cursoId: "curso-2",
     autorId: "u-m5",
-    categoria: "Wins",
+    espacioId: "esp-wins-curso-2",
     titulo: "Superé mi meta del mes vendiendo Ventas por WhatsApp",
     cuerpo:
       "Me propuse 5 ventas este mes usando el guion de bienvenida del curso y cerré 8. El manejo de objeciones del módulo 2 fue clave.",
@@ -214,8 +226,9 @@ const principal: Post[] = [
   {
     id: "post-13",
     comunidadId: "com-principal",
+    cursoId: "curso-1",
     autorId: "u-m9",
-    categoria: "Wins",
+    espacioId: "esp-wins-curso-1",
     titulo: "Mi landing ya tiene 3% de conversión",
     cuerpo:
       "Después de aplicar el copywriting del módulo 3, pasé de 0.8% a 3% de conversión. El titular nuevo hizo toda la diferencia.",
@@ -231,8 +244,9 @@ const principal: Post[] = [
   {
     id: "post-14",
     comunidadId: "com-principal",
+    cursoId: "curso-2",
     autorId: "u-m16",
-    categoria: "Wins",
+    espacioId: "esp-wins-curso-2",
     titulo: "Primer cliente recurrente 🎉",
     cuerpo:
       "Un cliente que compró en el lanzamiento pasado volvió a comprar mi segundo producto. El mensaje de seguimiento post-venta funcionó tal como lo explican en el curso.",
@@ -244,8 +258,9 @@ const principal: Post[] = [
   {
     id: "post-15",
     comunidadId: "com-principal",
+    cursoId: "curso-2",
     autorId: "u-m22",
-    categoria: "Wins",
+    espacioId: "esp-wins-curso-2",
     titulo: "Llegué a nivel Práctico esta semana",
     cuerpo:
       "Entre comentarios, likes y terminar el curso de Ventas por WhatsApp subí a nivel Práctico. Poco a poco se siente el avance.",
@@ -257,8 +272,9 @@ const principal: Post[] = [
   {
     id: "post-16",
     comunidadId: "com-principal",
+    cursoId: "curso-1",
     autorId: "u-alumno",
-    categoria: "Preguntas",
+    espacioId: "esp-preguntas-curso-1",
     titulo: "¿Cuánto debería cobrar por mi primer curso?",
     cuerpo:
       "Voy a lanzar un curso de repostería casera y no tengo idea de cuánto cobrar. ¿Cómo decidieron ustedes su primer precio?",
@@ -278,8 +294,9 @@ const principal: Post[] = [
   {
     id: "post-17",
     comunidadId: "com-principal",
+    cursoId: "curso-1",
     autorId: "u-m4",
-    categoria: "Preguntas",
+    espacioId: "esp-preguntas-curso-1",
     titulo: "¿Qué pasarela de pago recomiendan para Latinoamérica?",
     cuerpo:
       "Vendo a varios países de la región y quiero simplificar mi checkout. ¿Con cuál pasarela les ha ido mejor?",
@@ -295,8 +312,9 @@ const principal: Post[] = [
   {
     id: "post-18",
     comunidadId: "com-principal",
+    cursoId: "curso-1",
     autorId: "u-m8",
-    categoria: "Preguntas",
+    espacioId: "esp-preguntas-curso-1",
     titulo: "¿Cómo consiguen sus primeros testimonios?",
     cuerpo:
       "Todavía no tengo ninguno y siento que mi landing se ve vacía sin prueba social. ¿Alguna forma de conseguirlos rápido y honesto?",
@@ -310,8 +328,9 @@ const principal: Post[] = [
   {
     id: "post-19",
     comunidadId: "com-principal",
+    cursoId: "curso-1",
     autorId: "u-m13",
-    categoria: "Preguntas",
+    espacioId: "esp-preguntas-curso-1",
     titulo: "¿Vale la pena hacer un lanzamiento en vivo o grabado?",
     cuerpo:
       "Estoy en la lección de estrategia de lanzamiento y no sé si animarme a hacer algo en vivo o simplemente grabar todo con calma.",
@@ -326,8 +345,9 @@ const principal: Post[] = [
   {
     id: "post-20",
     comunidadId: "com-principal",
+    cursoId: "curso-3",
     autorId: "u-m18",
-    categoria: "Preguntas",
+    espacioId: "esp-preguntas-curso-3",
     titulo: "¿Alguien ha probado dar mentoría en grupo pequeño?",
     cuerpo:
       "Estoy pensando en ofrecer mentoría grupal además de mi curso grabado. ¿Cómo estructuran las sesiones quienes ya lo hacen?",
@@ -346,8 +366,9 @@ const secundaria: Post[] = [
   {
     id: "post-esp-1",
     comunidadId: "com-esp",
+    cursoId: "curso-4",
     autorId: "u-creador2",
-    categoria: "Anuncios",
+    espacioId: "esp-anuncios-curso-4",
     titulo: "Bienvenidos al espacio de práctica de Inglés con Marta",
     cuerpo:
       "¡Hola a todos! Este espacio es para practicar entre clases. Comenten sus dudas, compartan frases nuevas y anímense a hablar sin miedo a equivocarse.",
@@ -361,8 +382,9 @@ const secundaria: Post[] = [
   {
     id: "post-esp-2",
     comunidadId: "com-esp",
+    cursoId: "curso-4",
     autorId: "u-m19",
-    categoria: "General",
+    espacioId: "esp-bienvenida-curso-4",
     titulo: "Grupo de práctica los jueves 7pm",
     cuerpo:
       "Organizamos una llamada informal los jueves a las 7pm solo para practicar conversación. ¿Se suman?",
@@ -378,8 +400,9 @@ const secundaria: Post[] = [
   {
     id: "post-esp-3",
     comunidadId: "com-esp",
+    cursoId: "curso-4",
     autorId: "u-m21",
-    categoria: "Wins",
+    espacioId: "esp-wins-curso-4",
     titulo: "¡Ya puedo mantener una conversación de 5 minutos en inglés!",
     cuerpo:
       "Practiqué con la lección de pedir un café y ayer me animé a hacerlo de verdad en una cafetería. ¡Funcionó!",

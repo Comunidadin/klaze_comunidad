@@ -61,7 +61,7 @@ export default function PlataformaDashboardPage() {
           Panel de plataforma
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Cómo va Klaze en conjunto — comunidades, creadores e ingresos simulados.
+          Cómo va Comunidad del Intercambio en conjunto — comunidades, creadores e ingresos simulados.
         </p>
       </div>
 

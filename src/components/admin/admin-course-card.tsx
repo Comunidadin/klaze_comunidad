@@ -42,7 +42,7 @@ export function AdminCourseCard({ curso }: AdminCourseCardProps) {
             className={cn(
               "absolute top-2 right-2 z-10 border-0",
               curso.publicado
-                ? "bg-accent text-accent-foreground"
+                ? "bg-brand text-brand-foreground"
                 : "bg-background/90 text-foreground"
             )}
           >

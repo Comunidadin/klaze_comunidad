@@ -15,7 +15,7 @@ export interface LevelBadgeProps {
   className?: string;
 }
 
-/** Badge hexagonal de nivel, acento lima — firma visual de la gamificación Klaze. */
+/** Badge hexagonal de nivel, acento lima — firma visual de la gamificación Comunidad del Intercambio. */
 export function LevelBadge({ nivel, size = "md", className }: LevelBadgeProps) {
   return (
     <span
@@ -25,10 +25,10 @@ export function LevelBadge({ nivel, size = "md", className }: LevelBadgeProps) {
       title={`Nivel ${nivel}`}
     >
       <span
-        className="absolute inset-0 bg-accent drop-shadow-sm"
+        className="absolute inset-0 bg-brand drop-shadow-sm"
         style={{ clipPath: HEXAGONO }}
       />
-      <span className="relative flex size-full items-center justify-center font-display font-bold tabular-nums text-accent-foreground">
+      <span className="relative flex size-full items-center justify-center font-display font-bold tabular-nums text-brand-foreground">
         {nivel}
       </span>
     </span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { enrollmentCubreCurso, resolverEstadoEnrollment, useKlazeStore } from "@/lib/store";
+import { enrollmentCubreCurso, resolverEstadoEnrollment, useAppStore } from "@/lib/store";
 import { mockCourses } from "@/lib/mocks/courses";
 import { mockEnrollments } from "@/lib/mocks/enrollments";
 import { useSession } from "@/lib/hooks/use-session";
@@ -59,10 +59,10 @@ export function cursosVisiblesParaMiembro(
 }
 
 export function useCourses(comunidadId: string): { cursos: CourseConAcceso[] } {
-  const cursosEditados = useKlazeStore((s) => s.cursosEditados);
-  const enrollmentsExtra = useKlazeStore((s) => s.enrollmentsExtra);
-  const progreso = useKlazeStore((s) => s.progreso);
-  const estadoOverrides = useKlazeStore((s) => s.estadoOverrides);
+  const cursosEditados = useAppStore((s) => s.cursosEditados);
+  const enrollmentsExtra = useAppStore((s) => s.enrollmentsExtra);
+  const progreso = useAppStore((s) => s.progreso);
+  const estadoOverrides = useAppStore((s) => s.estadoOverrides);
   const { user } = useSession();
 
   const cursos = cursosVisiblesParaMiembro(comunidadId, cursosEditados);
@@ -115,9 +115,9 @@ export function useLesson(
   cursoId: string,
   leccionId: string
 ): UseLessonResult | null {
-  const cursosEditados = useKlazeStore((s) => s.cursosEditados);
-  const progreso = useKlazeStore((s) => s.progreso);
-  const toggleLeccionCompleta = useKlazeStore((s) => s.toggleLeccionCompleta);
+  const cursosEditados = useAppStore((s) => s.cursosEditados);
+  const progreso = useAppStore((s) => s.progreso);
+  const toggleLeccionCompleta = useAppStore((s) => s.toggleLeccionCompleta);
   const { user } = useSession();
 
   const override = cursosEditados.find((c) => c.id === cursoId);

@@ -1,19 +1,19 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import {
   MessagesSquare,
   Pin,
   Plus,
   Save,
-  Tags,
   Trash2,
 } from "lucide-react";
 import { useHydrated } from "@/lib/hooks/use-session";
 import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { useFeed, type PostConAutor } from "@/lib/hooks/use-feed";
-import { useKlazeStore } from "@/lib/store";
+import { useEspacios } from "@/lib/hooks/use-espacios";
+import { slugify, useAppStore } from "@/lib/store";
 import { formatFechaLarga } from "@/lib/format-fecha";
 import { NIVEL_MAXIMO } from "@/lib/levels";
 import { LevelBadge } from "@/components/shared/level-badge";
@@ -33,7 +33,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import type { Community } from "@/lib/types";
+import type { Community, CommunitySection, CommunitySpace } from "@/lib/types";
 
 function ComunidadSkeleton() {
   return (
@@ -71,6 +71,12 @@ function PostModeracionRow({
   onFijar: () => void;
   onEliminar: () => void;
 }) {
+  // Cambio 3: los espacios de un post viven en `Course.secciones` (namespaced
+  // por curso), no en `Community.secciones` — hay que resolver con el
+  // `cursoId` del post, si no el lookup nunca matchea y el badge desaparece.
+  const { secciones } = useEspacios(post.comunidadId, post.cursoId);
+  const espacio = secciones.flatMap((s) => s.espacios).find((e) => e.id === post.espacioId);
+
   return (
     <div
       className={cn(
@@ -86,7 +92,11 @@ function PostModeracionRow({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-sm font-medium text-foreground">{post.autor.nombre}</span>
-          <Badge variant="secondary">{post.categoria}</Badge>
+          {espacio && (
+            <Badge variant="secondary">
+              <span aria-hidden="true">{espacio.icono}</span> {espacio.nombre}
+            </Badge>
+          )}
           {post.fijado && (
             <Badge className="border-transparent bg-primary/15 text-primary">📌 Fijado</Badge>
           )}
@@ -109,8 +119,8 @@ function PostModeracionRow({
 }
 
 function PostsTab({ posts }: { posts: PostConAutor[] }) {
-  const eliminarPost = useKlazeStore((s) => s.eliminarPost);
-  const fijarPost = useKlazeStore((s) => s.fijarPost);
+  const eliminarPost = useAppStore((s) => s.eliminarPost);
+  const fijarPost = useAppStore((s) => s.fijarPost);
 
   const [postAEliminar, setPostAEliminar] = useState<PostConAutor | null>(null);
   // Ver docstring del mismo patrón en /admin/alumnos: retiene el último post
@@ -179,152 +189,230 @@ function PostsTab({ posts }: { posts: PostConAutor[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// Categorías
+// Espacios
 // ---------------------------------------------------------------------------
 
-/** Categoría de respaldo: ni se elimina ni se renombra (mismo criterio que `useFeed`, ver CATEGORIA_RESPALDO ahí). */
-const CATEGORIA_GENERAL = "General";
+/** Espacio de respaldo: no se puede eliminar (mismo criterio que `useFeed`, ver ESPACIO_RESPALDO ahí). No se editan las secciones en sí (sin crear/eliminar secciones, "mantenlo simple" del brief) — solo los espacios dentro de cada una. */
+const ESPACIO_GENERAL = "esp-general";
 
-function CategoriasTab({
+type NuevoEspacioForm = { nombre: string; icono: string };
+
+function EspaciosTab({
   comunidadId,
-  categoriasIniciales,
+  seccionesIniciales,
   posts,
 }: {
   comunidadId: string;
-  categoriasIniciales: string[];
+  seccionesIniciales: CommunitySection[];
   posts: PostConAutor[];
 }) {
-  const guardarCategorias = useKlazeStore((s) => s.guardarCategorias);
+  const guardarSecciones = useAppStore((s) => s.guardarSecciones);
+  const siguienteEspacioId = useAppStore((s) => s.siguienteEspacioId);
 
-  const [categorias, setCategorias] = useState<string[]>(categoriasIniciales);
-  const guardadasRef = useRef<string[]>(categoriasIniciales);
-  const [nuevaCategoria, setNuevaCategoria] = useState("");
-  const [categoriaAEliminar, setCategoriaAEliminar] = useState<string | null>(null);
+  const [secciones, setSecciones] = useState<CommunitySection[]>(seccionesIniciales);
+  const [nuevoPorSeccion, setNuevoPorSeccion] = useState<Record<string, NuevoEspacioForm>>({});
+  const [espacioAEliminar, setEspacioAEliminar] = useState<{
+    seccionId: string;
+    espacio: CommunitySpace;
+  } | null>(null);
 
-  function persistir(lista: string[]) {
-    guardadasRef.current = lista;
-    setCategorias(lista);
-    guardarCategorias(comunidadId, lista);
+  function persistir(siguiente: CommunitySection[]) {
+    setSecciones(siguiente);
+    guardarSecciones(comunidadId, siguiente);
   }
 
-  function agregar() {
-    const nombre = nuevaCategoria.trim();
-    if (!nombre) return;
-    if (categorias.some((c) => c.toLowerCase() === nombre.toLowerCase())) {
-      toast.error(`Ya existe la categoría «${nombre}».`);
-      return;
-    }
-    persistir([...categorias, nombre]);
-    setNuevaCategoria("");
-    toast.success(`Categoría «${nombre}» agregada.`);
-  }
-
-  function handleBlurRenombrar(indice: number) {
-    const valor = categorias[indice].trim();
-    const anterior = guardadasRef.current[indice];
-    if (!valor || valor === anterior) {
-      setCategorias(guardadasRef.current);
-      return;
-    }
-    const duplicada = categorias.some(
-      (c, i) => i !== indice && c.toLowerCase() === valor.toLowerCase()
+  function actualizarCampo(
+    seccionId: string,
+    espacioId: string,
+    campo: "nombre" | "icono",
+    valor: string
+  ) {
+    setSecciones((prev) =>
+      prev.map((s) =>
+        s.id !== seccionId
+          ? s
+          : {
+              ...s,
+              espacios: s.espacios.map((e) =>
+                e.id === espacioId ? { ...e, [campo]: valor } : e
+              ),
+            }
+      )
     );
-    if (duplicada) {
-      toast.error(`Ya existe una categoría llamada «${valor}».`);
-      setCategorias(guardadasRef.current);
+  }
+
+  function handleBlurGuardar(seccionId: string, espacioId: string) {
+    const espacio = secciones
+      .find((s) => s.id === seccionId)
+      ?.espacios.find((e) => e.id === espacioId);
+    if (!espacio || !espacio.nombre.trim()) {
+      // Nombre vacío: revierte al último estado persistido en vez de guardar basura.
+      setSecciones(seccionesIniciales);
       return;
     }
-    persistir(categorias.map((c, i) => (i === indice ? valor : c)));
-    toast.success("Categoría actualizada.");
+    persistir(secciones);
+    toast.success("Espacio actualizado.");
+  }
+
+  function agregar(seccionId: string) {
+    const datos = nuevoPorSeccion[seccionId];
+    const nombre = datos?.nombre.trim();
+    if (!nombre) return;
+
+    const id = siguienteEspacioId();
+    const seccion = secciones.find((s) => s.id === seccionId);
+    const nuevoEspacio: CommunitySpace = {
+      id,
+      slug: slugify(nombre) || id.replace(/^esp-/, ""),
+      nombre,
+      icono: datos?.icono.trim() || "💬",
+      orden: (seccion?.espacios.length ?? 0) + 1,
+    };
+
+    persistir(
+      secciones.map((s) =>
+        s.id === seccionId ? { ...s, espacios: [...s.espacios, nuevoEspacio] } : s
+      )
+    );
+    setNuevoPorSeccion((prev) => ({ ...prev, [seccionId]: { nombre: "", icono: "" } }));
+    toast.success(`Espacio «${nombre}» agregado.`);
   }
 
   function confirmarEliminar() {
-    if (!categoriaAEliminar) return;
-    persistir(categorias.filter((c) => c !== categoriaAEliminar));
-    toast.success(`Categoría «${categoriaAEliminar}» eliminada — sus publicaciones pasan a General.`);
-    setCategoriaAEliminar(null);
+    if (!espacioAEliminar) return;
+    const { seccionId, espacio } = espacioAEliminar;
+    persistir(
+      secciones.map((s) =>
+        s.id !== seccionId ? s : { ...s, espacios: s.espacios.filter((e) => e.id !== espacio.id) }
+      )
+    );
+    toast.success(`Espacio «${espacio.nombre}» eliminado — sus publicaciones pasan a ${nombreGeneral}.`);
+    setEspacioAEliminar(null);
   }
 
-  const postsEnCategoriaAEliminar = categoriaAEliminar
-    ? posts.filter((p) => p.categoria === categoriaAEliminar).length
+  const postsEnEspacioAEliminar = espacioAEliminar
+    ? posts.filter((p) => p.espacioId === espacioAEliminar.espacio.id).length
     : 0;
 
+  // El nombre para mostrar del espacio de respaldo — resuelto por id, no
+  // hardcodeado como "General": el dueño puede renombrarlo (solo eliminarlo
+  // está bloqueado, ver `esGeneral` abajo), y la copy de esta pestaña debe
+  // reflejar ese nombre vigente.
+  const nombreGeneral =
+    secciones.flatMap((s) => s.espacios).find((e) => e.id === ESPACIO_GENERAL)?.nombre ??
+    "General";
+
   return (
-    <div className="mt-4 space-y-5">
+    <div className="mt-4 space-y-8">
       <p className="text-sm text-pretty text-muted-foreground">
-        Estas categorías aparecen como pestañas en el feed de la comunidad.{" "}
-        <span className="font-medium text-foreground">General</span> es la categoría de respaldo:
-        no se puede eliminar ni renombrar, y recibe las publicaciones de cualquier categoría que
-        elimines.
+        Estos espacios aparecen en la barra lateral del feed, agrupados por sección.{" "}
+        <span className="font-medium text-foreground">{nombreGeneral}</span> es el espacio de
+        respaldo: no se puede eliminar, y recibe las publicaciones de cualquier espacio que
+        borres.
       </p>
 
-      <div className="flex gap-2">
-        <Input
-          value={nuevaCategoria}
-          onChange={(e) => setNuevaCategoria(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && agregar()}
-          placeholder="Nueva categoría…"
-          className="max-w-xs"
-        />
-        <Button variant="outline" onClick={agregar} disabled={!nuevaCategoria.trim()}>
-          <Plus /> Agregar
-        </Button>
-      </div>
+      {secciones.map((seccion) => (
+        <div key={seccion.id}>
+          <h3 className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            {seccion.titulo}
+          </h3>
 
-      <ul className="max-w-sm space-y-2">
-        {categorias.map((categoria, indice) => {
-          const esGeneral = categoria === CATEGORIA_GENERAL;
-          return (
-            <li
-              key={indice}
-              className="flex items-center gap-2 rounded-lg border border-border p-2"
-            >
-              <Tags className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              <Input
-                value={categoria}
-                disabled={esGeneral}
-                onChange={(e) =>
-                  setCategorias((prev) =>
-                    prev.map((c, i) => (i === indice ? e.target.value : c))
-                  )
-                }
-                onBlur={() => handleBlurRenombrar(indice)}
-                onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-                className="h-8"
-                aria-label={`Nombre de la categoría ${categoria}`}
-              />
-              {esGeneral ? (
-                <span className="shrink-0 text-xs text-muted-foreground">Fija</span>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => setCategoriaAEliminar(categoria)}
-                  aria-label={`Eliminar categoría ${categoria}`}
+          <ul className="max-w-sm space-y-2">
+            {seccion.espacios.map((espacio) => {
+              const esGeneral = espacio.id === ESPACIO_GENERAL;
+              return (
+                <li
+                  key={espacio.id}
+                  className="flex items-center gap-2 rounded-lg border border-border p-2"
                 >
-                  <Trash2 className="size-4 text-destructive" />
-                </Button>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+                  <Input
+                    value={espacio.icono}
+                    onChange={(e) =>
+                      actualizarCampo(seccion.id, espacio.id, "icono", e.target.value)
+                    }
+                    onBlur={() => handleBlurGuardar(seccion.id, espacio.id)}
+                    maxLength={4}
+                    className="h-8 w-12 shrink-0 px-2 text-center"
+                    aria-label={`Emoji de ${espacio.nombre}`}
+                  />
+                  <Input
+                    value={espacio.nombre}
+                    onChange={(e) =>
+                      actualizarCampo(seccion.id, espacio.id, "nombre", e.target.value)
+                    }
+                    onBlur={() => handleBlurGuardar(seccion.id, espacio.id)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+                    className="h-8"
+                    aria-label={`Nombre del espacio ${espacio.nombre}`}
+                  />
+                  {esGeneral ? (
+                    <span className="shrink-0 text-xs text-muted-foreground">Fijo</span>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => setEspacioAEliminar({ seccionId: seccion.id, espacio })}
+                      aria-label={`Eliminar espacio ${espacio.nombre}`}
+                    >
+                      <Trash2 className="size-4 text-destructive" />
+                    </Button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="mt-2 flex max-w-sm gap-2">
+            <Input
+              value={nuevoPorSeccion[seccion.id]?.icono ?? ""}
+              onChange={(e) =>
+                setNuevoPorSeccion((prev) => ({
+                  ...prev,
+                  [seccion.id]: { nombre: prev[seccion.id]?.nombre ?? "", icono: e.target.value },
+                }))
+              }
+              placeholder="🙂"
+              maxLength={4}
+              className="h-9 w-14 shrink-0 px-2 text-center"
+              aria-label="Emoji del nuevo espacio"
+            />
+            <Input
+              value={nuevoPorSeccion[seccion.id]?.nombre ?? ""}
+              onChange={(e) =>
+                setNuevoPorSeccion((prev) => ({
+                  ...prev,
+                  [seccion.id]: { icono: prev[seccion.id]?.icono ?? "", nombre: e.target.value },
+                }))
+              }
+              onKeyDown={(e) => e.key === "Enter" && agregar(seccion.id)}
+              placeholder="Nuevo espacio…"
+            />
+            <Button
+              variant="outline"
+              onClick={() => agregar(seccion.id)}
+              disabled={!nuevoPorSeccion[seccion.id]?.nombre?.trim()}
+            >
+              <Plus /> Agregar
+            </Button>
+          </div>
+        </div>
+      ))}
 
       <Dialog
-        open={!!categoriaAEliminar}
-        onOpenChange={(open) => !open && setCategoriaAEliminar(null)}
+        open={!!espacioAEliminar}
+        onOpenChange={(open) => !open && setEspacioAEliminar(null)}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>¿Eliminar la categoría «{categoriaAEliminar}»?</DialogTitle>
+            <DialogTitle>¿Eliminar el espacio «{espacioAEliminar?.espacio.nombre}»?</DialogTitle>
             <DialogDescription>
-              {postsEnCategoriaAEliminar > 0
-                ? `${postsEnCategoriaAEliminar} ${postsEnCategoriaAEliminar === 1 ? "publicación se moverá" : "publicaciones se moverán"} a General.`
-                : "No hay publicaciones en esta categoría todavía."}
+              {postsEnEspacioAEliminar > 0
+                ? `${postsEnEspacioAEliminar} ${postsEnEspacioAEliminar === 1 ? "publicación se moverá" : "publicaciones se moverán"} a ${nombreGeneral}.`
+                : "No hay publicaciones en este espacio todavía."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCategoriaAEliminar(null)}>
+            <Button variant="outline" onClick={() => setEspacioAEliminar(null)}>
               Cancelar
             </Button>
             <Button variant="destructive" onClick={confirmarEliminar}>
@@ -348,7 +436,7 @@ function NivelesTab({
   comunidadId: string;
   nombresIniciales: string[];
 }) {
-  const guardarNombresNiveles = useKlazeStore((s) => s.guardarNombresNiveles);
+  const guardarNombresNiveles = useAppStore((s) => s.guardarNombresNiveles);
   const [nombres, setNombres] = useState<string[]>(nombresIniciales);
 
   function guardar() {
@@ -434,7 +522,7 @@ function ComunidadContenido({
           Comunidad
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Modera publicaciones, organiza categorías y personaliza los niveles de{" "}
+          Modera publicaciones, organiza espacios y personaliza los niveles de{" "}
           {community.nombre}.
         </p>
       </div>
@@ -442,7 +530,7 @@ function ComunidadContenido({
       <Tabs defaultValue="posts">
         <TabsList>
           <TabsTrigger value="posts">Posts</TabsTrigger>
-          <TabsTrigger value="categorias">Categorías</TabsTrigger>
+          <TabsTrigger value="espacios">Espacios</TabsTrigger>
           <TabsTrigger value="niveles">Niveles</TabsTrigger>
         </TabsList>
 
@@ -450,10 +538,10 @@ function ComunidadContenido({
           <PostsTab posts={posts} />
         </TabsContent>
 
-        <TabsContent value="categorias">
-          <CategoriasTab
+        <TabsContent value="espacios">
+          <EspaciosTab
             comunidadId={community.id}
-            categoriasIniciales={community.categorias}
+            seccionesIniciales={community.secciones}
             posts={posts}
           />
         </TabsContent>

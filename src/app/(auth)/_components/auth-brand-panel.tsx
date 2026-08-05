@@ -1,102 +1,90 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Flame, Quote } from "lucide-react";
+import { useState } from "react";
+import { useReducedMotion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
-const TESTIMONIO = {
-  cita:
-    "Migré a mis 480 alumnas en una tarde y dejé de pagar Kajabi, Discord y Zoom por separado.",
-  nombre: "Carolina Beltrán",
-  rol: "Fundadora de Cocina sin Miedo",
-  avatarUrl: "https://i.pravatar.cc/150?u=testimonio-carolina-beltran",
-};
+/** Paso 1 del duotono: gris con más contraste, para que el tinte cian no lo lave. */
+const FILTRO_DUOTONO = "grayscale contrast-125 brightness-90";
+
+export interface AuthBrandPanelProps {
+  /** mp4/webm en bucle. Si falta o falla, se queda la imagen. */
+  videoUrl?: string;
+  /** Imagen de respaldo: cubre mientras el video carga, si falla, o si el visitante pidió reducir movimiento. */
+  posterUrl?: string;
+}
 
 /**
- * Panel izquierdo del split-screen de auth: branding índigo con claim de
- * producto, un "logro" de muestra (conecta con la gamificación real de
- * Klaze) y un testimonial. Oculto en móvil/tablet, visible desde `lg`.
- * Toda la paleta usa tokens (`primary`, `primary-foreground`, `accent`)
- * para que el contraste se mantenga correcto en light y dark mode.
+ * Mitad izquierda del login: la portada de la comunidad, a sangre.
+ *
+ * Tres escalones de respaldo, de mejor a peor caso: video en bucle →
+ * imagen fija → degradado de la marca. Nunca queda un hueco vacío.
+ *
+ * El video va silenciado, sin controles y con `playsInline` (sin esto,
+ * Safari en iOS lo abre a pantalla completa en vez de reproducirlo en
+ * línea). Si el visitante tiene activado "reducir movimiento" no se
+ * descarga siquiera: se muestra solo la imagen. Encima va un tinte cian de
+ * marca en `mix-blend-color` que lo vuelve monocromo, más un degradado
+ * oscuro hacia el borde derecho para que la costura con el panel del
+ * formulario no se note. Los `bg-black`/colores fijos de aquí son la
+ * excepción documentada para overlays sobre video: no dependen del tema.
  */
-export function AuthBrandPanel() {
+export function AuthBrandPanel({ videoUrl, posterUrl }: AuthBrandPanelProps) {
+  const reducirMovimiento = useReducedMotion();
+  const [videoFallo, setVideoFallo] = useState(false);
+  const [posterFallo, setPosterFallo] = useState(false);
+
+  const mostrarVideo = Boolean(videoUrl) && !videoFallo && !reducirMovimiento;
+
   return (
-    <div className="relative hidden overflow-hidden bg-primary lg:flex lg:flex-col lg:justify-between lg:p-10 xl:p-14">
-      <div className="pointer-events-none absolute -top-24 -right-24 size-96 rounded-full bg-accent/25 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 left-0 h-64 w-64 rounded-full bg-primary-foreground/10 blur-3xl" />
+    <div className="relative hidden overflow-hidden bg-primary lg:block">
+      {/* Degradado de marca: el suelo que se ve si no hay video ni imagen. */}
+      <div className="absolute inset-0 bg-linear-to-br from-primary via-primary to-brand" />
 
-      <div className="relative flex items-center gap-2.5">
-        <span className="flex size-8 items-center justify-center rounded-lg bg-primary-foreground/15 font-display text-sm font-bold text-primary-foreground ring-1 ring-primary-foreground/25">
-          K
-        </span>
-        <span className="font-display text-lg font-bold tracking-tight text-primary-foreground">
-          KLAZE
-        </span>
-      </div>
+      {posterUrl && !posterFallo && (
+        // eslint-disable-next-line @next/next/no-img-element -- URL libre que pega el creador; next/image exigiría allowlist de dominios
+        <img
+          src={posterUrl}
+          alt=""
+          aria-hidden="true"
+          // Sin esto, una URL muerta deja el icono de "imagen rota" del
+          // navegador flotando sobre el degradado.
+          onError={() => setPosterFallo(true)}
+          className={cn("absolute inset-0 size-full object-cover", FILTRO_DUOTONO)}
+        />
+      )}
 
-      <div className="relative max-w-md">
-        <motion.h1
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="font-display text-4xl leading-[1.1] font-bold tracking-tight text-primary-foreground xl:text-[2.75rem]"
-        >
-          Tu conocimiento, convertido en comunidad.
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
-          className="mt-4 text-base text-primary-foreground/75"
-        >
-          Cursos en video, foro activo, eventos en vivo y niveles que
-          enganchan — todo con tu marca, sin escribir una línea de código.
-        </motion.p>
+      {mostrarVideo && (
+        <video
+          key={videoUrl}
+          src={videoUrl}
+          poster={posterUrl}
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          aria-hidden="true"
+          onError={() => setVideoFallo(true)}
+          className={cn("absolute inset-0 size-full object-cover", FILTRO_DUOTONO)}
+        />
+      )}
 
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0, rotate: -2 }}
-          transition={{ duration: 0.5, delay: 0.25, ease: "easeOut" }}
-          className="mt-8 inline-flex items-center gap-2.5 rounded-2xl bg-primary-foreground/10 px-4 py-3 ring-1 ring-primary-foreground/15 backdrop-blur-sm"
-        >
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
-            <Flame className="size-4" />
-          </span>
-          <span className="text-sm text-primary-foreground">
-            <span className="block font-semibold">Nivel 7 · Constructor</span>
-            <span className="block text-primary-foreground/60">
-              1.240 pts esta semana
-            </span>
-          </span>
-        </motion.div>
-      </div>
-
-      <motion.figure
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3, ease: "easeOut" }}
-        className="relative rounded-2xl bg-primary-foreground/10 p-5 ring-1 ring-primary-foreground/15 backdrop-blur-sm"
-      >
-        <Quote className="size-5 text-accent" />
-        <blockquote className="mt-2 text-sm leading-relaxed text-primary-foreground/90">
-          &ldquo;{TESTIMONIO.cita}&rdquo;
-        </blockquote>
-        <figcaption className="mt-4 flex items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element -- avatar mock (pravatar) sin dominio configurado en next/image */}
-          <img
-            src={TESTIMONIO.avatarUrl}
-            alt={TESTIMONIO.nombre}
-            className="size-9 rounded-full ring-2 ring-primary-foreground/20"
-          />
-          <span className="text-sm">
-            <span className="block font-medium text-primary-foreground">
-              {TESTIMONIO.nombre}
-            </span>
-            <span className="block text-primary-foreground/60">
-              {TESTIMONIO.rol}
-            </span>
-          </span>
-        </figcaption>
-      </motion.figure>
+      {/*
+       * Duotono en dos pasos: el filtro de arriba ya dejó la imagen en
+       * escala de grises con más contraste, y esta capa le devuelve el tono
+       * cian. `mix-blend-color` toma matiz y saturación de aquí y la
+       * luminosidad de lo que hay debajo, que es justo lo que mantiene las
+       * sombras profundas en vez de lavar la imagen con un velo plano.
+       */}
+      <div className="pointer-events-none absolute inset-0 bg-brand mix-blend-color" />
+      <div className="pointer-events-none absolute inset-0 bg-primary/25 mix-blend-multiply" />
+      {/*
+       * Viñeta suave en los bordes. Va floja a propósito: el panel del
+       * formulario es blanco, y un borde muy oscuro pegado al blanco se lee
+       * como un corte en vez de como una transición.
+       */}
+      <div className="pointer-events-none absolute inset-0 bg-linear-to-r from-black/20 via-transparent to-black/15" />
     </div>
   );
 }

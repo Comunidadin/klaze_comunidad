@@ -6,12 +6,14 @@ import { CalendarDays, CalendarPlus, Clock, Pencil, Plus, Trash2, Video } from "
 import { useHydrated } from "@/lib/hooks/use-session";
 import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { useEvents } from "@/lib/hooks/use-events";
+import { useAdminCourses } from "@/lib/hooks/use-admin-courses";
 import { useAhora } from "@/lib/hooks/use-ahora";
-import { useKlazeStore } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
 import { formatDuracion } from "@/components/course/course-utils";
 import { diaNumero, formatHora, mesAbreviado } from "@/lib/format-fecha";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +26,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { CommunityEvent } from "@/lib/types";
 
@@ -50,6 +59,8 @@ interface FormularioEvento {
   hora: string; // "HH:mm", input type=time
   duracionMin: string;
   urlSala: string;
+  /** Curso al que pertenece el evento (Cambio 3 — obligatorio en `CommunityEvent`). */
+  cursoId: string;
 }
 
 const FORMULARIO_VACIO: FormularioEvento = {
@@ -59,6 +70,7 @@ const FORMULARIO_VACIO: FormularioEvento = {
   hora: "19:00",
   duracionMin: "60",
   urlSala: "",
+  cursoId: "",
 };
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -85,11 +97,14 @@ function formularioAIso(fecha: string, hora: string): string {
  */
 function EventoAdminCard({
   evento,
+  cursoTitulo,
   pasado,
   onEditar,
   onEliminar,
 }: {
   evento: CommunityEvent;
+  /** Título del curso al que pertenece — un solo calendario de admin ahora mezcla eventos de varios cursos (Cambio 3). */
+  cursoTitulo?: string;
   pasado: boolean;
   onEditar: () => void;
   onEliminar: () => void;
@@ -112,9 +127,12 @@ function EventoAdminCard({
 
       <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h3 className="font-display text-base font-semibold text-balance text-foreground">
-            {evento.titulo}
-          </h3>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <h3 className="font-display text-base font-semibold text-balance text-foreground">
+              {evento.titulo}
+            </h3>
+            {cursoTitulo && <Badge variant="secondary">{cursoTitulo}</Badge>}
+          </div>
           <p className="mt-1 text-sm text-pretty text-muted-foreground">{evento.descripcion}</p>
           <div className="mt-2 flex flex-wrap items-center gap-3 text-xs font-medium text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
@@ -143,18 +161,22 @@ function EventoAdminCard({
 }
 
 /**
- * `/admin/eventos`: CRUD del calendario en vivo de la comunidad —
- * `guardarEvento`/`eliminarEvento` (T14) se reflejan de inmediato en
- * `/c/[comunidad]/calendario` (T9), que consume el mismo `useEvents`.
+ * `/admin/eventos`: CRUD del calendario en vivo de la comunidad, ahora
+ * repartido por curso (Cambio 3: cada evento lleva un `cursoId` obligatorio,
+ * elegido con el selector "Curso" del formulario) —
+ * `guardarEvento`/`eliminarEvento` (T14) se reflejan de inmediato en la
+ * pestaña Calendario de `/c/[comunidad]/cursos/[curso]`, que consume el
+ * mismo `useEvents`.
  */
 export default function EventosPage() {
   const hydrated = useHydrated();
   const community = useMyCommunity();
   const { eventos } = useEvents(community?.id ?? "");
+  const { cursos } = useAdminCourses(community?.id ?? "");
   const ahora = useAhora();
-  const guardarEvento = useKlazeStore((s) => s.guardarEvento);
-  const eliminarEvento = useKlazeStore((s) => s.eliminarEvento);
-  const siguienteEventoId = useKlazeStore((s) => s.siguienteEventoId);
+  const guardarEvento = useAppStore((s) => s.guardarEvento);
+  const eliminarEvento = useAppStore((s) => s.eliminarEvento);
+  const siguienteEventoId = useAppStore((s) => s.siguienteEventoId);
 
   const [dialogAbierto, setDialogAbierto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -182,9 +204,26 @@ export default function EventosPage() {
     );
   }
 
+  // Cambio 3: todo evento pertenece a un curso — sin al menos uno creado no
+  // hay dónde adjuntarlo, así que se pide crear un curso antes en vez de
+  // dejar "Nuevo evento" habilitado hacia un formulario sin opciones.
+  if (cursos.length === 0) {
+    return (
+      <EmptyState
+        icono={CalendarDays}
+        titulo="Crea un curso primero"
+        descripcion="Cada evento pertenece a un curso — crea al menos uno para poder programar sesiones en vivo."
+        accion={{ label: "Ir a Cursos", href: "/admin/cursos" }}
+      />
+    );
+  }
+
   function abrirCrear() {
     setEditandoId(null);
-    setForm(FORMULARIO_VACIO);
+    // Cambio 3: el evento nace atado a un curso — precarga el primero de la
+    // comunidad como default razonable (la mayoría de comunidades del mock
+    // tienen 1-4 cursos), el creador lo cambia desde el selector si hace falta.
+    setForm({ ...FORMULARIO_VACIO, cursoId: cursos[0]?.id ?? "" });
     setDialogAbierto(true);
   }
 
@@ -198,6 +237,7 @@ export default function EventosPage() {
       hora,
       duracionMin: String(evento.duracionMin),
       urlSala: evento.urlSala,
+      cursoId: evento.cursoId,
     });
     setDialogAbierto(true);
   }
@@ -207,7 +247,8 @@ export default function EventosPage() {
     form.fecha.length > 0 &&
     form.hora.length > 0 &&
     Number(form.duracionMin) > 0 &&
-    form.urlSala.trim().length > 0;
+    form.urlSala.trim().length > 0 &&
+    form.cursoId.length > 0;
 
   function handleGuardar() {
     if (!community || !formularioValido) return;
@@ -215,6 +256,7 @@ export default function EventosPage() {
     const evento: CommunityEvent = {
       id: editandoId ?? siguienteEventoId(),
       comunidadId: community.id,
+      cursoId: form.cursoId,
       titulo: form.titulo.trim(),
       descripcion: form.descripcion.trim(),
       fechaInicio: formularioAIso(form.fecha, form.hora),
@@ -238,6 +280,7 @@ export default function EventosPage() {
     new Date(e.fechaInicio).getTime() + e.duracionMin * 60_000;
   const proximos = eventos.filter((e) => finDe(e) >= ahora);
   const pasados = [...eventos].filter((e) => finDe(e) < ahora).reverse();
+  const cursoTituloPorId = new Map(cursos.map((c) => [c.id, c.titulo]));
 
   return (
     <div>
@@ -276,6 +319,7 @@ export default function EventosPage() {
                   <EventoAdminCard
                     key={evento.id}
                     evento={evento}
+                    cursoTitulo={cursoTituloPorId.get(evento.cursoId)}
                     pasado={false}
                     onEditar={() => abrirEditar(evento)}
                     onEliminar={() => setEventoAEliminar(evento)}
@@ -295,6 +339,7 @@ export default function EventosPage() {
                   <EventoAdminCard
                     key={evento.id}
                     evento={evento}
+                    cursoTitulo={cursoTituloPorId.get(evento.cursoId)}
                     pasado
                     onEditar={() => abrirEditar(evento)}
                     onEliminar={() => setEventoAEliminar(evento)}
@@ -316,6 +361,24 @@ export default function EventosPage() {
           </DialogHeader>
 
           <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="evt-curso">Curso</Label>
+              <Select
+                value={form.cursoId}
+                onValueChange={(v) => setForm((f) => ({ ...f, cursoId: v }))}
+              >
+                <SelectTrigger id="evt-curso" className="w-full">
+                  <SelectValue placeholder="Elige un curso" />
+                </SelectTrigger>
+                <SelectContent>
+                  {cursos.map((curso) => (
+                    <SelectItem key={curso.id} value={curso.id}>
+                      {curso.titulo}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1.5">
               <Label htmlFor="evt-titulo">Título</Label>
               <Input
@@ -373,7 +436,7 @@ export default function EventosPage() {
                   id="evt-sala"
                   value={form.urlSala}
                   onChange={(e) => setForm((f) => ({ ...f, urlSala: e.target.value }))}
-                  placeholder="https://meet.klaze.app/…"
+                  placeholder="https://meet.intercambio.app/…"
                 />
               </div>
             </div>

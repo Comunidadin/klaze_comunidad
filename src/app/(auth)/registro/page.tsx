@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { Rocket } from "lucide-react";
-import { useKlazeStore } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
 import { esEmailValido } from "@/lib/validation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,7 @@ interface FormErrors {
  * layout de `(auth)` en cuanto detecta la sesión nueva.
  */
 export default function RegistroPage() {
-  const registrarCreador = useKlazeStore((s) => s.registrarCreador);
+  const registrarCreador = useAppStore((s) => s.registrarCreador);
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   const [nombreComunidad, setNombreComunidad] = useState("");
@@ -108,7 +108,7 @@ export default function RegistroPage() {
           <Label htmlFor="nombreComunidad">Nombre de tu comunidad</Label>
           <Input
             id="nombreComunidad"
-            placeholder="Ej. Academia Klaze"
+            placeholder="Ej. Comunidad del Intercambio"
             value={nombreComunidad}
             onChange={(e) => {
               setNombreComunidad(e.target.value);

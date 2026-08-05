@@ -1,6 +1,6 @@
 import type { User } from "@/lib/types";
 import { mockCommunities } from "@/lib/mocks/communities";
-import { useKlazeStore } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
 
 /**
  * Ruta "home" según el rol del usuario, usada por los guards de rol para
@@ -10,11 +10,12 @@ import { useKlazeStore } from "@/lib/store";
  *   zonas hay un enlace cruzado en el sidebar hacia la otra (ver
  *   `(creador)/layout.tsx` y `(superadmin)/layout.tsx`).
  * - creador -> /admin
- * - alumno -> /c/[slug]/inicio, resolviendo la primera comunidad del
+ * - alumno -> /c/[slug]/cursos (Cambio 3: el nivel superior del área de
+ *   miembros es la lista de cursos), resolviendo la primera comunidad del
  *   usuario (mock o creada en runtime vía `registrarCreador`/invitación).
  */
 export function homePorRol(user: User): string {
-  const { comunidadesCreadas } = useKlazeStore.getState();
+  const { comunidadesCreadas } = useAppStore.getState();
   const todas = [...mockCommunities, ...comunidadesCreadas];
 
   if (user.rol === "superadmin") {
@@ -25,5 +26,5 @@ export function homePorRol(user: User): string {
 
   const comunidad = todas.find((c) => user.comunidadIds.includes(c.id)) ?? todas[0];
 
-  return `/c/${comunidad.slug}/inicio`;
+  return `/c/${comunidad.slug}/cursos`;
 }

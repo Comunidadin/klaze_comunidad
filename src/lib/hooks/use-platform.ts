@@ -1,6 +1,6 @@
 "use client";
 
-import { aplicarPerfilOverride, resolverComunidad, resolverPlan, useKlazeStore } from "@/lib/store";
+import { aplicarPerfilOverride, resolverComunidad, resolverPlan, useAppStore } from "@/lib/store";
 import { mockCommunities } from "@/lib/mocks/communities";
 import { mockEnrollments } from "@/lib/mocks/enrollments";
 import { mockPlans } from "@/lib/mocks/plans";
@@ -74,12 +74,12 @@ function crecimientoMensualMock(comunidadesActivas: number): BarChartDatum[] {
  * de la app.
  */
 export function usePlatform(): UsePlatformResult {
-  const usuariosCreados = useKlazeStore((s) => s.usuariosCreados);
-  const comunidadesCreadas = useKlazeStore((s) => s.comunidadesCreadas);
-  const comunidadOverrides = useKlazeStore((s) => s.comunidadOverrides);
-  const perfilOverrides = useKlazeStore((s) => s.perfilOverrides);
-  const planOverrides = useKlazeStore((s) => s.planOverrides);
-  const enrollmentsExtra = useKlazeStore((s) => s.enrollmentsExtra);
+  const usuariosCreados = useAppStore((s) => s.usuariosCreados);
+  const comunidadesCreadas = useAppStore((s) => s.comunidadesCreadas);
+  const comunidadOverrides = useAppStore((s) => s.comunidadOverrides);
+  const perfilOverrides = useAppStore((s) => s.perfilOverrides);
+  const planOverrides = useAppStore((s) => s.planOverrides);
+  const enrollmentsExtra = useAppStore((s) => s.enrollmentsExtra);
 
   const todosLosUsuarios = [...mockUsers, ...usuariosCreados].map((u) =>
     aplicarPerfilOverride(u, perfilOverrides)

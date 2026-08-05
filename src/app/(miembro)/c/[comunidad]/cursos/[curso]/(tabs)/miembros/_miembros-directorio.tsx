@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Search, Star, Users } from "lucide-react";
 import { useCommunity } from "@/lib/hooks/use-community";
+import { useCourses } from "@/lib/hooks/use-courses";
 import { useMembers } from "@/lib/hooks/use-members";
 import { MemberCard } from "@/components/community/member-card";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -21,6 +22,7 @@ import type { User } from "@/lib/types";
 
 export interface MiembrosDirectorioProps {
   comunidadSlug: string;
+  cursoSlug: string;
 }
 
 /** Quita tildes para que "jose" encuentre "José" — mismo criterio que `slugify` en el store. */
@@ -32,14 +34,16 @@ function normalizar(texto: string): string {
 }
 
 /**
- * Directorio de miembros: buscador por nombre + grid de `MemberCard`. Click
- * en una tarjeta abre un Dialog con el perfil completo del miembro. El
- * slug de comunidad llega ya validado por `MemberShell`, así que aquí
- * asumimos `useCommunity` resuelto.
+ * Directorio de miembros CON ACCESO A ESTE CURSO (Cambio 3): buscador por
+ * nombre + grid de `MemberCard`. Click en una tarjeta abre un Dialog con el
+ * perfil completo del miembro. `CursoTabsShell` ya garantiza que el curso
+ * existe y que el usuario actual tiene acceso.
  */
-export function MiembrosDirectorio({ comunidadSlug }: MiembrosDirectorioProps) {
+export function MiembrosDirectorio({ comunidadSlug, cursoSlug }: MiembrosDirectorioProps) {
   const resultado = useCommunity(comunidadSlug);
-  const { miembros } = useMembers(resultado?.community.id ?? "");
+  const { cursos } = useCourses(resultado?.community.id ?? "");
+  const curso = cursos.find((c) => c.slug === cursoSlug);
+  const { miembros } = useMembers(resultado?.community.id ?? "", curso?.id ?? "");
   const [busqueda, setBusqueda] = useState("");
   const [seleccionado, setSeleccionado] = useState<User | null>(null);
 
@@ -49,7 +53,7 @@ export function MiembrosDirectorio({ comunidadSlug }: MiembrosDirectorioProps) {
     return miembros.filter((m) => normalizar(m.nombre).includes(q));
   }, [miembros, busqueda]);
 
-  if (!resultado) return null;
+  if (!resultado || !curso) return null;
   const { community } = resultado;
 
   return (
@@ -60,8 +64,8 @@ export function MiembrosDirectorio({ comunidadSlug }: MiembrosDirectorioProps) {
             Miembros
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {miembros.length} {miembros.length === 1 ? "persona forma" : "personas forman"} parte
-            de {community.nombre}.
+            {miembros.length} {miembros.length === 1 ? "persona tiene" : "personas tienen"} acceso
+            a {curso.titulo}.
           </p>
         </div>
         <div className="relative sm:w-72">
@@ -80,7 +84,7 @@ export function MiembrosDirectorio({ comunidadSlug }: MiembrosDirectorioProps) {
         <EmptyState
           icono={Users}
           titulo="Sin resultados"
-          descripcion={`No encontramos a nadie llamado "${busqueda}" en esta comunidad.`}
+          descripcion={`No encontramos a nadie llamado "${busqueda}" en este curso.`}
         />
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
@@ -119,7 +123,7 @@ export function MiembrosDirectorio({ comunidadSlug }: MiembrosDirectorioProps) {
                 </div>
                 <div className="flex flex-col items-center justify-center gap-1">
                   <span className="inline-flex items-center gap-1 font-display text-lg font-bold tabular-nums text-foreground">
-                    <Star className="size-4 text-accent" /> {seleccionado.puntos}
+                    <Star className="size-4 text-brand" /> {seleccionado.puntos}
                   </span>
                   <span className="text-xs text-muted-foreground">puntos</span>
                 </div>

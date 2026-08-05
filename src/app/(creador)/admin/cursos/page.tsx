@@ -7,7 +7,8 @@ import { BookOpen, Plus } from "lucide-react";
 import { useHydrated } from "@/lib/hooks/use-session";
 import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { useAdminCourses } from "@/lib/hooks/use-admin-courses";
-import { slugify, useKlazeStore } from "@/lib/store";
+import { slugify, useAppStore } from "@/lib/store";
+import { crearSeccionesDefault } from "@/lib/mocks/espacios";
 import { AdminCourseCard } from "@/components/admin/admin-course-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -53,8 +54,8 @@ export default function AdminCursosPage() {
   const hydrated = useHydrated();
   const community = useMyCommunity();
   const { cursos } = useAdminCourses(community?.id ?? "");
-  const guardarCurso = useKlazeStore((s) => s.guardarCurso);
-  const siguienteCursoId = useKlazeStore((s) => s.siguienteCursoId);
+  const guardarCurso = useAppStore((s) => s.guardarCurso);
+  const siguienteCursoId = useAppStore((s) => s.siguienteCursoId);
   const router = useRouter();
 
   const [dialogAbierto, setDialogAbierto] = useState(false);
@@ -105,6 +106,11 @@ export default function AdminCursosPage() {
       nivelRequerido: null,
       modulos: [],
       publicado: false,
+      // Cambio 3: la comunidad social vive dentro de cada curso — un curso
+      // nuevo nace con sus propios espacios (namespaced por `id`, ver
+      // docstring de `crearSeccionesDefault`) para que su pestaña
+      // "Comunidad" nunca arranque vacía de estructura.
+      secciones: crearSeccionesDefault(id),
     };
 
     guardarCurso(curso);

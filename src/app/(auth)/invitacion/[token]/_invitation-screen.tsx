@@ -8,7 +8,7 @@ import { KeyRound, Loader2, Lock, MailQuestion, ShieldAlert, Sparkles, UserPlus 
 import { toast } from "sonner";
 import { useHydrated } from "@/lib/hooks/use-session";
 import { useInvitation } from "@/lib/hooks/use-invitation";
-import { useKlazeStore } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,8 +58,8 @@ function MensajeInvitacion({
       transition={{ duration: 0.4, ease: "easeOut" }}
       className="text-center"
     >
-      <div className="mb-8 flex justify-center lg:hidden">
-        <Logo href="/login" />
+      <div className="mb-8 flex justify-center">
+        <Logo href="/login" orientacion="vertical" />
       </div>
       <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
         <Icono className="size-6" />
@@ -78,7 +78,7 @@ function MensajeInvitacion({
 function EsqueletoInvitacion() {
   return (
     <div>
-      <Skeleton className="mb-8 h-8 w-28 lg:hidden" />
+      <Skeleton className="mx-auto mb-8 h-20 w-44" />
       <Skeleton className="size-14 rounded-2xl" />
       <Skeleton className="mt-4 h-7 w-3/4" />
       <Skeleton className="mt-2 h-4 w-full" />
@@ -103,7 +103,7 @@ export interface InvitationScreenProps {
 export function InvitationScreen({ token }: InvitationScreenProps) {
   const hydrated = useHydrated();
   const resultado = useInvitation(token);
-  const aceptarInvitacion = useKlazeStore((s) => s.aceptarInvitacion);
+  const aceptarInvitacion = useAppStore((s) => s.aceptarInvitacion);
   const router = useRouter();
 
   const [nombre, setNombre] = useState("");
@@ -209,29 +209,30 @@ export function InvitationScreen({ token }: InvitationScreenProps) {
       transition={{ duration: 0.4, ease: "easeOut" }}
       style={{ "--community-accent": comunidad.colorAcento } as React.CSSProperties}
     >
-      <div className="mb-8 flex justify-center lg:hidden">
-        <Logo href="/login" />
-      </div>
-
-      <div className="flex items-center gap-3">
-        {/* eslint-disable-next-line @next/next/no-img-element -- logo mock (dicebear) sin dominio configurado en next/image */}
+      {/*
+       * Aquí manda la comunidad que invita, no la plataforma: su logo y su
+       * nombre van centrados y grandes, ocupando el sitio donde el resto de
+       * pantallas de auth ponen la marca (ver `AuthFormCard`). Poner las dos
+       * cosas dejaba el mismo logo repetido cuando quien invita es la
+       * comunidad de la propia marca.
+       */}
+      <div className="mb-8 flex flex-col items-center gap-3 text-center">
+        {/* eslint-disable-next-line @next/next/no-img-element -- URL libre del creador; next/image exigiría allowlist de dominios */}
         <img
           src={comunidad.logoUrl}
           alt=""
-          className="size-12 shrink-0 rounded-2xl border border-border object-cover"
+          className="size-14 shrink-0 rounded-2xl border border-border bg-white object-contain"
           style={{ boxShadow: "0 0 0 2px var(--community-accent)" }}
         />
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-muted-foreground">
-            {comunidad.nombre}
-          </p>
-        </div>
+        <p className="font-display text-xl leading-tight font-bold tracking-tight text-balance text-foreground">
+          {comunidad.nombre}
+        </p>
       </div>
 
-      <h1 className="mt-4 font-display text-2xl font-bold tracking-tight text-foreground">
+      <h1 className="text-center font-display text-xl font-bold tracking-tight text-foreground">
         Fuiste invitado
       </h1>
-      <p className="mt-1.5 text-sm text-muted-foreground">
+      <p className="mt-1.5 text-center text-sm text-muted-foreground">
         {copyInvitacion(comunidad.nombre, todosLosCursos, cursos)} Crea tu cuenta para
         empezar.
       </p>

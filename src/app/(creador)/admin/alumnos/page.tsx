@@ -6,7 +6,7 @@ import { MoreHorizontal, Search, ShieldOff, UserCheck, Users } from "lucide-reac
 import { useHydrated } from "@/lib/hooks/use-session";
 import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { useMembers, type MemberConEstado } from "@/lib/hooks/use-members";
-import { useKlazeStore } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
 import { formatFechaLarga } from "@/lib/format-fecha";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -69,7 +69,7 @@ function normalizar(texto: string): string {
 
 function EstadoBadge({ estado }: { estado: Enrollment["estado"] }) {
   if (estado === "activo") {
-    return <Badge className="border-transparent bg-accent/15 text-accent">Activo</Badge>;
+    return <Badge className="border-transparent bg-brand/15 text-brand">Activo</Badge>;
   }
   if (estado === "suspendido") {
     return <Badge variant="destructive">Suspendido</Badge>;
@@ -100,7 +100,7 @@ export default function AlumnosPage() {
   const hydrated = useHydrated();
   const community = useMyCommunity();
   const { miembros } = useMembers(community?.id ?? "");
-  const cambiarEstadoAlumno = useKlazeStore((s) => s.cambiarEstadoAlumno);
+  const cambiarEstadoAlumno = useAppStore((s) => s.cambiarEstadoAlumno);
 
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>("todos");

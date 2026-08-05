@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Send } from "lucide-react";
 import { useSession } from "@/lib/hooks/use-session";
 import { useUsuarios } from "@/lib/hooks/use-users";
-import { useKlazeStore } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
 import { LevelBadge } from "@/components/shared/level-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -79,7 +79,7 @@ function CampoNuevoComentario({
 export function CommentThread({ postId, comentarios, className }: CommentThreadProps) {
   const { user } = useSession();
   const { resolver } = useUsuarios();
-  const comentar = useKlazeStore((s) => s.comentar);
+  const comentar = useAppStore((s) => s.comentar);
 
   const [respondiendoA, setRespondiendoA] = useState<string | null>(null);
   const [textoRespuesta, setTextoRespuesta] = useState("");

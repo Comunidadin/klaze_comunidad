@@ -1,8 +1,9 @@
 import { CursoDetalle } from "./_curso-detalle";
 
 /**
- * Server Component: solo desenvuelve `params` (async en Next 16) y delega
- * la data/hidratación a `CursoDetalle` (client).
+ * Pestaña "Lecciones" (por defecto) de un curso — Server Component: solo
+ * desenvuelve `params` (async en Next 16) y delega la data/hidratación a
+ * `CursoDetalle` (client).
  */
 export default async function CursoDetallePage({
   params,

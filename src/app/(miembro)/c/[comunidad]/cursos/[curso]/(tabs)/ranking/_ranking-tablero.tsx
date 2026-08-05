@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Minus, Trophy } from "lucide-react";
 import { useCommunity } from "@/lib/hooks/use-community";
+import { useCourses } from "@/lib/hooks/use-courses";
 import { useGamification, type PeriodoRanking, type RankingEntry } from "@/lib/hooks/use-gamification";
 import { useHydrated, useSession } from "@/lib/hooks/use-session";
 import { LevelBadge } from "@/components/shared/level-badge";
@@ -17,6 +18,7 @@ import { cn } from "@/lib/utils";
 
 export interface RankingTableroProps {
   comunidadSlug: string;
+  cursoSlug: string;
 }
 
 const PERIODOS: { value: PeriodoRanking; label: string }[] = [
@@ -70,28 +72,35 @@ function DeltaIndicator({ delta }: { delta: RankingEntry["delta"] }) {
 }
 
 /**
- * Ranking de la comunidad: tabs de periodo (7d/30d/total), podio del top 3 y
- * lista del resto. El slug de comunidad llega ya validado por `MemberShell`,
- * así que aquí asumimos `useCommunity` resuelto.
+ * Ranking DE UN CURSO (Cambio 3: los puntos son los likes recibidos en los
+ * posts que cada quien publicó dentro de este curso, ver docstring de
+ * `useGamification`): tabs de periodo (7d/30d/total), podio del top 3 y
+ * lista del resto. `CursoTabsShell` ya garantiza que el curso existe y que
+ * el usuario tiene acceso.
  *
  * La barra "Tu posición" usa la variante simple sugerida por el brief:
  * sticky/fixed al fondo, siempre visible mientras el usuario tiene una
  * entrada en el ranking activo (en vez de un IntersectionObserver que
- * detecte si su fila específica salió del viewport) — con ~30 miembros mock
- * la lista es corta y el costo de "siempre visible" es bajo, y evita la
+ * detecte si su fila específica salió del viewport) — con pocos miembros
+ * mock la lista es corta y el costo de "siempre visible" es bajo, y evita la
  * complejidad extra de observar una fila que puede no existir (top 3 vive en
  * el podio, no en la lista).
  */
-export function RankingTablero({ comunidadSlug }: RankingTableroProps) {
+export function RankingTablero({ comunidadSlug, cursoSlug }: RankingTableroProps) {
   const resultado = useCommunity(comunidadSlug);
+  const { cursos } = useCourses(resultado?.community.id ?? "");
+  const curso = cursos.find((c) => c.slug === cursoSlug);
   const hydrated = useHydrated();
   const { user } = useSession();
   const [periodo, setPeriodo] = useState<PeriodoRanking>("7d");
-  const { rankingPorPeriodo, miNivel } = useGamification(resultado?.community.id ?? "");
+  const { rankingPorPeriodo, miNivel } = useGamification(
+    resultado?.community.id ?? "",
+    curso?.id ?? ""
+  );
   const filaMiaRef = useRef<HTMLLIElement>(null);
   const podioRef = useRef<HTMLDivElement>(null);
 
-  if (!resultado) return null;
+  if (!resultado || !curso) return null;
   const { community } = resultado;
 
   const ranking = rankingPorPeriodo[periodo];
@@ -110,7 +119,7 @@ export function RankingTablero({ comunidadSlug }: RankingTableroProps) {
           Ranking
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Quién suma más puntos en {community.nombre} — 1 like recibido = 1 punto.
+          Quién suma más puntos en {curso.titulo} — 1 like recibido = 1 punto.
         </p>
       </div>
 
@@ -120,7 +129,7 @@ export function RankingTablero({ comunidadSlug }: RankingTableroProps) {
         <EmptyState
           icono={Trophy}
           titulo="Todavía no hay puntos que mostrar"
-          descripcion="En cuanto los miembros empiecen a recibir likes en sus posts y comentarios, el ranking se va a llenar acá."
+          descripcion="En cuanto los miembros empiecen a recibir likes en sus posts de este curso, el ranking se va a llenar acá."
         />
       ) : (
         <>

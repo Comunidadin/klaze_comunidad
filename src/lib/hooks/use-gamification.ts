@@ -1,9 +1,10 @@
 "use client";
 
-import { aplicarPerfilOverride, useKlazeStore } from "@/lib/store";
+import { aplicarPerfilOverride, useAppStore } from "@/lib/store";
 import { mockUsers } from "@/lib/mocks/users";
 import { mockEnrollments } from "@/lib/mocks/enrollments";
 import { useSession } from "@/lib/hooks/use-session";
+import { useFeed } from "@/lib/hooks/use-feed";
 import { nivelPorPuntos, puntosParaNivel, NIVEL_MAXIMO } from "@/lib/levels";
 import type { User } from "@/lib/types";
 
@@ -12,12 +13,18 @@ export type PeriodoRanking = "7d" | "30d" | "total";
 export interface RankingEntry {
   posicion: number;
   user: User;
-  /** Puntos del periodo activo ("total" = `user.puntos`; 7d/30d, ver `puntosDelPeriodo`). */
+  /** Puntos del periodo activo ("total" = puntos totales; 7d/30d, ver `puntosDelPeriodo`). */
   puntos: number;
-  /** Nivel real del usuario — siempre derivado de `user.puntos` totales, no del periodo. */
+  /** Nivel real del usuario — siempre derivado de `user.puntos` totales (insignia de plataforma), no del periodo ni de `cursoId`. */
   nivel: number;
   /** Tendencia mock del periodo (regla determinística, ver `deltaDeterministico`). */
   delta: "up" | "down" | "same";
+}
+
+/** Miembro con los puntos ya resueltos para el ranking (ver docstring de `useGamification` sobre `cursoId`). */
+interface MiembroConPuntos {
+  user: User;
+  puntosTotales: number;
 }
 
 // Mock: no hay historial real de puntos por fecha, así que 7d/30d se derivan
@@ -39,11 +46,11 @@ function puntosDelPeriodo(puntosTotales: number, periodo: PeriodoRanking): numbe
  * (localeCompare "es") como criterio secundario estable, así el orden no
  * "salta" entre renders cuando dos personas tienen el mismo puntaje.
  */
-function ordenarMiembros(miembros: User[], periodo: PeriodoRanking): User[] {
+function ordenarMiembros(miembros: MiembroConPuntos[], periodo: PeriodoRanking): MiembroConPuntos[] {
   return [...miembros].sort((a, b) => {
-    const diff = puntosDelPeriodo(b.puntos, periodo) - puntosDelPeriodo(a.puntos, periodo);
+    const diff = puntosDelPeriodo(b.puntosTotales, periodo) - puntosDelPeriodo(a.puntosTotales, periodo);
     if (diff !== 0) return diff;
-    return a.nombre.localeCompare(b.nombre, "es");
+    return a.user.nombre.localeCompare(b.user.nombre, "es");
   });
 }
 
@@ -62,14 +69,14 @@ function deltaDeterministico(periodo: PeriodoRanking, posicion: number): Ranking
   return posicion % 2 === 0 ? "down" : "up";
 }
 
-function construirRanking(miembros: User[], periodo: PeriodoRanking): RankingEntry[] {
-  return ordenarMiembros(miembros, periodo).map((u, i) => {
+function construirRanking(miembros: MiembroConPuntos[], periodo: PeriodoRanking): RankingEntry[] {
+  return ordenarMiembros(miembros, periodo).map((m, i) => {
     const posicion = i + 1;
     return {
       posicion,
-      user: u,
-      puntos: puntosDelPeriodo(u.puntos, periodo),
-      nivel: nivelPorPuntos(u.puntos),
+      user: m.user,
+      puntos: puntosDelPeriodo(m.puntosTotales, periodo),
+      nivel: nivelPorPuntos(m.user.puntos),
       delta: deltaDeterministico(periodo, posicion),
     };
   });
@@ -84,11 +91,25 @@ export interface UseGamificationResult {
   puntosParaSiguiente: number;
 }
 
-export function useGamification(comunidadId: string): UseGamificationResult {
-  const usuariosCreados = useKlazeStore((s) => s.usuariosCreados);
-  const enrollmentsExtra = useKlazeStore((s) => s.enrollmentsExtra);
-  const perfilOverrides = useKlazeStore((s) => s.perfilOverrides);
+/**
+ * Ranking de `comunidadId`. Sin `cursoId`: los puntos de cada miembro son
+ * `user.puntos` (comportamiento histórico, usado por `/perfil` — vía
+ * `miNivel`/`puntosParaSiguiente`, que NUNCA dependen de `cursoId` — y por
+ * `/admin/reportes`, top 5 alumnos de toda la comunidad).
+ *
+ * Con `cursoId` (Cambio 3: "Ranking" es ahora una pestaña por curso): los
+ * puntos de cada miembro son los likes recibidos en los posts que publicó
+ * DENTRO de ese curso — reutiliza `useFeed(comunidadId, cursoId)` (que ya
+ * resuelve likes de sesión + seed) en vez de re-derivar ese merge acá. El
+ * nivel (badge) sigue siendo siempre el global: es una insignia de
+ * plataforma, no varía por curso.
+ */
+export function useGamification(comunidadId: string, cursoId?: string): UseGamificationResult {
+  const usuariosCreados = useAppStore((s) => s.usuariosCreados);
+  const enrollmentsExtra = useAppStore((s) => s.enrollmentsExtra);
+  const perfilOverrides = useAppStore((s) => s.perfilOverrides);
   const { user } = useSession();
+  const { posts } = useFeed(comunidadId, cursoId);
 
   const todosLosUsuarios = [...mockUsers, ...usuariosCreados];
   const enrollments = [...mockEnrollments, ...enrollmentsExtra].filter(
@@ -100,10 +121,23 @@ export function useGamification(comunidadId: string): UseGamificationResult {
     .filter((u): u is User => u !== undefined)
     .map((u) => aplicarPerfilOverride(u, perfilOverrides));
 
+  let puntosPorCurso: Map<string, number> | null = null;
+  if (cursoId) {
+    puntosPorCurso = new Map();
+    for (const post of posts) {
+      puntosPorCurso.set(post.autorId, (puntosPorCurso.get(post.autorId) ?? 0) + post.likes.length);
+    }
+  }
+
+  const miembrosConPuntos: MiembroConPuntos[] = miembros.map((u) => ({
+    user: u,
+    puntosTotales: puntosPorCurso ? (puntosPorCurso.get(u.id) ?? 0) : u.puntos,
+  }));
+
   const rankingPorPeriodo: Record<PeriodoRanking, RankingEntry[]> = {
-    "7d": construirRanking(miembros, "7d"),
-    "30d": construirRanking(miembros, "30d"),
-    total: construirRanking(miembros, "total"),
+    "7d": construirRanking(miembrosConPuntos, "7d"),
+    "30d": construirRanking(miembrosConPuntos, "30d"),
+    total: construirRanking(miembrosConPuntos, "total"),
   };
 
   const miNivel = user ? nivelPorPuntos(user.puntos) : 1;

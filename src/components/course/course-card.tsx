@@ -51,7 +51,7 @@ function useMedidaTarjeta<T extends HTMLElement>() {
 const GROSOR_TRAZO = 2.5;
 
 /**
- * Tarjeta de curso — firma visual de Klaze: el borde redondeado se dibuja
+ * Tarjeta de curso — firma visual de Comunidad del Intercambio: el borde redondeado se dibuja
  * como un perímetro SVG animado según `progresoPct`. Portada Unsplash,
  * overlay de candado cuando no hay acceso (por nivel o sin enrollment).
  */
@@ -70,7 +70,7 @@ export function CourseCard({ curso, comunidadSlug, nombreNivelRequerido }: Cours
       className={cn(
         "group relative flex h-full flex-col overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/10 transition-shadow duration-300",
         !bloqueado && "hover:shadow-lg hover:shadow-primary/5",
-        completado && "shadow-[0_0_0_1px_var(--accent)]"
+        completado && "shadow-[0_0_0_1px_var(--brand)]"
       )}
     >
       {conProgreso && width > 0 && height > 0 && (
@@ -88,7 +88,7 @@ export function CourseCard({ curso, comunidadSlug, nombreNivelRequerido }: Cours
             width={Math.max(width - GROSOR_TRAZO, 0)}
             height={Math.max(height - GROSOR_TRAZO, 0)}
             rx={Math.max(radius - inset, 0)}
-            className={cn("stroke-accent", completado && "drop-shadow-[0_0_5px_var(--accent)]")}
+            className={cn("stroke-brand", completado && "drop-shadow-[0_0_5px_var(--brand)]")}
             strokeWidth={GROSOR_TRAZO}
             strokeLinecap="round"
             initial={{ pathLength: 0 }}
@@ -134,7 +134,7 @@ export function CourseCard({ curso, comunidadSlug, nombreNivelRequerido }: Cours
           <Badge
             className={cn(
               "absolute top-2 right-2 z-20 gap-1 border-0",
-              completado ? "bg-accent text-accent-foreground" : "bg-background/90 text-foreground"
+              completado ? "bg-brand text-brand-foreground" : "bg-background/90 text-foreground"
             )}
           >
             {completado ? (

@@ -1,6 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-/** Fallback de Suspense mientras carga el chunk de `/c/[comunidad]/calendario`. */
+/** Fallback de Suspense mientras carga el chunk de `/c/[comunidad]/cursos/[curso]/calendario`. */
 export default function CalendarioLoading() {
   return (
     <div>

@@ -27,7 +27,7 @@ function CreadoresSkeleton() {
 }
 
 /**
- * `/plataforma/creadores`: directorio de todos los creadores de Klaze —
+ * `/plataforma/creadores`: directorio de todos los creadores de Comunidad del Intercambio —
  * cada fila muestra sus comunidades como badges (una comunidad por creador
  * en el mock actual, pero el diseño soporta varias). Sin edición: es un
  * directorio de solo lectura, la única acción de negocio (suspender) vive
@@ -49,7 +49,7 @@ export default function PlataformaCreadoresPage() {
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {creadores.length} {creadores.length === 1 ? "creador registrado" : "creadores registrados"}{" "}
-          en Klaze.
+          en Comunidad del Intercambio.
         </p>
       </div>
 

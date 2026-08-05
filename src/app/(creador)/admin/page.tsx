@@ -147,7 +147,7 @@ export default function AdminDashboardPage() {
                       </TableCell>
                       <TableCell>
                         {inv.estado === "aceptada" ? (
-                          <Badge className="bg-accent/15 text-accent">Aceptada</Badge>
+                          <Badge className="bg-brand/15 text-brand">Aceptada</Badge>
                         ) : (
                           <Badge variant="secondary">Pendiente</Badge>
                         )}

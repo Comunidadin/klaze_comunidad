@@ -12,7 +12,7 @@ export const mockEnrollments: Enrollment[] = [
     cursoIds: ["curso-1", "curso-2"],
     estado: "activo",
   },
-  // Daniel (u-creador): fundador original de Academia Klaze, hoy alumno
+  // Daniel (u-creador): fundador original de Comunidad del Intercambio, hoy alumno
   // más — acceso total como cualquier miembro para que aparezca coherente
   // en el directorio de /admin/alumnos.
   {

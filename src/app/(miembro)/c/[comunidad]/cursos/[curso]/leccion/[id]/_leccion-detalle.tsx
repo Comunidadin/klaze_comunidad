@@ -20,7 +20,7 @@ import { useCommunity } from "@/lib/hooks/use-community";
 import { useCourses, useLesson } from "@/lib/hooks/use-courses";
 import { useHydrated, useSession } from "@/lib/hooks/use-session";
 import { useLessonComments } from "@/lib/hooks/use-lesson-comments";
-import { useKlazeStore } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -148,7 +148,7 @@ export function LeccionDetalle({ comunidadSlug, cursoSlug, leccionId }: LeccionD
   const leccionResult = useLesson(curso?.id ?? "", leccionId);
   const hydrated = useHydrated();
   const { user } = useSession();
-  const progreso = useKlazeStore((s) => s.progreso);
+  const progreso = useAppStore((s) => s.progreso);
 
   const leccionesCompletadasIds = useMemo(() => {
     if (!user) return new Set<string>();
@@ -303,7 +303,7 @@ export function LeccionDetalle({ comunidadSlug, cursoSlug, leccionId }: LeccionD
           <Button
             onClick={toggle}
             variant={completada ? "default" : "outline"}
-            className={cn(completada && "bg-accent text-accent-foreground hover:bg-accent/90")}
+            className={cn(completada && "bg-brand text-brand-foreground hover:bg-brand/90")}
           >
             <AnimatePresence mode="wait" initial={false}>
               {completada ? (

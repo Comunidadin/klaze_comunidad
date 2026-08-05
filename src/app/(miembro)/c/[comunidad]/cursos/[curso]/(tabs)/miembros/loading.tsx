@@ -1,6 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-/** Fallback de Suspense mientras carga el chunk de `/c/[comunidad]/miembros`. */
+/** Fallback de Suspense mientras carga el chunk de `/c/[comunidad]/cursos/[curso]/miembros`. */
 export default function MiembrosLoading() {
   return (
     <div>

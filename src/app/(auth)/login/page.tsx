@@ -10,9 +10,9 @@ import { Label } from "@/components/ui/label";
 import { AuthFormCard } from "../_components/auth-form-card";
 
 const CUENTAS_DEMO = [
-  { email: "alumno@klaze.app", etiqueta: "Alumno" },
-  { email: "creador@klaze.app", etiqueta: "Creadora" },
-  { email: "admin@klaze.app", etiqueta: "Super-admin" },
+  { email: "alumno@intercambio.app", etiqueta: "Alumno" },
+  { email: "creador@intercambio.app", etiqueta: "Creadora" },
+  { email: "admin@intercambio.app", etiqueta: "Super-admin" },
 ];
 
 /**

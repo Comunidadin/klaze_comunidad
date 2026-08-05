@@ -26,14 +26,16 @@ export function AuthFormCard({ titulo, subtitulo, children, footer }: AuthFormCa
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
     >
-      <div className="mb-8 lg:hidden">
-        <Logo href="/login" />
+      {/* El logo va aquí en todos los tamaños: la portada de la izquierda es
+          solo video, sin marca encima (ver `AuthBrandPanel`). */}
+      <div className="mb-8 flex justify-center">
+        <Logo href="/login" orientacion="vertical" />
       </div>
 
-      <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
+      <h1 className="text-center font-display text-xl font-bold tracking-tight text-foreground">
         {titulo}
       </h1>
-      <p className="mt-1.5 text-sm text-muted-foreground">{subtitulo}</p>
+      <p className="mt-1.5 text-center text-sm text-muted-foreground">{subtitulo}</p>
 
       <div className="mt-7">{children}</div>
 

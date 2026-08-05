@@ -1,4 +1,5 @@
 import type { Course, Lesson } from "@/lib/types";
+import { crearSeccionesDefault } from "@/lib/mocks/espacios";
 
 // IDs reales y públicos de Vimeo (staff picks de demo). Se reutilizan en
 // rotación para las lecciones de video — esto es solo contenido mock.
@@ -61,6 +62,7 @@ const curso1: Course = {
   precioReferencial: 149,
   nivelRequerido: null,
   publicado: true,
+  secciones: crearSeccionesDefault("curso-1"),
   modulos: [
     {
       id: "c1-m1",
@@ -75,7 +77,7 @@ const curso1: Course = {
           1,
           8,
           "Qué vas a lograr en las próximas semanas y cómo está organizado el programa.",
-          [{ nombre: "Guía de bienvenida.pdf", url: "https://mock.klaze.app/recursos/guia-bienvenida.pdf" }]
+          [{ nombre: "Guía de bienvenida.pdf", url: "https://mock.intercambio.app/recursos/guia-bienvenida.pdf" }]
         ),
         video(
           "c1-m1-l2",
@@ -97,7 +99,7 @@ const curso1: Course = {
           4,
           10,
           "Construye el perfil de la persona que más necesita lo que vas a enseñar.",
-          [{ nombre: "Plantilla cliente ideal.pdf", url: "https://mock.klaze.app/recursos/plantilla-cliente-ideal.pdf" }]
+          [{ nombre: "Plantilla cliente ideal.pdf", url: "https://mock.intercambio.app/recursos/plantilla-cliente-ideal.pdf" }]
         ),
       ],
     },
@@ -151,7 +153,7 @@ const curso1: Course = {
           9,
           15,
           "Los bloques que no pueden faltar: promesa, prueba social y llamado a la acción.",
-          [{ nombre: "Checklist de landing.pdf", url: "https://mock.klaze.app/recursos/checklist-landing.pdf" }]
+          [{ nombre: "Checklist de landing.pdf", url: "https://mock.intercambio.app/recursos/checklist-landing.pdf" }]
         ),
         video(
           "c1-m3-l10",
@@ -173,7 +175,7 @@ const curso1: Course = {
           12,
           5,
           "Antes de compartir el link de tu landing, revisa estos puntos:\n\n1. El titular comunica el resultado, no la característica.\n2. Hay al menos un testimonio o prueba social visible.\n3. El botón de compra se repite arriba, en medio y al final.\n4. El precio y la garantía están claros.\n5. Probaste el checkout con una compra real (y te reembolsaste).\n6. La página carga bien en celular.",
-          [{ nombre: "Checklist de landing.pdf", url: "https://mock.klaze.app/recursos/checklist-landing.pdf" }]
+          [{ nombre: "Checklist de landing.pdf", url: "https://mock.intercambio.app/recursos/checklist-landing.pdf" }]
         ),
       ],
     },
@@ -234,6 +236,7 @@ const curso2: Course = {
   precioReferencial: 79,
   nivelRequerido: null,
   publicado: true,
+  secciones: crearSeccionesDefault("curso-2"),
   modulos: [
     {
       id: "c2-m1",
@@ -277,6 +280,7 @@ const curso3: Course = {
   precioReferencial: 349,
   nivelRequerido: 3,
   publicado: true,
+  secciones: crearSeccionesDefault("curso-3"),
   modulos: [
     {
       id: "c3-m1",
@@ -286,7 +290,7 @@ const curso3: Course = {
         video("c3-m1-l1", "Cómo escalar a seis cifras", 1, 20, "El plan de escalamiento que separa a los negocios que crecen de los que se estancan."),
         video("c3-m1-l2", "Construye tu equipo sin perder cultura", 2, 18, "Primeras contrataciones: qué delegar primero y qué nunca soltar."),
         video("c3-m1-l3", "Negociación con partners y afiliados", 3, 15, "Cómo estructurar acuerdos de afiliados que benefician a ambas partes."),
-        video("c3-m1-l4", "Preguntas y respuestas con Daniel", 4, 22, "Sesión abierta de preguntas con Daniel, fundador original de Academia Klaze y hoy alumno de la comunidad."),
+        video("c3-m1-l4", "Preguntas y respuestas con Daniel", 4, 22, "Sesión abierta de preguntas con Daniel, uno de los miembros fundadores de la comunidad y hoy alumno como cualquier otro."),
       ],
     },
   ],
@@ -308,6 +312,7 @@ const curso4: Course = {
   precioReferencial: 49,
   nivelRequerido: null,
   publicado: true,
+  secciones: crearSeccionesDefault("curso-4"),
   modulos: [
     {
       id: "c4-m1",

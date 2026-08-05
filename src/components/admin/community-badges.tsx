@@ -14,7 +14,7 @@ export function PlanBadge({ plan }: { plan: Plan }) {
     return <Badge className="border-transparent bg-primary/15 text-primary">{plan.nombre}</Badge>;
   }
   if (plan.id === "scale") {
-    return <Badge className="border-transparent bg-accent/15 text-accent">{plan.nombre}</Badge>;
+    return <Badge className="border-transparent bg-brand/15 text-brand">{plan.nombre}</Badge>;
   }
   return <Badge variant="secondary">{plan.nombre}</Badge>;
 }
@@ -22,7 +22,7 @@ export function PlanBadge({ plan }: { plan: Plan }) {
 /** Badge de estado de comunidad — reutilizado por dashboard y `/plataforma/comunidades`. */
 export function EstadoComunidadBadge({ estado }: { estado: Community["estado"] }) {
   if (estado === "activa") {
-    return <Badge className="border-transparent bg-accent/15 text-accent">Activa</Badge>;
+    return <Badge className="border-transparent bg-brand/15 text-brand">Activa</Badge>;
   }
   return <Badge variant="destructive">Suspendida</Badge>;
 }

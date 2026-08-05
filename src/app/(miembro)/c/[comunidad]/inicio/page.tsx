@@ -1,16 +1,18 @@
-import { Feed } from "./_feed";
+import { redirect } from "next/navigation";
 
 /**
- * Server Component: solo desenvuelve `params` (async en Next 16) y delega
- * la data/hidratación a `Feed` (client), igual que el resto de rutas
- * dinámicas del proyecto.
+ * `/c/[comunidad]/inicio` ya no existe como pantalla (Cambio 3: la comunidad
+ * pasa a vivir dentro de cada curso, y el nivel superior del área de
+ * miembros es la lista de cursos). Se conserva esta ruta solo como
+ * redirect — hay enlaces viejos al "inicio" en el pie de página y el logo
+ * que no vale la pena cazar uno por uno, y cualquier bookmark externo a esta
+ * URL no debe romperse con un 404.
  */
-export default async function InicioPage({
+export default async function InicioRedirectPage({
   params,
 }: {
   params: Promise<{ comunidad: string }>;
 }) {
   const { comunidad } = await params;
-
-  return <Feed comunidadSlug={comunidad} />;
+  redirect(`/c/${comunidad}/cursos`);
 }

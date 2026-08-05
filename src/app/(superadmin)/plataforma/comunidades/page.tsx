@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Building2, Search, ShieldOff, UserCheck } from "lucide-react";
 import { useHydrated } from "@/lib/hooks/use-session";
 import { usePlatform, type ComunidadPlataforma } from "@/lib/hooks/use-platform";
-import { useKlazeStore } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
 import { PlanBadge, EstadoComunidadBadge } from "@/components/admin/community-badges";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -51,7 +51,7 @@ function ComunidadesSkeleton() {
 }
 
 /**
- * `/plataforma/comunidades`: directorio de todas las comunidades de Klaze
+ * `/plataforma/comunidades`: directorio de todas las comunidades de Comunidad del Intercambio
  * — buscador + suspender/activar (`cambiarEstadoComunidad`, con Dialog de
  * confirmación). Suspender bloquea de inmediato `/c/[slug]/*` a sus
  * miembros (ver `MemberShell`); reactivar restaura el acceso al instante.
@@ -59,7 +59,7 @@ function ComunidadesSkeleton() {
 export default function PlataformaComunidadesPage() {
   const hydrated = useHydrated();
   const { comunidades } = usePlatform();
-  const cambiarEstadoComunidad = useKlazeStore((s) => s.cambiarEstadoComunidad);
+  const cambiarEstadoComunidad = useAppStore((s) => s.cambiarEstadoComunidad);
 
   const [busqueda, setBusqueda] = useState("");
   const [pendiente, setPendiente] = useState<PendienteCambio | null>(null);

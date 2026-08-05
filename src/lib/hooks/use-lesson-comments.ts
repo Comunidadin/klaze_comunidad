@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { mockUsers } from "@/lib/mocks/users";
 import { haceDias } from "@/lib/mocks/fechas";
-import { useKlazeStore } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
 import type { User } from "@/lib/types";
 
 export interface LessonCommentConAutor {
@@ -95,7 +95,7 @@ export function useLessonComments(leccionId: string): UseLessonCommentsResult {
   // Usuarios creados en runtime (alumnos que aceptaron invitación, T6) —
   // `agregar` debe poder resolverlos como autor, igual que `use-session.ts`
   // combina `mockUsers` + `usuariosCreados` para la sesión activa.
-  const usuariosCreados = useKlazeStore((s) => s.usuariosCreados);
+  const usuariosCreados = useAppStore((s) => s.usuariosCreados);
 
   // Si `leccionId` cambia (navegación a otra lección) reseteamos el estado
   // sincrónicamente durante el render — patrón recomendado por React para

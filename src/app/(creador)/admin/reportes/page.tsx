@@ -8,7 +8,7 @@ import {
   Trophy,
   UserCheck,
 } from "lucide-react";
-import { enrollmentCubreCurso, resolverEstadoEnrollment, useKlazeStore } from "@/lib/store";
+import { enrollmentCubreCurso, resolverEstadoEnrollment, useAppStore } from "@/lib/store";
 import { mockEnrollments } from "@/lib/mocks/enrollments";
 import { useHydrated } from "@/lib/hooks/use-session";
 import { useAhora } from "@/lib/hooks/use-ahora";
@@ -175,7 +175,7 @@ function RankBadge({ posicion }: { posicion: number }) {
       className={cn(
         "flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums",
         posicion === 1
-          ? "bg-accent text-accent-foreground"
+          ? "bg-brand text-brand-foreground"
           : "bg-muted text-muted-foreground"
       )}
     >
@@ -201,9 +201,9 @@ export default function ReportesPage() {
   const { cursos } = useAdminCourses(community?.id ?? "");
   const { posts } = useFeed(community?.id ?? "");
   const { eventos } = useEvents(community?.id ?? "");
-  const progreso = useKlazeStore((s) => s.progreso);
-  const enrollmentsExtra = useKlazeStore((s) => s.enrollmentsExtra);
-  const estadoOverrides = useKlazeStore((s) => s.estadoOverrides);
+  const progreso = useAppStore((s) => s.progreso);
+  const enrollmentsExtra = useAppStore((s) => s.enrollmentsExtra);
+  const estadoOverrides = useAppStore((s) => s.estadoOverrides);
 
   if (!hydrated) {
     return <ReportesSkeleton />;
@@ -295,7 +295,7 @@ export default function ReportesPage() {
                     key={entrada.user.id}
                     className={cn(
                       "flex items-center gap-3 rounded-xl px-2 py-2",
-                      entrada.posicion === 1 && "bg-accent/10 ring-1 ring-accent/30"
+                      entrada.posicion === 1 && "bg-brand/10 ring-1 ring-brand/30"
                     )}
                   >
                     <RankBadge posicion={entrada.posicion} />
@@ -332,7 +332,7 @@ export default function ReportesPage() {
                     key={leccion.id}
                     className={cn(
                       "flex items-center gap-3 rounded-xl px-2 py-2",
-                      i === 0 && "bg-accent/10 ring-1 ring-accent/30"
+                      i === 0 && "bg-brand/10 ring-1 ring-brand/30"
                     )}
                   >
                     <RankBadge posicion={i + 1} />
