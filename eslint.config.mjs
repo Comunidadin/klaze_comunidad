@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Salida del adaptador de Cloudflare (`opennextjs-cloudflare build`):
+    // es código generado y empaquetado, no fuente del proyecto. Sin esto
+    // `bun run lint` reporta cientos de errores del bundle.
+    ".open-next/**",
+    ".wrangler/**",
   ]),
 ]);
 

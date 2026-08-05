@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "comunidad-intercambio",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-03-25",
+  // `nodejs_compat` lo exige el runtime de Next; `global_fetch_strictly_public`
+  // hace que un fetch a la propia URL salga a internet en vez de resolverse
+  // dentro del Worker. Ambos son requisito del adaptador, no opcionales.
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  }
+}
