@@ -6,7 +6,7 @@ Ver `README.md` para la descripción de producto, usuarios semilla, mapa de ruta
 
 ## Qué es esto
 
-Frontend-only (sin backend) de Klaze, plataforma multi-creador de cursos + comunidad. Next.js App Router + TypeScript + Tailwind v4 + shadcn/ui + Zustand + Framer Motion, gestor `bun`. Toda la UI y la copy están en **español**.
+Frontend-only (sin backend) de Comunidad del Intercambio, plataforma multi-creador de cursos + comunidad. Next.js App Router + TypeScript + Tailwind v4 + shadcn/ui + Zustand + Framer Motion, gestor `bun`. Toda la UI y la copy están en **español**.
 
 ## Comandos
 
@@ -50,17 +50,22 @@ Si agregas un consumidor nuevo de comunidad/enrollment/cursos, usa estos helpers
 
 ## Selectores de Zustand (React 19)
 
-`getSnapshot` debe devolver referencias estables: **no hagas `.filter()`/`.map()` ni crees objetos dentro del selector** (`useKlazeStore(s => s.x.filter(...))` crashea con el invariante de `useSyncExternalStore`). Selecciona el array crudo y deriva con `useMemo` en el hook. Ver `use-invitations.ts` y `use-ahora.ts`, que se corrigieron exactamente por esto.
+`getSnapshot` debe devolver referencias estables: **no hagas `.filter()`/`.map()` ni crees objetos dentro del selector** (`useAppStore(s => s.x.filter(...))` crashea con el invariante de `useSyncExternalStore`). Selecciona el array crudo y deriva con `useMemo` en el hook. Ver `use-invitations.ts` y `use-ahora.ts`, que se corrigieron exactamente por esto.
 
 ## Estado y sesión
 
-- `src/lib/store.ts` es el único estado mutable de la app (Zustand + `persist`, clave de `localStorage`: `klaze-v2`). Ahí viven: sesión activa, invitaciones, progreso de lecciones, posts/comentarios/likes creados en la demo, comunidades registradas en runtime, overrides de edición admin.
+- `src/lib/store.ts` es el único estado mutable de la app (Zustand + `persist`, clave de `localStorage`: `intercambio-v1`). Ahí viven: sesión activa, invitaciones, progreso de lecciones, posts/comentarios/likes creados en la demo, comunidades registradas en runtime, overrides de edición admin.
 - `useSession()` / `useHydrated()` (`src/lib/hooks/use-session.ts`) son el punto de entrada para saber quién está logueado y si el store ya hidrató desde `localStorage`. **Todo layout de grupo de rutas debe gatear en `!hydrated` antes de decidir un redirect** — mira `src/app/(miembro)/layout.tsx` como referencia canónica del patrón (`if (!hydrated || !user) return <FullScreenLoader />`).
-- Los 4 layouts de grupo (`(auth)`, `(miembro)`, `(creador)`, `(superadmin)`) son los guards de rol. No dupliques lógica de redirect dentro de páginas hijas. Matices: `(creador)` admite `creador` Y `superadmin` (el superadmin puede ser dueño de una comunidad — hoy admin@klaze.app es dueño de Academia Klaze); `/invitacion` está excluida del redirect de ya-logueado en `(auth)`; el destino post-login vive en `homePorRol` (`src/lib/routes.ts`) — no dupliques esa tabla.
+- Los 4 layouts de grupo (`(auth)`, `(miembro)`, `(creador)`, `(superadmin)`) son los guards de rol. No dupliques lógica de redirect dentro de páginas hijas. Matices: `(creador)` admite `creador` Y `superadmin` (el superadmin puede ser dueño de una comunidad — hoy admin@intercambio.app es dueño de Comunidad del Intercambio); `/invitacion` está excluida del redirect de ya-logueado en `(auth)`; el destino post-login vive en `homePorRol` (`src/lib/routes.ts`) — no dupliques esa tabla.
 
 ## Convenciones de UI
 
-- Tokens de color/espaciado viven en `src/app/globals.css` (`@theme inline` + variables `:root`/`.dark`). Usa clases semánticas (`bg-card`, `text-muted-foreground`, `ring-foreground/10`, `bg-accent`) en vez de colores hardcodeados — así el modo oscuro funciona gratis. Excepción legítima: overlays sobre imágenes/video (hero con gradiente, `VimeoPlayer`, `Sheet`/`Dialog` backdrop) donde `bg-black`/`text-white` son intencionales y no dependen del tema.
+- Tokens de color/espaciado viven en `src/app/globals.css` (`@theme inline` + variables `:root`/`.dark`). Usa clases semánticas (`bg-card`, `text-muted-foreground`, `ring-foreground/10`) en vez de colores hardcodeados — así el modo oscuro funciona gratis. Excepción legítima: overlays sobre imágenes/video (hero con gradiente, `VimeoPlayer`, `Sheet`/`Dialog` backdrop) donde `bg-black`/`text-white` son intencionales y no dependen del tema.
+- **Tres tokens de color que se confunden fácil** (paleta derivada del logo: cian `#06ABEB`, negro, blanco):
+  - `--primary` (`#0073B0`, cian profundo) — botones, enlaces, estados activos. Es el único cian que pasa contraste AA en las dos direcciones: como texto sobre fondo claro (4.9:1) y como relleno con `--primary-foreground` blanco (5.2:1). Por defecto, usa este.
+  - `--brand` (el cian exacto del logo) — solo rellenos grandes con `--brand-foreground` (casi negro) encima. Con texto blanco da 2.6:1 y **reprueba AA**, así que nunca lo combines con blanco.
+  - `--accent` — neutro, es el fondo de hover de shadcn (`bg-accent` dentro de `components/ui`). No es un color de marca; si estás pintando algo de la marca querías `--brand`.
+
 - Elementos "tarjeta" que son en realidad un `<button>` (no un `<a>`/`Link`) necesitan la clase `cursor-pointer` explícita — los navegadores no ponen cursor de mano en `<button>` por defecto. Revisa `member-card.tsx` / `post-composer.tsx` como ejemplos.
 - `src/components/shared/page-transition.tsx` es la transición de página (fade/slide, respeta `prefers-reduced-motion` vía `useReducedMotion` de Framer Motion) usada por los `template.tsx` de `(miembro)`, `(creador)`, `(superadmin)`. El resto de usos de Framer Motion en el proyecto **no** respeta esa preferencia todavía (limitación conocida, documentada en el README — no la repliques sin revisar si vale la pena para ese caso puntual).
 - Componentes de `src/components/ui/` son la base de shadcn/ui, generados — evita editarlos a mano salvo que sea un fix real de la librería; para variantes de producto, envuelve o crea un componente en `src/components/shared|admin|community|course/`.
