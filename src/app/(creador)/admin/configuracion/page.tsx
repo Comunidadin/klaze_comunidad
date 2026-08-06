@@ -5,6 +5,9 @@ import { toast } from "sonner";
 import { Save, Settings } from "lucide-react";
 import { useHydrated } from "@/lib/hooks/use-session";
 import { useMyCommunity } from "@/lib/hooks/use-my-community";
+import { crearClienteNavegador } from "@/lib/supabase/client";
+import { cargarArmazon } from "@/lib/supabase/consultas";
+import { guardarComunidad } from "@/lib/supabase/perfil";
 import { useAppStore } from "@/lib/store";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -111,7 +114,6 @@ function PreviewEncabezado({ nombre, logoUrl, colorAcento }: PreviewEncabezadoPr
 export default function ConfiguracionPage() {
   const hydrated = useHydrated();
   const community = useMyCommunity();
-  const guardarComunidad = useAppStore((s) => s.guardarComunidad);
 
   if (!hydrated) {
     return <ConfiguracionSkeleton />;
@@ -127,19 +129,15 @@ export default function ConfiguracionPage() {
     );
   }
 
-  return <ConfiguracionForm key={community.id} community={community} guardarComunidad={guardarComunidad} />;
+  return <ConfiguracionForm key={community.id} community={community} />;
 }
 
 function ConfiguracionForm({
   community,
-  guardarComunidad,
 }: {
   community: Community;
-  guardarComunidad: (
-    comunidadId: string,
-    cambios: Partial<Pick<Community, "nombre" | "logoUrl" | "colorAcento">>
-  ) => void;
 }) {
+  const establecerArmazon = useAppStore((s) => s.establecerArmazon);
   const [nombre, setNombre] = useState(community.nombre);
   const [logoUrl, setLogoUrl] = useState(community.logoUrl);
   const [colorAcento, setColorAcento] = useState(community.colorAcento);
@@ -150,12 +148,20 @@ function ConfiguracionForm({
       toast.error("El nombre de la comunidad no puede estar vacío.");
       return;
     }
-    guardarComunidad(community.id, {
-      nombre: nombreLimpio,
-      logoUrl: logoUrl.trim(),
-      colorAcento,
-    });
-    toast.success("Configuración de la comunidad actualizada.");
+    try {
+      const supabase = crearClienteNavegador();
+      await guardarComunidad(supabase, community.id, {
+        nombre: nombreLimpio,
+        logoUrl: logoUrl.trim(),
+        colorAcento,
+      });
+      // Recargar el armazón para que el nombre y el color nuevos se vean en
+      // toda la app, no solo en esta pantalla.
+      establecerArmazon(await cargarArmazon(supabase));
+      toast.success("Configuración de la comunidad actualizada.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo guardar");
+    }
   }
 
   return (

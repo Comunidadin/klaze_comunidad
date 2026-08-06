@@ -4,10 +4,12 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ArrowLeft, LogOut, Save } from "lucide-react";
+import { crearClienteNavegador } from "@/lib/supabase/client";
+import { cargarArmazon } from "@/lib/supabase/consultas";
+import { actualizarPerfil } from "@/lib/supabase/perfil";
 import { useSession } from "@/lib/hooks/use-session";
 import { useGamification } from "@/lib/hooks/use-gamification";
-import { resolverComunidad, useAppStore } from "@/lib/store";
-import { mockCommunities } from "@/lib/mocks/communities";
+import { useAppStore } from "@/lib/store";
 import { homePorRol } from "@/lib/routes";
 import { NIVEL_MAXIMO, puntosParaNivel } from "@/lib/levels";
 import { Logo } from "@/components/shared/logo";
@@ -46,40 +48,40 @@ export default function PerfilPage() {
 function PerfilContenido({ user }: { user: User }) {
   const router = useRouter();
   const { logout } = useSession();
-  const actualizarPerfil = useAppStore((s) => s.actualizarPerfil);
-  const comunidadesCreadas = useAppStore((s) => s.comunidadesCreadas);
-  const comunidadOverrides = useAppStore((s) => s.comunidadOverrides);
+  const establecerArmazon = useAppStore((s) => s.establecerArmazon);
+  const armazon = useAppStore((s) => s.armazon);
 
   // Un usuario puede pertenecer a varias comunidades (`comunidadIds`). Para
   // decidir de qué comunidad tomar los nombres de nivel usamos la primera
   // (`comunidadIds[0]`) como su "comunidad principal" — misma intención que
   // `homePorRol` en src/lib/routes.ts (llevar al usuario a "su" comunidad
   // por defecto), pero con un algoritmo distinto: `homePorRol` recorre la
-  // lista de comunidades y toma la primera que el usuario tenga en
-  // `comunidadIds`, mientras que aquí tomamos directamente `comunidadIds[0]`.
-  // Se resuelve vía `resolverComunidad` para que un nombre de nivel editado
-  // desde /admin/comunidad se refleje acá sin un parche local.
-  const todasLasComunidades = [...mockCommunities, ...comunidadesCreadas];
-  const comunidadBase =
-    todasLasComunidades.find((c) => c.id === user.comunidadIds[0]) ?? todasLasComunidades[0];
-  const comunidadPrincipal = comunidadBase
-    ? resolverComunidad(comunidadBase, comunidadOverrides)
-    : undefined;
+  // Sale del armazón: RLS ya entrega solo la comunidad a la que perteneces,
+  // así que no hay nada que buscar ni que resolver.
+  const comunidadPrincipal = armazon?.comunidad ?? undefined;
 
   const { miNivel, puntosParaSiguiente } = useGamification(comunidadPrincipal?.id ?? "");
 
   const [nombre, setNombre] = useState(user.nombre);
   const [bio, setBio] = useState(user.bio);
 
-  function handleGuardar(e: FormEvent) {
+  async function handleGuardar(e: FormEvent) {
     e.preventDefault();
     const nombreLimpio = nombre.trim();
     if (!nombreLimpio) {
       toast.error("El nombre no puede estar vacío.");
       return;
     }
-    actualizarPerfil(nombreLimpio, bio.trim());
-    toast.success("Tu perfil se actualizó correctamente.");
+    try {
+      const supabase = crearClienteNavegador();
+      await actualizarPerfil(supabase, { nombre: nombreLimpio, bio: bio.trim() });
+      // Recargar el armazón para que el nombre nuevo se vea en todas partes:
+      // el menú, sus publicaciones y su ficha de alumno.
+      establecerArmazon(await cargarArmazon(supabase));
+      toast.success("Tu perfil se actualizó correctamente.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "No se pudo guardar el perfil");
+    }
   }
 
   async function handleLogout() {

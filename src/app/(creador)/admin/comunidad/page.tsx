@@ -14,6 +14,8 @@ import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { useFeed, type PostConAutor } from "@/lib/hooks/use-feed";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { guardarSecciones, leerSecciones } from "@/lib/supabase/espacios";
+import { guardarComunidad } from "@/lib/supabase/perfil";
+import { cargarArmazon } from "@/lib/supabase/consultas";
 import { eliminarPost, fijarPost } from "@/lib/supabase/feed";
 import { useEspacios } from "@/lib/hooks/use-espacios";
 import { slugify, useAppStore } from "@/lib/store";
@@ -479,14 +481,20 @@ function NivelesTab({
   comunidadId: string;
   nombresIniciales: string[];
 }) {
-  const guardarNombresNiveles = useAppStore((s) => s.guardarNombresNiveles);
+  const establecerArmazon = useAppStore((s) => s.establecerArmazon);
   const [nombres, setNombres] = useState<string[]>(nombresIniciales);
 
-  function guardar() {
+  async function guardar() {
     const limpios = nombres.map((n, i) => n.trim() || `Nivel ${i + 1}`);
     setNombres(limpios);
-    guardarNombresNiveles(comunidadId, limpios);
-    toast.success("Nombres de nivel actualizados.");
+    try {
+      const supabase = crearClienteNavegador();
+      await guardarComunidad(supabase, comunidadId, { nombresNiveles: limpios });
+      establecerArmazon(await cargarArmazon(supabase));
+      toast.success("Nombres de nivel actualizados.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudieron guardar");
+    }
   }
 
   return (

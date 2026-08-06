@@ -1,6 +1,6 @@
 "use client";
 
-import { resolverComunidad, useAppStore } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
 import type { Community } from "@/lib/types";
 
 export interface UseCommunityResult {
@@ -19,12 +19,11 @@ export interface UseCommunityResult {
  */
 export function useCommunity(slug: string): UseCommunityResult | null {
   const armazon = useAppStore((s) => s.armazon);
-  const comunidadOverrides = useAppStore((s) => s.comunidadOverrides);
 
   const base = armazon?.comunidad ?? null;
   if (!base || base.slug !== slug) return null;
 
-  const community = resolverComunidad(base, comunidadOverrides);
+  const community = base;
   const isOwner = armazon !== null && armazon.perfil.id === community.ownerId;
 
   return { community, isOwner };
