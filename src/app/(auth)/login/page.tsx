@@ -1,27 +1,37 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { MailCheck, Send } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { KeyRound, MailCheck, Send } from "lucide-react";
 import { useSession } from "@/lib/hooks/use-session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AuthFormCard } from "../_components/auth-form-card";
 
+type Modo = "enlace" | "clave";
+
 /**
- * Entrada por enlace de correo. No hay contraseña que recordar ni recuperar.
+ * Dos vías de entrada, y cada una para quien la necesita.
  *
- * Responde lo mismo exista o no la cuenta. Si dijera "ese correo no está
- * registrado", el formulario se convertiría en una herramienta para averiguar
- * quién tiene cuenta aquí — y con academias de empresas distintas conviviendo
- * en la misma base, eso es información de más.
+ * **Enlace por correo** es la vía de los alumnos: no se les pone contraseña al
+ * invitarlos, así que no tienen ninguna que recordar ni perder.
  *
- * El redirect por rol no ocurre aquí: cuando la persona abre el enlace de su
- * correo aterriza en `/callback`, que decide a dónde llevarla.
+ * **Contraseña** es la vía de quien administra. El enlace depende de tener un
+ * emisor de correo configurado y un dominio verificado; sin eso, el dueño se
+ * quedaría fuera de su propia academia.
+ *
+ * En ambos casos la respuesta es la misma exista o no la cuenta. Si dijera
+ * "ese correo no está registrado", el formulario serviría para averiguar quién
+ * tiene cuenta aquí — y en esta base conviven academias de empresas distintas.
  */
 export default function LoginPage() {
-  const { enviarEnlace } = useSession();
+  const { enviarEnlace, entrarConClave } = useSession();
+  const router = useRouter();
+
+  const [modo, setModo] = useState<Modo>("clave");
   const [email, setEmail] = useState("");
+  const [clave, setClave] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,10 +40,24 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setEnviando(true);
-    const r = await enviarEnlace(email.trim());
+
+    if (modo === "enlace") {
+      const r = await enviarEnlace(email.trim());
+      setEnviando(false);
+      if (r.ok) setEnviado(true);
+      else setError("No pudimos enviar el enlace. Revisa que el correo esté configurado.");
+      return;
+    }
+
+    const r = await entrarConClave(email.trim(), clave);
     setEnviando(false);
-    if (r.ok) setEnviado(true);
-    else setError("No pudimos enviar el enlace. Inténtalo de nuevo en un momento.");
+    if (r.ok) {
+      // El layout de (auth) redirige por rol en cuanto hay sesión; esto solo
+      // adelanta la navegación para que no se vea un parpadeo del formulario.
+      router.replace("/callback");
+    } else {
+      setError("No pudimos entrar. Revisa el correo y la contraseña.");
+    }
   }
 
   if (enviado) {
@@ -53,7 +77,11 @@ export default function LoginPage() {
   return (
     <AuthFormCard
       titulo="Entra a tu academia"
-      subtitulo="Te enviamos un enlace de acceso. Sin contraseñas."
+      subtitulo={
+        modo === "clave"
+          ? "Con tu correo y contraseña."
+          : "Te enviamos un enlace de acceso. Sin contraseñas."
+      }
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
@@ -69,6 +97,20 @@ export default function LoginPage() {
           />
         </div>
 
+        {modo === "clave" && (
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="clave">Contraseña</Label>
+            <Input
+              id="clave"
+              type="password"
+              required
+              autoComplete="current-password"
+              value={clave}
+              onChange={(e) => setClave(e.target.value)}
+            />
+          </div>
+        )}
+
         {error && (
           <p role="alert" className="text-sm text-destructive">
             {error}
@@ -76,9 +118,26 @@ export default function LoginPage() {
         )}
 
         <Button type="submit" disabled={enviando} className="w-full">
-          <Send className="size-4" aria-hidden />
-          {enviando ? "Enviando..." : "Enviarme el enlace"}
+          {modo === "clave" ? (
+            <KeyRound className="size-4" aria-hidden />
+          ) : (
+            <Send className="size-4" aria-hidden />
+          )}
+          {enviando ? "Entrando..." : modo === "clave" ? "Entrar" : "Enviarme el enlace"}
         </Button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setModo(modo === "clave" ? "enlace" : "clave");
+            setError(null);
+          }}
+          className="cursor-pointer text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        >
+          {modo === "clave"
+            ? "Prefiero recibir un enlace por correo"
+            : "Prefiero entrar con contraseña"}
+        </button>
       </form>
     </AuthFormCard>
   );

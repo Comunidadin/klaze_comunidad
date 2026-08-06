@@ -10,6 +10,7 @@
     "test:rls": "bun test --env-file=.env.local --timeout=60000 tests/rls",
     "db:push": "bun --env-file=.env.local scripts/aplicar-migraciones.ts",
     "crear-academia": "bun --env-file=.env.local scripts/crear-academia.ts",
+    "enlace-acceso": "bun --env-file=.env.local scripts/enlace-acceso.ts",
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
   },

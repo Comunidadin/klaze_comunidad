@@ -76,6 +76,18 @@ export interface UseSessionResult {
    * nombre prometía algo que este método no hace.
    */
   enviarEnlace: (email: string) => Promise<{ ok: boolean; error?: string }>;
+  /**
+   * Entrada con contraseña. Existe para quien administra la academia: el
+   * enlace por correo depende de tener un emisor configurado y un dominio
+   * verificado, y hasta entonces dejaría al dueño fuera de su propia app.
+   *
+   * Los alumnos entran por enlace — no se les pone contraseña al invitarlos,
+   * así que esta vía sencillamente no les aplica.
+   */
+  entrarConClave: (
+    email: string,
+    clave: string
+  ) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
 
@@ -95,9 +107,18 @@ export function useSession(): UseSessionResult {
     return error ? { ok: false, error: error.message } : { ok: true };
   }, []);
 
+  const entrarConClave = useCallback(async (email: string, clave: string) => {
+    const supabase = crearClienteNavegador();
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password: clave,
+    });
+    return error ? { ok: false, error: error.message } : { ok: true };
+  }, []);
+
   const logout = useCallback(async () => {
     await crearClienteNavegador().auth.signOut();
   }, []);
 
-  return { user: armazon?.perfil ?? null, enviarEnlace, logout };
+  return { user: armazon?.perfil ?? null, enviarEnlace, entrarConClave, logout };
 }
