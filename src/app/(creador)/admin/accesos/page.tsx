@@ -123,6 +123,7 @@ export default function AccesosPage() {
   const [correosTexto, setCorreosTexto] = useState("");
   const [cursoIdsSeleccionados, setCursoIdsSeleccionados] = useState<string[]>([]);
   const [todaLaComunidad, setTodaLaComunidad] = useState(false);
+  const [enviando, setEnviando] = useState(false);
 
   const { validos, invalidos } = useMemo(() => parseCorreos(correosTexto), [correosTexto]);
   const haySeleccionDeCursos = todaLaComunidad || cursoIdsSeleccionados.length > 0;
@@ -154,13 +155,31 @@ export default function AccesosPage() {
     if (marcado) setCursoIdsSeleccionados([]);
   }
 
-  function handleEnviar() {
-    if (!puedeEnviar) return;
-    crear(validos, todaLaComunidad ? "todos" : cursoIdsSeleccionados);
-    toast.success(`📧 ${validos.length} invitaciones enviadas`);
-    setCorreosTexto("");
-    setCursoIdsSeleccionados([]);
-    setTodaLaComunidad(false);
+  async function handleEnviar() {
+    if (!puedeEnviar || enviando) return;
+    setEnviando(true);
+    try {
+      const creadas = await crear(
+        validos,
+        todaLaComunidad ? "todos" : cursoIdsSeleccionados
+      );
+      // El envío del correo llega en la tarea 2; por ahora la invitación queda
+      // creada y su enlace se comparte copiándolo desde la lista.
+      toast.success(
+        creadas.length === 1
+          ? "Invitación creada"
+          : `${creadas.length} invitaciones creadas`
+      );
+      setCorreosTexto("");
+      setCursoIdsSeleccionados([]);
+      setTodaLaComunidad(false);
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "No se pudieron crear las invitaciones"
+      );
+    } finally {
+      setEnviando(false);
+    }
   }
 
   const invitacionesOrdenadas = [...invitaciones].sort(
