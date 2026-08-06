@@ -193,8 +193,9 @@ function RankBadge({ posicion }: { posicion: number }) {
  * `/admin/reportes`: métricas de actividad de la comunidad — 4 tarjetas
  * resumen, dos `BarChart` (lecciones completadas por semana, % de avance por
  * curso) y dos rankings top-5 (alumnos más activos, lecciones más vistas).
- * Todo se deriva del store real (`progreso`, `enrollmentsExtra`, etc.) salvo
- * "vistas" de lecciones, que es mock determinístico (ver `topLeccionesVistas`).
+ * Todo se deriva de datos reales salvo "vistas" de lecciones, que sigue siendo
+ * un cálculo determinístico (ver `topLeccionesVistas`): nadie registra todavía
+ * cuántas veces se abre una lección.
  */
 export default function ReportesPage() {
   const hydrated = useHydrated();

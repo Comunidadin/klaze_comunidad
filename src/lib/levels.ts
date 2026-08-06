@@ -1,5 +1,9 @@
-// Sistema de niveles por puntos. Los umbrales deben coincidir exactamente
-// con los usados para sembrar `nivel` en src/lib/mocks/users.ts.
+// Sistema de niveles por puntos.
+//
+// Los puntos los otorga un disparador de Postgres (10 por leccion completada,
+// ver `ajustar_puntos`); el nivel se deriva aqui, al leer. La base guarda un
+// solo numero y esta tabla decide que significa, asi que mover un umbral no
+// obliga a recalcular nada.
 
 const NIVEL_UMBRALES = [0, 20, 65, 155, 315, 515, 815, 1215, 1715];
 

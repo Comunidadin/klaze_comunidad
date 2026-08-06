@@ -14,6 +14,8 @@ import {
   Users,
 } from "lucide-react";
 import { useHydrated, useSession } from "@/lib/hooks/use-session";
+import { useAppStore } from "@/lib/store";
+import { AcademiaSuspendida } from "@/components/shared/academia-suspendida";
 import { homePorRol } from "@/lib/routes";
 import { AdminShell, type AdminNavItem } from "@/components/shells/admin-shell";
 import { FullScreenLoader } from "@/components/shared/full-screen-loader";
@@ -48,6 +50,7 @@ export default function CreadorLayout({ children }: { children: React.ReactNode 
   const { user } = useSession();
   const router = useRouter();
   const autorizado = user !== null && (user.rol === "creador" || user.rol === "superadmin");
+  const comunidad = useAppStore((s) => s.armazon)?.comunidad;
   const items =
     user?.rol === "superadmin" ? [...ITEMS_BASE, ITEM_PLATAFORMA] : ITEMS_BASE;
 
@@ -64,6 +67,12 @@ export default function CreadorLayout({ children }: { children: React.ReactNode 
 
   if (!hydrated || !user || !autorizado) {
     return <FullScreenLoader />;
+  }
+
+  // El superadmin queda fuera: es quien reactiva. Si se le cerrara la puerta,
+  // suspender su propia academia seria irreversible.
+  if (comunidad?.estado === "suspendida" && user.rol !== "superadmin") {
+    return <AcademiaSuspendida nombre={comunidad.nombre} quien="creador" />;
   }
 
   return (

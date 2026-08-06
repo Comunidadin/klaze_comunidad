@@ -11,14 +11,13 @@ import { FullScreenLoader } from "@/components/shared/full-screen-loader";
 
 const ITEMS_BASE: AdminNavItem[] = [
   { titulo: "Panel", href: "/plataforma", icono: LayoutDashboard },
-  { titulo: "Comunidades", href: "/plataforma/comunidades", icono: Building2 },
+  { titulo: "Academias", href: "/plataforma/comunidades", icono: Building2 },
   { titulo: "Creadores", href: "/plataforma/creadores", icono: Users },
   { titulo: "Planes", href: "/plataforma/planes", icono: CreditCard },
 ];
 
-// Enlace cruzado: solo cuando el superadmin es dueño de alguna comunidad
-// (hoy, u-admin con "Comunidad del Intercambio") ve el link a su propio admin — un
-// superadmin sin comunidad propia no tiene a dónde ir con este link.
+// Enlace cruzado: solo cuando el superadmin es dueño de alguna academia ve el
+// link a su propio admin — uno sin academia propia no tiene a dónde ir con él.
 const ITEM_MI_ACADEMIA: AdminNavItem = {
   titulo: "Mi academia",
   href: "/admin",

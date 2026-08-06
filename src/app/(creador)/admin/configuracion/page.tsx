@@ -105,11 +105,12 @@ function PreviewEncabezado({ nombre, logoUrl, colorAcento }: PreviewEncabezadoPr
 }
 
 /**
- * `/admin/configuracion`: nombre, logo y color de acento de la comunidad —
- * `guardarComunidad` (T14) persiste un override que `resolverComunidad`
- * aplica en toda la app (incluido `MemberShell`, que lee `colorAcento` como
- * `--community-accent`). El preview de acá usa el mismo mecanismo en vivo,
- * antes de guardar.
+ * `/admin/configuracion`: nombre, logo y color de acento de la academia.
+ *
+ * `guardarComunidad` escribe en `comunidades` y luego se recarga el armazón,
+ * para que el cambio se vea en toda la app —incluido `MemberShell`, que lee
+ * `colorAcento` como `--community-accent`— y no solo en esta pantalla. El
+ * preview de aquí es local y en vivo, antes de guardar.
  */
 export default function ConfiguracionPage() {
   const hydrated = useHydrated();

@@ -1,6 +1,6 @@
 import { expect, test, afterAll } from "bun:test";
 import { admin, comoAnonimo, limpiarUsuarios } from "./ayudas";
-import { crearAcademia } from "../../scripts/crear-academia";
+import { crearAcademia } from "../../src/lib/academia";
 
 const creados: string[] = [];
 afterAll(async () => {
@@ -9,7 +9,7 @@ afterAll(async () => {
 });
 
 test("crear una academia deja comunidad, dueno y perfil correctos", async () => {
-  const r = await crearAcademia({
+  const r = await crearAcademia(admin, {
     email: "jefe-acme@prueba.klaze",
     empresa: "ACME Prueba",
     slug: "acme-prueba",
@@ -36,7 +36,7 @@ test("crear una academia deja comunidad, dueno y perfil correctos", async () => 
 });
 
 test("repetir el alta no duplica", async () => {
-  const r = await crearAcademia({
+  const r = await crearAcademia(admin, {
     email: "jefe-acme@prueba.klaze",
     empresa: "ACME Prueba",
     slug: "acme-prueba",

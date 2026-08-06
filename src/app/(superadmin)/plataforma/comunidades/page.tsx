@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Building2, Search, ShieldOff, UserCheck } from "lucide-react";
+import { Building2, Plus, Search, ShieldOff, UserCheck } from "lucide-react";
 import { useHydrated } from "@/lib/hooks/use-session";
-import { usePlatform, type ComunidadPlataforma } from "@/lib/hooks/use-platform";
-import { useAppStore } from "@/lib/store";
+import { usePlatform, type AcademiaPlataforma } from "@/lib/hooks/use-platform";
+import { crearClienteNavegador } from "@/lib/supabase/client";
+import { cambiarEstadoComunidad } from "@/lib/supabase/plataforma";
 import { PlanBadge, EstadoComunidadBadge } from "@/components/admin/community-badges";
+import { AltaAcademiaDialog } from "@/components/admin/alta-academia-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -29,7 +31,7 @@ import {
 } from "@/components/ui/table";
 
 interface PendienteCambio {
-  comunidad: ComunidadPlataforma;
+  academia: AcademiaPlataforma;
   nuevoEstado: "activa" | "suspendida";
 }
 
@@ -40,7 +42,7 @@ function normalizar(texto: string): string {
     .toLowerCase();
 }
 
-function ComunidadesSkeleton() {
+function AcademiasSkeleton() {
   return (
     <div>
       <Skeleton className="mb-6 h-8 w-40" />
@@ -51,17 +53,20 @@ function ComunidadesSkeleton() {
 }
 
 /**
- * `/plataforma/comunidades`: directorio de todas las comunidades de Comunidad del Intercambio
- * — buscador + suspender/activar (`cambiarEstadoComunidad`, con Dialog de
- * confirmación). Suspender bloquea de inmediato `/c/[slug]/*` a sus
- * miembros (ver `MemberShell`); reactivar restaura el acceso al instante.
+ * `/plataforma/comunidades`: directorio de todas las academias, con buscador,
+ * alta y suspender/reactivar.
+ *
+ * Suspender revoca acceso **real** desde la rebanada 4: ni los alumnos ni el
+ * propio creador entran mientras lo esté. Antes solo cambiaba una insignia, y
+ * el texto de este diálogo lo prometía así — decía que el creador podía seguir
+ * usando su panel. Ya no es cierto, y el aviso tiene que decir lo que pasa.
  */
-export default function PlataformaComunidadesPage() {
+export default function PlataformaAcademiasPage() {
   const hydrated = useHydrated();
-  const { comunidades } = usePlatform();
-  const cambiarEstadoComunidad = useAppStore((s) => s.cambiarEstadoComunidad);
+  const { academias, planes, cargando, recargar } = usePlatform();
 
   const [busqueda, setBusqueda] = useState("");
+  const [altaAbierta, setAltaAbierta] = useState(false);
   const [pendiente, setPendiente] = useState<PendienteCambio | null>(null);
   // Ver docstring del mismo patrón en /admin/alumnos: retiene el último
   // valor no nulo mientras el Dialog anima su cierre.
@@ -72,26 +77,39 @@ export default function PlataformaComunidadesPage() {
 
   const filtradas = useMemo(() => {
     const q = normalizar(busqueda.trim());
-    if (!q) return comunidades;
-    return comunidades.filter(
-      (c) =>
-        normalizar(c.community.nombre).includes(q) || normalizar(c.dueno.nombre).includes(q)
+    if (!q) return academias;
+    return academias.filter(
+      (a) =>
+        normalizar(a.comunidad.nombre).includes(q) ||
+        normalizar(a.dueno.nombre).includes(q) ||
+        normalizar(a.dueno.email).includes(q)
     );
-  }, [comunidades, busqueda]);
+  }, [academias, busqueda]);
 
-  if (!hydrated) {
-    return <ComunidadesSkeleton />;
+  if (!hydrated || cargando) {
+    return <AcademiasSkeleton />;
   }
 
-  function confirmarCambio() {
+  async function confirmarCambio() {
     if (!pendiente) return;
-    cambiarEstadoComunidad(pendiente.comunidad.community.id, pendiente.nuevoEstado);
-    toast.success(
-      pendiente.nuevoEstado === "suspendida"
-        ? `Suspendiste ${pendiente.comunidad.community.nombre}.`
-        : `Reactivaste ${pendiente.comunidad.community.nombre}.`
-    );
-    setPendiente(null);
+    const { academia, nuevoEstado } = pendiente;
+    try {
+      await cambiarEstadoComunidad(
+        crearClienteNavegador(),
+        academia.comunidad.id,
+        nuevoEstado
+      );
+      await recargar();
+      toast.success(
+        nuevoEstado === "suspendida"
+          ? `${academia.comunidad.nombre} queda suspendida: ni su creador ni sus alumnos podrán entrar.`
+          : `${academia.comunidad.nombre} vuelve a estar activa.`
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo cambiar el estado");
+    } finally {
+      setPendiente(null);
+    }
   }
 
   return (
@@ -99,37 +117,46 @@ export default function PlataformaComunidadesPage() {
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
-            Comunidades
+            Academias
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {comunidades.length} {comunidades.length === 1 ? "comunidad" : "comunidades"} en
+            {academias.length} {academias.length === 1 ? "academia" : "academias"} en
             total.
           </p>
         </div>
-        <div className="relative sm:w-72">
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por comunidad o dueño…"
-            className="pl-8"
-            aria-label="Buscar comunidad"
-          />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative sm:w-72">
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Buscar por academia, dueño o correo…"
+              className="pl-8"
+              aria-label="Buscar academia"
+            />
+          </div>
+          <Button onClick={() => setAltaAbierta(true)}>
+            <Plus /> Dar de alta
+          </Button>
         </div>
       </div>
 
       {filtradas.length === 0 ? (
         <EmptyState
           icono={Building2}
-          titulo="Sin resultados"
-          descripcion="Ninguna comunidad coincide con esa búsqueda."
+          titulo={busqueda ? "Sin resultados" : "Todavía no hay academias"}
+          descripcion={
+            busqueda
+              ? "Ninguna academia coincide con esa búsqueda."
+              : "Da de alta la primera con el botón de arriba."
+          }
         />
       ) : (
         <div className="overflow-hidden rounded-xl ring-1 ring-foreground/10">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Comunidad</TableHead>
+                <TableHead>Academia</TableHead>
                 <TableHead>Dueño</TableHead>
                 <TableHead>Plan</TableHead>
                 <TableHead>Miembros</TableHead>
@@ -138,35 +165,39 @@ export default function PlataformaComunidadesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtradas.map((c) => (
-                <TableRow key={c.community.id}>
+              {filtradas.map((a) => (
+                <TableRow key={a.comunidad.id}>
                   <TableCell>
-                    <div className="flex items-center gap-2.5">
-                      {/* eslint-disable-next-line @next/next/no-img-element -- logo mock (dicebear) sin dominio configurado en next/image */}
-                      <img
-                        src={c.community.logoUrl}
-                        alt=""
-                        className="size-8 shrink-0 rounded-md border border-border object-cover"
-                      />
-                      <span className="font-medium text-foreground">{c.community.nombre}</span>
-                    </div>
+                    <span className="font-medium text-foreground">
+                      {a.comunidad.nombre}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      /c/{a.comunidad.slug}
+                    </span>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{c.dueno.nombre}</TableCell>
                   <TableCell>
-                    <PlanBadge plan={c.plan} />
+                    <span className="text-foreground">{a.dueno.nombre}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {a.dueno.email}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <PlanBadge plan={a.plan} />
                   </TableCell>
                   <TableCell className="tabular-nums text-muted-foreground">
-                    {c.miembros}
+                    {a.miembros}
                   </TableCell>
                   <TableCell>
-                    <EstadoComunidadBadge estado={c.community.estado} />
+                    <EstadoComunidadBadge estado={a.comunidad.estado} />
                   </TableCell>
                   <TableCell className="text-right">
-                    {c.community.estado === "activa" ? (
+                    {a.comunidad.estado === "activa" ? (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setPendiente({ comunidad: c, nuevoEstado: "suspendida" })}
+                        onClick={() =>
+                          setPendiente({ academia: a, nuevoEstado: "suspendida" })
+                        }
                       >
                         <ShieldOff className="size-3.5" /> Suspender
                       </Button>
@@ -174,7 +205,9 @@ export default function PlataformaComunidadesPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setPendiente({ comunidad: c, nuevoEstado: "activa" })}
+                        onClick={() =>
+                          setPendiente({ academia: a, nuevoEstado: "activa" })
+                        }
                       >
                         <UserCheck className="size-3.5" /> Activar
                       </Button>
@@ -192,13 +225,13 @@ export default function PlataformaComunidadesPage() {
           <DialogHeader>
             <DialogTitle>
               {mostrado?.nuevoEstado === "suspendida"
-                ? "¿Suspender esta comunidad?"
-                : "¿Activar esta comunidad?"}
+                ? "¿Suspender esta academia?"
+                : "¿Activar esta academia?"}
             </DialogTitle>
             <DialogDescription>
               {mostrado?.nuevoEstado === "suspendida"
-                ? `Los miembros de ${mostrado?.comunidad.community.nombre} verán una pantalla de suspensión y perderán acceso al área de miembros hasta que la reactives. El equipo de administración (${mostrado?.comunidad.dueno.nombre}) puede seguir usando su panel de creador.`
-                : `${mostrado?.comunidad.community.nombre} recupera acceso normal de inmediato para todos sus miembros.`}
+                ? `Se cierra el acceso a ${mostrado?.academia.comunidad.nombre} por completo: sus ${mostrado?.academia.miembros} miembros y también ${mostrado?.academia.dueno.nombre}, su creador, dejarán de entrar hasta que la reactives. Nada se borra, y tú puedes revertirlo cuando quieras.`
+                : `${mostrado?.academia.comunidad.nombre} recupera el acceso de inmediato, para su creador y para todos sus miembros.`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -207,13 +240,20 @@ export default function PlataformaComunidadesPage() {
             </Button>
             <Button
               variant={mostrado?.nuevoEstado === "suspendida" ? "destructive" : "default"}
-              onClick={confirmarCambio}
+              onClick={() => void confirmarCambio()}
             >
               {mostrado?.nuevoEstado === "suspendida" ? "Sí, suspender" : "Sí, activar"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AltaAcademiaDialog
+        abierto={altaAbierta}
+        onCerrar={() => setAltaAbierta(false)}
+        planes={planes}
+        onCreada={recargar}
+      />
     </div>
   );
 }

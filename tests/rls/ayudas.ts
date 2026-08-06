@@ -82,6 +82,48 @@ export async function comoUsuario(
 }
 
 /**
+ * Igual que `comoUsuario`, pero con `rol: superadmin` en `app_metadata`.
+ *
+ * Va en `app_metadata` y no en `user_metadata` porque el segundo lo edita el
+ * propio usuario desde el navegador: cualquiera podria ascenderse solo.
+ * `privado.es_superadmin()` lee exactamente este campo.
+ */
+export async function comoSuperadmin(
+  email: string
+): Promise<{ id: string; cliente: SupabaseClient }> {
+  const password = "prueba-" + email;
+  const opciones = {
+    email,
+    password,
+    email_confirm: true,
+    app_metadata: { rol: "superadmin" },
+  };
+
+  let { data, error } = await admin.auth.admin.createUser(opciones);
+
+  if (error?.message?.includes("already been registered")) {
+    await borrarPorEmail(email);
+    ({ data, error } = await admin.auth.admin.createUser(opciones));
+  }
+
+  if (error) throw new Error(`No se pudo crear ${email}: ${error.message}`);
+  if (!data?.user) throw new Error(`Supabase no devolvio usuario para ${email}`);
+
+  const cliente = createClient(URL, PUBLICABLE, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { error: errorSesion } = await cliente.auth.signInWithPassword({
+    email,
+    password,
+  });
+  if (errorSesion) {
+    throw new Error(`No se pudo entrar como ${email}: ${errorSesion.message}`);
+  }
+
+  return { id: data.user.id, cliente };
+}
+
+/**
  * Borra un usuario por completo, incluidas las comunidades que posea.
  *
  * El orden importa: `comunidades.propietario_id` es ON DELETE RESTRICT a

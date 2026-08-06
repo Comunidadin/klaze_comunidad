@@ -19,32 +19,38 @@ bun run lint     # ESLint — debe quedar limpio antes de cada commit de feature
 
 No hay tests automatizados en este proyecto (decisión del spec original); la verificación es `build` + `lint` + smoke visual/E2E manual (Playwright ad hoc cuando aplica).
 
-## Regla dura: mocks → hooks → páginas
+## Regla dura: supabase → hooks → páginas
 
 ```
-src/lib/mocks/*.ts  →  src/lib/hooks/*.ts  →  src/app/** y src/components/**
-                             ↑
-                      src/lib/store.ts (Zustand, persistido en localStorage)
+src/lib/supabase/*.ts  →  src/lib/hooks/*.ts  →  src/app/** y src/components/**
+                                 ↑
+                    src/lib/store.ts (solo estado de interfaz)
 ```
 
-**Ningún componente ni página importa `src/lib/mocks` directamente.** Todo dato pasa por un hook de `src/lib/hooks/` (ver `src/lib/hooks/index.ts` para el listado completo), que mergea mock + estado del store y devuelve la forma ya lista para pintar. Si necesitas un dato nuevo derivado de mocks, agrega o extiende un hook — no importes el mock desde la página.
+**Ningún componente ni página consulta Supabase directamente.** Todo dato pasa por un hook de `src/lib/hooks/` (ver `src/lib/hooks/index.ts` para el listado completo), que llama a un módulo de `src/lib/supabase/` y devuelve la forma ya lista para pintar.
 
-Al añadir un mock nuevo, respeta los tipos de `src/lib/types.ts` y mantén los IDs deterministas (`curso-1`, `u-m22`, `post-15`, etc.) — varios hooks y componentes los referencian por convención de prefijo (`u-` usuarios, `com-` comunidades, `curso-`/`c{n}-m{n}` cursos/módulos, `post-` posts).
+`src/lib/mocks/` ya no existe: se borró al migrar `/plataforma`, cuando dejó de tener un solo consumidor. Si encuentras una referencia a esa carpeta en un comentario, es un fósil — bórralo.
 
 ## Resolvers centrales — extiéndelos, no los rodees
 
-Las ediciones/acciones del admin no mutan mocks: se guardan como **overrides** en el store y se aplican en un único punto de verdad exportado desde `src/lib/store.ts` / `src/lib/hooks/use-courses.ts`:
+El control de acceso vive en las políticas de Postgres, y su punto único de verdad son las funciones del esquema `privado`. Ninguna consulta las puede rodear, que es justo la razón de tenerlas ahí:
 
-- `resolverComunidad(...)` — aplica overrides de comunidad (nombre, color, estado suspendida, categorías, niveles). Lo usan `useCommunity`, `useMyCommunity`, `useInvitation`, `usePlatform`.
-- `resolverEstadoEnrollment(...)` — estado efectivo de un alumno (activo/invitado/suspendido). Suspender DEBE revocar acceso real, no solo cambiar un badge.
-- `enrollmentCubreCurso(...)` / `cursoIdsCubreCurso(...)` — criterio único de "este enrollment cubre este curso".
-- `cursosVisiblesParaMiembro(...)` — merge mocks+editados filtrando `publicado`; TODO consumidor de cara al miembro (incluido cálculo de progreso en admin) pasa por aquí para que los borradores nunca se filtren.
+- `inscrito_en(comunidad)` — ¿tiene inscripción activa? Guarda la **fila** de la academia.
+- `pertenece_a(comunidad)` — eso **y** que la academia esté activa. Guarda el **contenido**.
+- `es_propietario_de(comunidad)` — dueño de una academia **activa**.
+- `cubre_curso(curso)` — "este acceso incluye este curso", y el curso está publicado.
+- `es_superadmin()` — lee `app_metadata.rol`. Nunca `user_metadata`.
+- `comparte_comunidad_con(usuario)` / `administra_a(usuario)` — quién puede ver el perfil de quién.
 
-Si agregas un consumidor nuevo de comunidad/enrollment/cursos, usa estos helpers. Cada bug importante que encontró la revisión de este repo fue un consumidor que re-derivó esta lógica por su cuenta.
+**Suspender DEBE revocar acceso real, no solo cambiar un badge.** Vale para un alumno y vale para una academia entera. La división entre `inscrito_en` y `pertenece_a` existe por eso: si suspender quitara también la lectura de la fila, la app no podría distinguir "suspendida" de "no existe" y enseñaría "Comunidad no encontrada" — que es el callejón sin salida que ya apareció una vez aquí.
+
+Del lado de TypeScript queda `enrollmentCubreCurso(...)` / `cursoIdsCubreCurso(...)` en `store.ts`, y `cursosVisiblesParaMiembro(...)` en `use-courses.ts`.
+
+Si agregas un consumidor nuevo, **llama al resolver en vez de repetir su condición**. Cada bug importante de este repo fue un consumidor que re-derivó la lógica por su cuenta — y la política de `cursos`, que comprobaba `propietario_id` en línea, se quedó fuera del arreglo de la suspensión por exactamente eso.
 
 ## Base de datos
 
-El esquema vive en `supabase/migrations/`. Los cuatro resolvers de la sección anterior tienen su **gemelo SQL** en el esquema `privado` (`pertenece_a`, `cubre_curso`, `es_propietario_de`, `es_superadmin`, más `comparte_comunidad_con`), y ahí son inevitables: ninguna consulta los puede rodear. Ver las specs en `docs/superpowers/specs/`.
+El esquema vive en `supabase/migrations/`. Ver las specs en `docs/superpowers/specs/`.
 
 ```bash
 supabase migration new <nombre>   # crea el archivo SQL
@@ -62,7 +68,9 @@ bun run test:rls                  # pruebas de aislamiento — deben quedar verd
 
 ## El store ya no guarda datos de dominio
 
-Zustand conserva **solo estado de interfaz**: `armazon` (lo que trajo el servidor al entrar), `espaciosVistos` y lo pendiente de `/plataforma`, que es la única área que sigue con datos semilla. Todo lo demás vive en Postgres y se lee por los módulos de `src/lib/supabase/`.
+Zustand conserva **solo estado de interfaz**: `armazon` (lo que trajo el servidor al entrar) y `espaciosVistos` (qué espacios has leído en ESTE navegador). Nada más. Todo el dominio vive en Postgres y se lee por los módulos de `src/lib/supabase/`.
+
+Si vuelves a necesitar guardar algo de dominio aquí, párate: casi siempre significa que falta una tabla o una consulta. Los mapas de "overrides" que hubo en este archivo eran cada uno un sitio donde la app podía discrepar de la base.
 
 **El feed es el único que no viaja en el armazón**: crece sin techo, así que `useFeed` pagina **por fecha** (`creado_el < ultimaVista`). No lo cambies a páginas numeradas — con una publicación nueva de por medio, la última de una página reaparece en la siguiente. La publicación fijada va fuera de la paginación, o desaparecería en cuanto hubiera 20 más nuevas.
 
@@ -72,7 +80,6 @@ Zustand conserva **solo estado de interfaz**: `armazon` (lo que trajo el servido
 
 ## Determinismo
 
-- **Seeds** (`src/lib/mocks/`): cero `Math.random()`/`Date.now()`; fechas derivadas de la fecha base fija en `src/lib/mocks/fechas.ts`; datos generados por índice.
 - **IDs de entidades que viven en Postgres** (cursos, módulos, lecciones): `crypto.randomUUID()` en el navegador. Los contadores del store (`siguienteCursoId`, `siguienteModuloId`, `siguienteLeccionId`) se retiraron al migrar: eran deterministas para la demo, pero con datos reales dos personas editando a la vez generarían el mismo `curso-4` y una pisaría a la otra. Generarlos en el cliente —en vez de dejar que los ponga la base— permite que el editor monte el curso entero en memoria y lo guarde de una vez, sin identificadores provisionales.
 - **IDs de lo que sigue en el store** (posts, invitaciones, eventos): contadores persistidos (`proximoInviteId`, `proximoPostId`, `proximoEventoId`). Nunca `array.length + 1`: colisiona tras eliminar. Migrarán a UUID cuando esas entidades pasen a la base.
 - Excepción: `new Date().toISOString()` sí se usa para `creadoEl` de entidades creadas por el usuario en sesión — es estado real, no seed.
