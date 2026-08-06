@@ -1,4 +1,4 @@
-import { admin, comoUsuario, limpiarUsuarios } from "./ayudas";
+import { admin, comoSuperadmin, comoUsuario, limpiarUsuarios } from "./ayudas";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
@@ -14,6 +14,8 @@ export interface Escenario {
   alumnoA: { id: string; cliente: SupabaseClient };
   duenoB: { id: string; cliente: SupabaseClient };
   alumnoB: { id: string; cliente: SupabaseClient };
+  /** No pertenece a ninguna de las dos empresas: su acceso viene del rol. */
+  superadmin: { id: string; cliente: SupabaseClient };
   comunidadA: string;
   comunidadB: string;
   cursoAPublicado: string;
@@ -27,6 +29,7 @@ export async function montarEscenario(sufijo: string): Promise<Escenario> {
   const alumnoA = await comoUsuario(`alumnoa-${sufijo}@prueba.klaze`);
   const duenoB = await comoUsuario(`duenob-${sufijo}@prueba.klaze`);
   const alumnoB = await comoUsuario(`alumnob-${sufijo}@prueba.klaze`);
+  const superadmin = await comoSuperadmin(`super-${sufijo}@prueba.klaze`);
 
   const comunidad = async (slug: string, propietario: string) => {
     const { data, error } = await admin
@@ -83,7 +86,7 @@ export async function montarEscenario(sufijo: string): Promise<Escenario> {
   await inscribir(alumnoB.id, comunidadB, [cursoB]);
 
   return {
-    duenoA, alumnoA, duenoB, alumnoB,
+    duenoA, alumnoA, duenoB, alumnoB, superadmin,
     comunidadA, comunidadB,
     cursoAPublicado, cursoABorrador, cursoASinAcceso, cursoB,
   };
@@ -91,5 +94,11 @@ export async function montarEscenario(sufijo: string): Promise<Escenario> {
 
 export async function desmontar(e: Escenario) {
   await admin.from("comunidades").delete().in("id", [e.comunidadA, e.comunidadB]);
-  await limpiarUsuarios([e.duenoA.id, e.alumnoA.id, e.duenoB.id, e.alumnoB.id]);
+  await limpiarUsuarios([
+    e.duenoA.id,
+    e.alumnoA.id,
+    e.duenoB.id,
+    e.alumnoB.id,
+    e.superadmin.id,
+  ]);
 }
