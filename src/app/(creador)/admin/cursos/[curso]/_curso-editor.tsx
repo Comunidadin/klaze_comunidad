@@ -16,6 +16,9 @@ import {
   Trash2,
   Video,
 } from "lucide-react";
+import { crearClienteNavegador } from "@/lib/supabase/client";
+import { cargarArmazon } from "@/lib/supabase/consultas";
+import { guardarCurso } from "@/lib/supabase/guardar-curso";
 import { useHydrated } from "@/lib/hooks/use-session";
 import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { useAdminCourse } from "@/lib/hooks/use-admin-courses";
@@ -105,9 +108,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
   const hydrated = useHydrated();
   const community = useMyCommunity();
   const cursoOriginal = useAdminCourse(community?.id ?? "", cursoId);
-  const guardarCursoEnStore = useAppStore((s) => s.guardarCurso);
-  const siguienteModuloId = useAppStore((s) => s.siguienteModuloId);
-  const siguienteLeccionId = useAppStore((s) => s.siguienteLeccionId);
+  const establecerArmazon = useAppStore((s) => s.establecerArmazon);
   const router = useRouter();
 
   const [cursoIdCargado, setCursoIdCargado] = useState<string | null>(null);
@@ -175,7 +176,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
   }
 
   function agregarModulo() {
-    const id = siguienteModuloId();
+    const id = crypto.randomUUID();
     actualizarCurso((c) => ({
       ...c,
       modulos: reindexar([...c.modulos, { id, titulo: "Nuevo módulo", orden: 0, lecciones: [] }]),
@@ -224,7 +225,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
   }
 
   function agregarLeccion(moduloId: string) {
-    const id = siguienteLeccionId();
+    const id = crypto.randomUUID();
     actualizarCurso((c) => ({
       ...c,
       modulos: c.modulos.map((m) =>
@@ -279,10 +280,20 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
     actualizarCurso((c) => ({ ...c, publicado }));
   }
 
-  function guardar() {
-    guardarCursoEnStore(curso!);
-    setDirty(false);
-    toast.success("Cambios guardados");
+  async function guardar() {
+    const supabase = crearClienteNavegador();
+    try {
+      await guardarCurso(supabase, curso!);
+      // Releer el armazon para que el resto de la app (classroom incluido)
+      // vea el cambio sin recargar la pagina.
+      establecerArmazon(await cargarArmazon(supabase));
+      setDirty(false);
+      toast.success("Cambios guardados");
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "No se pudieron guardar los cambios"
+      );
+    }
   }
 
   function volver() {

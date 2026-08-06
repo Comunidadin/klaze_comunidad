@@ -4,7 +4,6 @@ import type {
   Community,
   CommunityEvent,
   CommunitySection,
-  Course,
   Enrollment,
   Invitation,
   LessonProgress,
@@ -80,7 +79,6 @@ export interface AppState {
   postsCreados: Post[];
   likesDados: { postId: string; userId: string }[];
   comentariosCreados: { postId: string; comentario: PostComment; parentId: string | null }[];
-  cursosEditados: Course[]; // overrides de cursos creados/editados en admin
   comunidadesCreadas: Community[]; // comunidades registradas por nuevos creadores
   proximoInviteId: number; // contador determinístico para tokens "inv-N"
   // Contador determinístico para el id "post-nuevo-N" de `crearPost` — mismo
@@ -97,16 +95,6 @@ export interface AppState {
   // hook que resuelve un `User` (useSession, useMembers, useGamification)
   // aplica el override al final vía `aplicarPerfilOverride`.
   perfilOverrides: Record<string, PerfilOverride>;
-  // Contadores determinísticos para los IDs que genera el editor de cursos
-  // (T13) — mismo patrón que `proximoInviteId`: nunca `Math.random`, así los
-  // IDs son estables y no colisionan aunque se cree/borre varias veces en la
-  // misma sesión. `proximoLeccionId` es el más sensible de los tres: el ID
-  // de lección es la clave de `LessonProgress.leccionId` (sin `cursoId`), así
-  // que debe ser único en TODA la app, no solo dentro de un curso — por eso
-  // es un contador global y no algo derivado del curso/módulo que lo contiene.
-  proximoCursoId: number;
-  proximoModuloId: number;
-  proximoLeccionId: number;
   // Override persistido de `Enrollment.estado`, keyed por `${userId}:${comunidadId}`
   // (una sola membresía por par usuario+comunidad). Ver `cambiarEstadoAlumno`:
   // suspender/reactivar desde /admin/alumnos no muta `mockEnrollments` ni
@@ -133,7 +121,7 @@ export interface AppState {
   // `resolverComunidad`, así ninguna pantalla necesita su propio parche.
   comunidadOverrides: Record<string, Partial<Community>>;
   // Eventos creados/editados desde /admin/eventos — mismo patrón que
-  // `cursosEditados`: un `CommunityEvent` cuyo `id` coincide con uno de
+  // lo que hacían los cursos editados: un `CommunityEvent` cuyo `id` coincide con uno de
   // `mockEvents` es una edición (lo reemplaza); uno sin match es un evento
   // nuevo. `useEvents` hace el merge (ver `mergeEventos`).
   eventosEditados: CommunityEvent[];
@@ -145,7 +133,7 @@ export interface AppState {
   proximoEventoId: number;
   // --- T15: panel super-admin de plataforma -------------------------------
   // Override completo de un `Plan`, keyed por `Plan.id`. A diferencia de
-  // `comunidadOverrides`/`cursosEditados` (que mergean parcialmente o
+  // `comunidadOverrides` (que mergea parcialmente o
   // distinguen "nuevo" de "editado"), acá solo hay 3 planes fijos que nunca
   // se crean ni se borran — así que `guardarPlan` siempre reemplaza el plan
   // completo, y `resolverPlan` lo aplica sobre `mockPlans` en `usePlatform`.
@@ -161,13 +149,6 @@ export interface AppState {
   crearPost: (post: Omit<Post, "id" | "creadoEl" | "likes" | "comentarios">) => void;
   toggleLike: (postId: string) => void;
   comentar: (postId: string, cuerpo: string, parentId: string | null) => void;
-  guardarCurso: (curso: Course) => void;
-  /** ID determinístico "curso-nuevo-N" para un curso creado desde /admin/cursos. */
-  siguienteCursoId: () => string;
-  /** ID determinístico "mod-N" para un módulo nuevo del editor. */
-  siguienteModuloId: () => string;
-  /** ID determinístico "lec-N" para una lección nueva del editor — único en toda la app (ver docstring de `proximoLeccionId`). */
-  siguienteLeccionId: () => string;
   actualizarPerfil: (nombre: string, bio: string) => void;
   cambiarEstadoAlumno: (
     userId: string,
@@ -319,13 +300,9 @@ export const useAppStore = create<AppState>()(
       postsCreados: [],
       likesDados: [],
       comentariosCreados: [],
-      cursosEditados: [],
       comunidadesCreadas: [],
       proximoInviteId: 1,
       proximoPostId: 1,
-      proximoCursoId: 1,
-      proximoModuloId: 1,
-      proximoLeccionId: 1,
       perfilOverrides: {},
       estadoOverrides: {},
       postsEliminados: [],
@@ -479,34 +456,6 @@ export const useAppStore = create<AppState>()(
             ],
           };
         });
-      },
-
-      guardarCurso: (curso) => {
-        set((state) => {
-          const existe = state.cursosEditados.some((c) => c.id === curso.id);
-          const cursosEditados = existe
-            ? state.cursosEditados.map((c) => (c.id === curso.id ? curso : c))
-            : [...state.cursosEditados, curso];
-          return { cursosEditados };
-        });
-      },
-
-      siguienteCursoId: () => {
-        const id = `curso-nuevo-${get().proximoCursoId}`;
-        set((s) => ({ proximoCursoId: s.proximoCursoId + 1 }));
-        return id;
-      },
-
-      siguienteModuloId: () => {
-        const id = `mod-${get().proximoModuloId}`;
-        set((s) => ({ proximoModuloId: s.proximoModuloId + 1 }));
-        return id;
-      },
-
-      siguienteLeccionId: () => {
-        const id = `lec-${get().proximoLeccionId}`;
-        set((s) => ({ proximoLeccionId: s.proximoLeccionId + 1 }));
-        return id;
       },
 
       actualizarPerfil: (nombre, bio) => {
