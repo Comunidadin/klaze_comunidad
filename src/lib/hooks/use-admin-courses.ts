@@ -2,7 +2,7 @@
 
 import { enrollmentCubreCurso, resolverEstadoEnrollment, useAppStore } from "@/lib/store";
 import { mockEnrollments } from "@/lib/mocks/enrollments";
-import { mergeCursos } from "@/lib/hooks/use-courses";
+import { cursosDeComunidad } from "@/lib/hooks/use-courses";
 import type { Course, Enrollment } from "@/lib/types";
 
 export type CourseConAdmin = Course & {
@@ -40,11 +40,13 @@ function contarAlumnosConAcceso(
  * admin de la lista.
  */
 export function useAdminCourses(comunidadId: string): { cursos: CourseConAdmin[] } {
-  const cursosEditados = useAppStore((s) => s.cursosEditados);
+  const armazon = useAppStore((s) => s.armazon);
   const enrollmentsExtra = useAppStore((s) => s.enrollmentsExtra);
   const estadoOverrides = useAppStore((s) => s.estadoOverrides);
 
-  const cursos = mergeCursos(comunidadId, cursosEditados);
+  // Sin filtrar por `publicado`: el dueno ve sus borradores, y la base ya se
+  // los ha entregado.
+  const cursos = cursosDeComunidad(comunidadId, armazon?.cursos ?? []);
   const enrollments = [...mockEnrollments, ...enrollmentsExtra];
 
   const cursosConAdmin: CourseConAdmin[] = cursos.map((curso) => ({

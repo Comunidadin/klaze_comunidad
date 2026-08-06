@@ -4,7 +4,7 @@ import { resolverComunidad, useAppStore } from "@/lib/store";
 import { mockCommunities } from "@/lib/mocks/communities";
 import { mockPosts } from "@/lib/mocks/posts";
 import { mockUsers } from "@/lib/mocks/users";
-import { mergeCursos } from "@/lib/hooks/use-courses";
+import { cursosDeComunidad } from "@/lib/hooks/use-courses";
 import type { CommunitySection, Post, PostComment, User } from "@/lib/types";
 
 export type PostConAutor = Post & { autor: User };
@@ -101,18 +101,18 @@ export function useFeed(
   const postFijadoPorComunidad = useAppStore((s) => s.postFijadoPorComunidad);
   const comunidadesCreadas = useAppStore((s) => s.comunidadesCreadas);
   const comunidadOverrides = useAppStore((s) => s.comunidadOverrides);
-  const cursosEditados = useAppStore((s) => s.cursosEditados);
+  const armazon = useAppStore((s) => s.armazon);
 
   const todosLosUsuarios = [...mockUsers, ...usuariosCreados];
 
   // Secciones "efectivas" para remapear a "general" cualquier post cuyo
   // espacio original ya no exista: las del CURSO (`Course.secciones`, con
-  // overrides de `cursosEditados` aplicados) si hay `cursoId`, o las de la
+  // tal como vinieron del servidor) si hay `cursoId`, o las de la
   // COMUNIDAD (`Community.secciones`, comportamiento histórico de
   // `/admin/comunidad`) si no.
   let seccionesEfectivas: CommunitySection[] = [];
   if (cursoId) {
-    const curso = mergeCursos(comunidadId, cursosEditados).find((c) => c.id === cursoId);
+    const curso = cursosDeComunidad(comunidadId, armazon?.cursos ?? []).find((c) => c.id === cursoId);
     seccionesEfectivas = curso?.secciones ?? [];
   } else {
     const comunidadBase =

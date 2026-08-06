@@ -1,40 +1,43 @@
 "use client";
 
-import { resolverComunidad, useAppStore } from "@/lib/store";
-import { mockCommunities } from "@/lib/mocks/communities";
+import { useEffect, useState } from "react";
+import { crearClienteNavegador } from "@/lib/supabase/client";
+import { supabaseConfigurado } from "@/lib/supabase/env";
 import type { Community } from "@/lib/types";
-
-/** Comunidad que da nombre a la plataforma — su portada es la del login global. */
-const COMUNIDAD_MARCA_ID = "com-principal";
 
 export type MarcaAuth = NonNullable<Community["marcaAuth"]>;
 
 /**
  * Portada de la pantalla de entrada (mitad izquierda del login).
  *
- * `slug` opcional: si se pasa y la comunidad existe, devuelve SU portada —
- * así el login de un creador muestra su propio video. Sin `slug` (o si no
- * existe) cae en la comunidad de la marca, que es la del `/login` global.
+ * Es el único hook que corre **sin sesión**, así que no puede leer el armazón:
+ * consulta `marca_publica(slug)`, la función del esquema que devuelve solo
+ * nombre, logo, color y portada de una comunidad activa. Devuelve un conjunto
+ * fijo de columnas a propósito — no hay forma de pedirle el propietario, el
+ * plan ni nada más.
  *
- * Pasa por `resolverComunidad` a propósito: la portada se edita desde
- * `/admin/configuracion` y vive como override en el store, igual que el
- * nombre o el color de acento.
+ * Sin `slug` no consulta nada y la pantalla cae en el degradado de la marca:
+ * el `/login` global no pertenece a ninguna academia concreta.
  */
 export function useMarcaAuth(slug?: string): MarcaAuth {
-  const comunidadesCreadas = useAppStore((s) => s.comunidadesCreadas);
-  const comunidadOverrides = useAppStore((s) => s.comunidadOverrides);
+  const [marca, setMarca] = useState<MarcaAuth>({});
 
-  const porSlug = slug
-    ? (comunidadesCreadas.find((c) => c.slug === slug) ??
-      mockCommunities.find((c) => c.slug === slug))
-    : undefined;
+  useEffect(() => {
+    if (!slug || !supabaseConfigurado) return;
 
-  const base =
-    porSlug ??
-    comunidadesCreadas.find((c) => c.id === COMUNIDAD_MARCA_ID) ??
-    mockCommunities.find((c) => c.id === COMUNIDAD_MARCA_ID);
+    let vivo = true;
+    void crearClienteNavegador()
+      .rpc("marca_publica", { p_slug: slug })
+      .then(({ data }) => {
+        if (!vivo) return;
+        const fila = data?.[0];
+        if (fila) setMarca((fila.marca_auth as MarcaAuth) ?? {});
+      });
 
-  if (!base) return {};
+    return () => {
+      vivo = false;
+    };
+  }, [slug]);
 
-  return resolverComunidad(base, comunidadOverrides).marcaAuth ?? {};
+  return marca;
 }
