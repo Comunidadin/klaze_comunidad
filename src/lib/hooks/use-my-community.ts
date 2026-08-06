@@ -1,6 +1,6 @@
 "use client";
 
-import { resolverComunidad, useAppStore } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
 import type { Community } from "@/lib/types";
 
 /**
@@ -15,17 +15,15 @@ import type { Community } from "@/lib/types";
  * ninguna — las pantallas de `/admin` deben tratar ese caso con un
  * `EmptyState`, no asumir que siempre hay una.
  *
- * Sigue pasando por `resolverComunidad` para aplicar los overrides de
- * `/admin/configuracion`, que todavía viven en el store. Se retirarán cuando
- * esa pantalla escriba en la base (rebanada 3).
+ * Ya no aplica overrides: `/admin/configuracion` escribe directamente en la
+ * base, así que la comunidad del armazón es la verdad.
  */
 export function useMyCommunity(): Community | null {
   const armazon = useAppStore((s) => s.armazon);
-  const comunidadOverrides = useAppStore((s) => s.comunidadOverrides);
 
   const base = armazon?.comunidad ?? null;
   if (!base || !armazon) return null;
   if (base.ownerId !== armazon.perfil.id) return null;
 
-  return resolverComunidad(base, comunidadOverrides);
+  return base;
 }

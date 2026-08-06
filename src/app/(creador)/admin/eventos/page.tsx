@@ -6,9 +6,10 @@ import { CalendarDays, CalendarPlus, Clock, Pencil, Plus, Trash2, Video } from "
 import { useHydrated } from "@/lib/hooks/use-session";
 import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { useEvents } from "@/lib/hooks/use-events";
+import { crearClienteNavegador } from "@/lib/supabase/client";
+import { guardarEvento, eliminarEvento } from "@/lib/supabase/eventos";
 import { useAdminCourses } from "@/lib/hooks/use-admin-courses";
 import { useAhora } from "@/lib/hooks/use-ahora";
-import { useAppStore } from "@/lib/store";
 import { formatDuracion } from "@/components/course/course-utils";
 import { diaNumero, formatHora, mesAbreviado } from "@/lib/format-fecha";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -171,12 +172,9 @@ function EventoAdminCard({
 export default function EventosPage() {
   const hydrated = useHydrated();
   const community = useMyCommunity();
-  const { eventos } = useEvents(community?.id ?? "");
+  const { eventos, recargar } = useEvents(community?.id ?? "");
   const { cursos } = useAdminCourses(community?.id ?? "");
   const ahora = useAhora();
-  const guardarEvento = useAppStore((s) => s.guardarEvento);
-  const eliminarEvento = useAppStore((s) => s.eliminarEvento);
-  const siguienteEventoId = useAppStore((s) => s.siguienteEventoId);
 
   const [dialogAbierto, setDialogAbierto] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -250,11 +248,11 @@ export default function EventosPage() {
     form.urlSala.trim().length > 0 &&
     form.cursoId.length > 0;
 
-  function handleGuardar() {
+  async function handleGuardar() {
     if (!community || !formularioValido) return;
 
     const evento: CommunityEvent = {
-      id: editandoId ?? siguienteEventoId(),
+      id: editandoId ?? crypto.randomUUID(),
       comunidadId: community.id,
       cursoId: form.cursoId,
       titulo: form.titulo.trim(),
@@ -264,16 +262,27 @@ export default function EventosPage() {
       urlSala: form.urlSala.trim(),
     };
 
-    guardarEvento(evento);
-    toast.success(editandoId ? "Evento actualizado." : "Evento creado.");
     setDialogAbierto(false);
+    try {
+      await guardarEvento(crearClienteNavegador(), evento);
+      await recargar();
+      toast.success(editandoId ? "Evento actualizado." : "Evento creado.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo guardar el evento");
+    }
   }
 
-  function confirmarEliminar() {
+  async function confirmarEliminar() {
     if (!eventoAEliminar) return;
-    eliminarEvento(eventoAEliminar.id);
-    toast.success(`«${eventoAEliminar.titulo}» eliminado del calendario.`);
+    const evento = eventoAEliminar;
     setEventoAEliminar(null);
+    try {
+      await eliminarEvento(crearClienteNavegador(), evento.id);
+      await recargar();
+      toast.success(`«${evento.titulo}» eliminado del calendario.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo eliminar");
+    }
   }
 
   const finDe = (e: CommunityEvent) =>

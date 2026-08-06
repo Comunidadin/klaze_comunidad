@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Community, Course, User, UserRole } from "@/lib/types";
+import { nivelPorPuntos } from "@/lib/levels";
 
 export interface Armazon {
   perfil: User;
@@ -78,7 +79,7 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
     rol: perfilFila.rol as UserRole,
     comunidadIds: c ? [c.id] : [],
     puntos: perfilFila.puntos,
-    nivel: 1,
+    nivel: nivelPorPuntos(perfilFila.puntos),
     creadoEl: perfilFila.creado_el,
   };
 

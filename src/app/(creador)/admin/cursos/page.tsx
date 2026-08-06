@@ -11,6 +11,8 @@ import { slugify, useAppStore } from "@/lib/store";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { cargarArmazon } from "@/lib/supabase/consultas";
 import { guardarCurso } from "@/lib/supabase/guardar-curso";
+import { guardarSecciones } from "@/lib/supabase/espacios";
+import { crearSeccionesDefault } from "@/lib/espacios-default";
 import { AdminCourseCard } from "@/components/admin/admin-course-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -109,15 +111,17 @@ export default function AdminCursosPage() {
       nivelRequerido: null,
       modulos: [],
       publicado: false,
-      // Vacío a propósito: los espacios del feed todavía no se guardan en la
-      // base (llegan con el resto de la vida social en la rebanada 3).
-      // Sembrarlos aquí crearía estructura que se perdería al recargar.
+      // Los espacios se siembran justo después, con `guardarSecciones`: van a
+      // su propia tabla, no dentro del curso.
       secciones: [],
     };
 
     const supabase = crearClienteNavegador();
     try {
       await guardarCurso(supabase, curso);
+      // Un curso nuevo nace con sus espacios por defecto: si su pestaña de
+      // comunidad arranca en blanco, nadie la usa.
+      await guardarSecciones(supabase, curso.id, crearSeccionesDefault());
       establecerArmazon(await cargarArmazon(supabase));
     } catch (e) {
       toast.error(

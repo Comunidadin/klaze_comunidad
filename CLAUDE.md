@@ -42,9 +42,9 @@ Las ediciones/acciones del admin no mutan mocks: se guardan como **overrides** e
 
 Si agregas un consumidor nuevo de comunidad/enrollment/cursos, usa estos helpers. Cada bug importante que encontró la revisión de este repo fue un consumidor que re-derivó esta lógica por su cuenta.
 
-## Base de datos (cimiento completado)
+## Base de datos
 
-El esquema vive en `supabase/migrations/`. Los cuatro resolvers de la sección anterior tienen su **gemelo SQL** en el esquema `privado` (`pertenece_a`, `cubre_curso`, `es_propietario_de`, `es_superadmin`, más `comparte_comunidad_con`), y ahí son inevitables: ninguna consulta los puede rodear. La app aún lee mocks — migrar las lecturas es el proyecto 2. Ver `docs/superpowers/specs/2026-08-05-backend-cimiento-design.md`.
+El esquema vive en `supabase/migrations/`. Los cuatro resolvers de la sección anterior tienen su **gemelo SQL** en el esquema `privado` (`pertenece_a`, `cubre_curso`, `es_propietario_de`, `es_superadmin`, más `comparte_comunidad_con`), y ahí son inevitables: ninguna consulta los puede rodear. Ver las specs en `docs/superpowers/specs/`.
 
 ```bash
 supabase migration new <nombre>   # crea el archivo SQL
@@ -56,6 +56,19 @@ bun run test:rls                  # pruebas de aislamiento — deben quedar verd
 - **RLS activado en toda tabla nueva, en su misma migración**, nunca después. Y `grant` explícito: crear una tabla por SQL no la expone al API sola.
 - Toda función `security definer` lleva `set search_path = ''` y referencia tablas con esquema explícito. `tests/rls/auditoria.test.ts` lo verifica en cada ejecución.
 - **Nunca uses `user_metadata` para decidir permisos** — el propio usuario lo edita desde el navegador. Los roles van en `app_metadata`.
+- **Toda tabla necesita política de escritura, no solo de lectura.** El cimiento dejó seis a medias y nadie podía escribir en ellas; `tests/rls/auditoria.test.ts` (A2b) lo vigila desde entonces.
+- **RLS no lanza: filtra.** Un `insert`/`update` rechazado por política vuelve sin error y sin filas. Los módulos de `src/lib/supabase/` comprueban `data.length === 0` y lanzan — devolverlo en silencio haría creer que se guardó.
+- Al leer relaciones anidadas, **nombra la clave foránea** (`perfiles!publicaciones_autor_id_fkey`). Varias tablas apuntan a `perfiles`, y sin el nombre PostgREST falla con "more than one relationship was found".
+
+## El store ya no guarda datos de dominio
+
+Zustand conserva **solo estado de interfaz**: `armazon` (lo que trajo el servidor al entrar), `espaciosVistos` y lo pendiente de `/plataforma`, que es la única área que sigue con datos semilla. Todo lo demás vive en Postgres y se lee por los módulos de `src/lib/supabase/`.
+
+**El feed es el único que no viaja en el armazón**: crece sin techo, así que `useFeed` pagina **por fecha** (`creado_el < ultimaVista`). No lo cambies a páginas numeradas — con una publicación nueva de por medio, la última de una página reaparece en la siguiente. La publicación fijada va fuera de la paginación, o desaparecería en cuanto hubiera 20 más nuevas.
+
+**Los puntos los otorga un trigger** sobre `progreso` (10 por lección). No los sumes desde la app: el trigger cubre también el borrado de lecciones, que es donde se descuadran.
+
+**`setState` nunca síncrono dentro de un efecto.** El patrón del proyecto es una función `async` cuyo `.then()` fija el estado, aunque alguna rama no espere nada. Ver `useFeed`, `useEspacios` o `/callback`.
 
 ## Determinismo
 

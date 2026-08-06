@@ -1,30 +1,32 @@
 import type { User } from "@/lib/types";
-import { mockCommunities } from "@/lib/mocks/communities";
 import { useAppStore } from "@/lib/store";
 
 /**
- * Ruta "home" según el rol del usuario, usada por los guards de rol para
- * redirigir cuando alguien entra a una sección que no le corresponde.
- * - superadmin -> /admin si es dueño de alguna comunidad (uso diario: entra
- *   directo a administrar su academia), si no -> /plataforma. Desde ambas
- *   zonas hay un enlace cruzado en el sidebar hacia la otra (ver
- *   `(creador)/layout.tsx` y `(superadmin)/layout.tsx`).
- * - creador -> /admin
- * - alumno -> /c/[slug]/cursos (Cambio 3: el nivel superior del área de
- *   miembros es la lista de cursos), resolviendo la primera comunidad del
- *   usuario (mock o creada en runtime vía `registrarCreador`/invitación).
+ * Ruta "home" según el rol, usada por los guards para redirigir a quien entra
+ * donde no le toca.
+ *
+ * - **superadmin** → `/admin` si es dueño de una academia (su uso diario es
+ *   administrar la suya), si no `/plataforma`. Hay enlace cruzado entre ambas.
+ * - **creador** → `/admin`
+ * - **alumno** → `/c/[slug]/cursos`
+ *
+ * La comunidad sale del **armazón**, no de los datos semilla. Antes se buscaba
+ * entre los mocks, y con una academia real eso mandaba a cualquier alumno a
+ * `/c/comunidad-del-intercambio/cursos` — una comunidad que no existe. El
+ * alumno entraba bien y aterrizaba en "Comunidad no encontrada".
+ *
+ * Si todavía no hay armazón —el guard corrió antes de que cargaran los datos—
+ * devuelve `/login`: es la única respuesta honesta, y el propio guard volverá a
+ * decidir en cuanto lleguen.
  */
 export function homePorRol(user: User): string {
-  const { comunidadesCreadas } = useAppStore.getState();
-  const todas = [...mockCommunities, ...comunidadesCreadas];
+  const { armazon } = useAppStore.getState();
 
   if (user.rol === "superadmin") {
-    const esDueño = todas.some((c) => c.ownerId === user.id);
-    return esDueño ? "/admin" : "/plataforma";
+    return armazon?.comunidad?.ownerId === user.id ? "/admin" : "/plataforma";
   }
   if (user.rol === "creador") return "/admin";
 
-  const comunidad = todas.find((c) => user.comunidadIds.includes(c.id)) ?? todas[0];
-
-  return `/c/${comunidad.slug}/cursos`;
+  const slug = armazon?.comunidad?.slug;
+  return slug ? `/c/${slug}/cursos` : "/login";
 }

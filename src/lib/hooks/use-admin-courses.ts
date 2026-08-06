@@ -11,8 +11,7 @@ export type CourseConAdmin = Course & {
 };
 
 /**
- * Cuenta los enrollments de `comunidadId` cuyo estado efectivo (aplicando
- * `estadoOverrides`, ver `resolverEstadoEnrollment`) es "activo" y cuyo
+ * Cuenta los enrollments de `comunidadId` cuyo estado es "activo" y cuyo
  * `cursoIds` cubre `cursoId` (`enrollmentCubreCurso`, store.ts) — mismo
  * criterio de acceso que usa `useCourses` para el candado de un alumno, pero
  * contado en vez de evaluado para uno solo.

@@ -1,6 +1,5 @@
 import type { Community } from "@/lib/types";
 import { haceDias } from "@/lib/mocks/fechas";
-import { crearSeccionesDefault } from "@/lib/mocks/espacios";
 
 const NOMBRES_NIVELES = [
   "Novato",
@@ -29,7 +28,7 @@ export const mockCommunities: Community[] = [
     plan: "pro",
     estado: "activa",
     nombresNiveles: NOMBRES_NIVELES,
-    secciones: crearSeccionesDefault(),
+    secciones: [],
     creadoEl: haceDias(400),
     marcaAuth: {
       videoUrl: "https://videos.pexels.com/video-files/3252919/3252919-hd_1920_1080_25fps.mp4",
@@ -49,7 +48,7 @@ export const mockCommunities: Community[] = [
     plan: "starter",
     estado: "activa",
     nombresNiveles: NOMBRES_NIVELES,
-    secciones: crearSeccionesDefault(),
+    secciones: [],
     creadoEl: haceDias(190),
   },
 ];

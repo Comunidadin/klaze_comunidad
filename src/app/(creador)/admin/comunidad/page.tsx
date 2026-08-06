@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   MessagesSquare,
@@ -12,11 +12,24 @@ import {
 import { useHydrated } from "@/lib/hooks/use-session";
 import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { useFeed, type PostConAutor } from "@/lib/hooks/use-feed";
+import { crearClienteNavegador } from "@/lib/supabase/client";
+import { guardarSecciones, leerSecciones } from "@/lib/supabase/espacios";
+import { guardarComunidad } from "@/lib/supabase/perfil";
+import { cargarArmazon } from "@/lib/supabase/consultas";
+import { eliminarPost, fijarPost } from "@/lib/supabase/feed";
 import { useEspacios } from "@/lib/hooks/use-espacios";
 import { slugify, useAppStore } from "@/lib/store";
 import { formatFechaLarga } from "@/lib/format-fecha";
 import { NIVEL_MAXIMO } from "@/lib/levels";
 import { LevelBadge } from "@/components/shared/level-badge";
+import { useAdminCourses } from "@/lib/hooks/use-admin-courses";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -118,9 +131,15 @@ function PostModeracionRow({
   );
 }
 
-function PostsTab({ posts }: { posts: PostConAutor[] }) {
-  const eliminarPost = useAppStore((s) => s.eliminarPost);
-  const fijarPost = useAppStore((s) => s.fijarPost);
+function PostsTab({
+  posts,
+  onCambio,
+}: {
+  posts: PostConAutor[];
+  onCambio: () => Promise<void>;
+}) {
+  
+  
 
   const [postAEliminar, setPostAEliminar] = useState<PostConAutor | null>(null);
   // Ver docstring del mismo patrón en /admin/alumnos: retiene el último post
@@ -131,16 +150,27 @@ function PostsTab({ posts }: { posts: PostConAutor[] }) {
     setMostrado(postAEliminar);
   }
 
-  function confirmarEliminar() {
+  async function confirmarEliminar() {
     if (!postAEliminar) return;
-    eliminarPost(postAEliminar.id);
-    toast.success("Publicación eliminada.");
+    const post = postAEliminar;
     setPostAEliminar(null);
+    try {
+      await eliminarPost(crearClienteNavegador(), post.id);
+      await onCambio();
+      toast.success("Publicación eliminada.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo eliminar");
+    }
   }
 
-  function handleFijar(post: PostConAutor) {
-    fijarPost(post.id);
-    toast.success(`«${post.titulo}» fijado — reemplaza al fijado anterior.`);
+  async function handleFijar(post: PostConAutor) {
+    try {
+      await fijarPost(crearClienteNavegador(), post.id);
+      await onCambio();
+      toast.success(`«${post.titulo}» fijado — reemplaza al fijado anterior.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo fijar");
+    }
   }
 
   if (posts.length === 0) {
@@ -197,17 +227,24 @@ const ESPACIO_GENERAL = "esp-general";
 
 type NuevoEspacioForm = { nombre: string; icono: string };
 
+/**
+ * Editor de espacios de UN curso.
+ *
+ * Antes editaba los de la comunidad, y ese tab quedó huérfano cuando los
+ * espacios pasaron a colgar del curso: seguía guardando algo que el área de
+ * miembros ya no leía. Ahora el padre elige el curso y le pasa sus secciones.
+ */
 function EspaciosTab({
-  comunidadId,
+  cursoId,
   seccionesIniciales,
   posts,
+  onGuardado,
 }: {
-  comunidadId: string;
+  cursoId: string;
   seccionesIniciales: CommunitySection[];
   posts: PostConAutor[];
+  onGuardado: () => Promise<void>;
 }) {
-  const guardarSecciones = useAppStore((s) => s.guardarSecciones);
-  const siguienteEspacioId = useAppStore((s) => s.siguienteEspacioId);
 
   const [secciones, setSecciones] = useState<CommunitySection[]>(seccionesIniciales);
   const [nuevoPorSeccion, setNuevoPorSeccion] = useState<Record<string, NuevoEspacioForm>>({});
@@ -216,9 +253,17 @@ function EspaciosTab({
     espacio: CommunitySpace;
   } | null>(null);
 
-  function persistir(siguiente: CommunitySection[]) {
+  async function persistir(siguiente: CommunitySection[]) {
     setSecciones(siguiente);
-    guardarSecciones(comunidadId, siguiente);
+    try {
+      await guardarSecciones(crearClienteNavegador(), cursoId, siguiente);
+      await onGuardado();
+    } catch (e) {
+      // Se revierte lo pintado: dejar en pantalla un cambio que la base
+      // rechazó haría creer que se guardó.
+      setSecciones(seccionesIniciales);
+      toast.error(e instanceof Error ? e.message : "No se pudieron guardar los espacios");
+    }
   }
 
   function actualizarCampo(
@@ -259,7 +304,7 @@ function EspaciosTab({
     const nombre = datos?.nombre.trim();
     if (!nombre) return;
 
-    const id = siguienteEspacioId();
+    const id = crypto.randomUUID();
     const seccion = secciones.find((s) => s.id === seccionId);
     const nuevoEspacio: CommunitySpace = {
       id,
@@ -436,14 +481,20 @@ function NivelesTab({
   comunidadId: string;
   nombresIniciales: string[];
 }) {
-  const guardarNombresNiveles = useAppStore((s) => s.guardarNombresNiveles);
+  const establecerArmazon = useAppStore((s) => s.establecerArmazon);
   const [nombres, setNombres] = useState<string[]>(nombresIniciales);
 
-  function guardar() {
+  async function guardar() {
     const limpios = nombres.map((n, i) => n.trim() || `Nivel ${i + 1}`);
     setNombres(limpios);
-    guardarNombresNiveles(comunidadId, limpios);
-    toast.success("Nombres de nivel actualizados.");
+    try {
+      const supabase = crearClienteNavegador();
+      await guardarComunidad(supabase, comunidadId, { nombresNiveles: limpios });
+      establecerArmazon(await cargarArmazon(supabase));
+      toast.success("Nombres de nivel actualizados.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudieron guardar");
+    }
   }
 
   return (
@@ -487,7 +538,7 @@ function NivelesTab({
 export default function ComunidadPage() {
   const hydrated = useHydrated();
   const community = useMyCommunity();
-  const { posts } = useFeed(community?.id ?? "");
+  const { posts, recargar } = useFeed(community?.id ?? "");
 
   if (!hydrated) {
     return <ComunidadSkeleton />;
@@ -504,16 +555,106 @@ export default function ComunidadPage() {
   }
 
   return (
-    <ComunidadContenido key={community.id} community={community} posts={posts} />
+    <ComunidadContenido
+      key={community.id}
+      community={community}
+      posts={posts}
+      onCambio={recargar}
+    />
+  );
+}
+
+/**
+ * Elige el curso y carga sus espacios.
+ *
+ * Los espacios cuelgan del curso desde el cimiento, así que editar "los
+ * espacios de la academia" ya no significa nada: hay que decir de cuál.
+ */
+function EspaciosPorCurso({
+  community,
+  posts,
+}: {
+  community: Community;
+  posts: PostConAutor[];
+}) {
+  const { cursos } = useAdminCourses(community.id);
+  const [cursoId, setCursoId] = useState<string>("");
+  const [secciones, setSecciones] = useState<CommunitySection[] | null>(null);
+
+  const elegido = cursoId || cursos[0]?.id || "";
+
+  const cargar = useCallback(async () => {
+    if (!elegido) {
+      setSecciones([]);
+      return;
+    }
+    setSecciones(await leerSecciones(crearClienteNavegador(), elegido));
+  }, [elegido]);
+
+  useEffect(() => {
+    let vivo = true;
+    void (elegido
+      ? leerSecciones(crearClienteNavegador(), elegido)
+      : Promise.resolve([])
+    ).then((s) => {
+      if (vivo) setSecciones(s);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [elegido]);
+
+  if (cursos.length === 0) {
+    return (
+      <EmptyState
+        icono={MessagesSquare}
+        titulo="Todavía no tienes cursos"
+        descripcion="Los espacios de comunidad viven dentro de cada curso. Crea uno primero."
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <span className="text-sm text-muted-foreground">Curso:</span>
+        <Select value={elegido} onValueChange={setCursoId}>
+          <SelectTrigger className="w-[260px]" aria-label="Curso">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {cursos.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.titulo}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {secciones === null ? (
+        <Skeleton className="h-64 rounded-xl" />
+      ) : (
+        <EspaciosTab
+          key={elegido}
+          cursoId={elegido}
+          seccionesIniciales={secciones}
+          posts={posts}
+          onGuardado={cargar}
+        />
+      )}
+    </div>
   );
 }
 
 function ComunidadContenido({
   community,
   posts,
+  onCambio,
 }: {
   community: Community;
   posts: PostConAutor[];
+  onCambio: () => Promise<void>;
 }) {
   return (
     <div>
@@ -535,15 +676,11 @@ function ComunidadContenido({
         </TabsList>
 
         <TabsContent value="posts">
-          <PostsTab posts={posts} />
+          <PostsTab posts={posts} onCambio={onCambio} />
         </TabsContent>
 
         <TabsContent value="espacios">
-          <EspaciosTab
-            comunidadId={community.id}
-            seccionesIniciales={community.secciones}
-            posts={posts}
-          />
+          <EspaciosPorCurso community={community} posts={posts} />
         </TabsContent>
 
         <TabsContent value="niveles">

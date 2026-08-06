@@ -9,8 +9,11 @@ let e: Escenario;
 let hayServidor = false;
 
 beforeAll(async () => {
+  // `r.ok` y no solo "respondió": un servidor a medio arrancar o roto devuelve
+  // 500, y darlo por bueno hacía que estas pruebas fallaran culpando al código
+  // en vez de al servidor.
   hayServidor = await fetch(`${BASE}/login`)
-    .then(() => true)
+    .then((r) => r.ok)
     .catch(() => false);
   if (!hayServidor) return;
   e = await montarEscenario("apiinv");
