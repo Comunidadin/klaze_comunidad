@@ -12,10 +12,22 @@ import {
  * instancia entre peticiones, porque lleva colgada la sesión de un usuario
  * concreto.
  *
- * El `setAll` va envuelto en try/catch a propósito: desde un Server
- * Component, Next no permite escribir cookies y lanza. No es un fallo — el
- * refresco de sesión lo hace `src/proxy.ts`, que sí puede escribirlas. Sin
- * ese proxy, ignorar el error aquí sí causaría cierres de sesión aleatorios.
+ * OJO — este proyecto NO tiene `proxy.ts`, y es deliberado. La guía de
+ * Supabase pide uno para refrescar la sesión, pero en Next 16 el proxy corre
+ * obligatoriamente en Node (`runtime` no es configurable ahí) y el adaptador
+ * de Cloudflare rechaza el middleware de Node: con `proxy.ts` presente, el
+ * build para Workers falla.
+ *
+ * Se puede prescindir de él porque el diseño no lee Supabase desde Server
+ * Components: la app consulta desde el navegador y el aislamiento lo aplica
+ * RLS. `createBrowserClient` refresca su propio token.
+ *
+ * Consecuencia para quien use este cliente: en un Route Handler, la sesión
+ * de la cookie puede venir caducada. Si eso importa, que el cliente mande el
+ * token en la cabecera `Authorization` en vez de confiar en la cookie.
+ *
+ * El `setAll` va en try/catch porque desde un Server Component Next no
+ * permite escribir cookies y lanza.
  */
 export async function crearClienteServidor() {
   exigirConfiguracion();
