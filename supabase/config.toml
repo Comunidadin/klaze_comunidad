@@ -173,7 +173,12 @@ enable_refresh_token_rotation = true
 # Requires enable_refresh_token_rotation = true.
 refresh_token_reuse_interval = 10
 # Allow/disallow new user signups to your project.
-enable_signup = true
+# FALSE a proposito: el alcance del producto es alta manual — el superadmin da
+# de alta las academias y cada dueno invita a sus alumnos. Con esto en `true`,
+# cualquiera con la URL del proyecto puede crearse una cuenta; llego a pasar, y
+# quedo una cuenta en la base que nadie invito. `tests/rls/privilegios.test.ts`
+# lo comprueba contra el servidor real, no contra este archivo.
+enable_signup = false
 # Allow/disallow anonymous sign-ins to your project.
 enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
