@@ -1,47 +1,35 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { KeyRound, Loader2, Lock, MailQuestion, ShieldAlert, Sparkles, UserPlus } from "lucide-react";
-import { toast } from "sonner";
-import { useHydrated } from "@/lib/hooks/use-session";
+import { LogIn, MailQuestion, Sparkles } from "lucide-react";
+import { useHydrated, useSession } from "@/lib/hooks/use-session";
 import { useInvitation } from "@/lib/hooks/use-invitation";
+import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Logo } from "@/components/shared/logo";
-import type { Course } from "@/lib/types";
 
-interface FormErrors {
-  nombre?: string;
-  password?: string;
-}
-
-/** Une nombres de curso al estilo "A, B y C". */
-function listarEnEspanol(items: string[]): string {
-  if (items.length <= 1) return items[0] ?? "";
-  if (items.length === 2) return `${items[0]} y ${items[1]}`;
-  return `${items.slice(0, -1).join(", ")} y ${items[items.length - 1]}`;
-}
-
-function copyInvitacion(nombreComunidad: string, todosLosCursos: boolean, cursos: Course[]): string {
+/** Frase que resume a qué da acceso la invitación. */
+function copyInvitacion(
+  nombreComunidad: string,
+  todosLosCursos: boolean,
+  cursos: string[]
+): string {
   if (todosLosCursos) {
-    return `Fuiste invitado a toda la comunidad ${nombreComunidad}.`;
+    return `Tienes acceso a todos los cursos de ${nombreComunidad}.`;
   }
   if (cursos.length === 0) {
-    return `Fuiste invitado a la comunidad ${nombreComunidad}.`;
+    return `Tienes acceso a ${nombreComunidad}.`;
   }
-  const titulos = listarEnEspanol(cursos.map((c) => c.titulo));
+  const titulos = cursos.map((c) => `«${c}»`).join(", ");
   return cursos.length === 1
-    ? `Fuiste invitado al curso ${titulos}, en ${nombreComunidad}.`
-    : `Fuiste invitado a los cursos ${titulos}, en ${nombreComunidad}.`;
+    ? `Tienes acceso al curso ${titulos}, en ${nombreComunidad}.`
+    : `Tienes acceso a los cursos ${titulos}, en ${nombreComunidad}.`;
 }
 
-/** Pantalla de mensaje simple (b/c) reutilizando el mismo look que el formulario. */
 function MensajeInvitacion({
   icono: Icono,
   titulo,
@@ -84,7 +72,6 @@ function EsqueletoInvitacion() {
       <Skeleton className="mt-2 h-4 w-full" />
       <div className="mt-7 space-y-4">
         <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-16 w-full" />
         <Skeleton className="h-9 w-full" />
       </div>
     </div>
@@ -96,193 +83,107 @@ export interface InvitationScreenProps {
 }
 
 /**
- * Última pantalla del grupo `(auth)`: la que "abre" un alumno invitado
- * desde su correo. Resuelve la invitación vía `useInvitation` y renderiza
- * uno de 3 estados — ver docstring de cada rama más abajo.
+ * Aterrizaje del enlace de invitación.
+ *
+ * Ya no pide nombre ni contraseña, y ese cambio es el corazón de la rebanada:
+ * cuando alguien llega aquí desde el correo, **la cuenta ya existe y el acceso
+ * ya está concedido**. El enlace creó la cuenta, el trigger convirtió la
+ * invitación en inscripción, y `cargarArmazon` remató con
+ * `aceptar_mis_invitaciones` por si el trigger no llegó a saltar.
+ *
+ * Así que esta pantalla solo confirma qué se ha recibido y abre la puerta.
+ * Pedir aquí una contraseña sería pedir algo que ya no hace falta.
  */
 export function InvitationScreen({ token }: InvitationScreenProps) {
   const hydrated = useHydrated();
-  const resultado = useInvitation(token);
-  const aceptarInvitacion = useAppStore((s) => s.aceptarInvitacion);
+  const { invitacion, cargando } = useInvitation(token);
+  const { user } = useSession();
+  const comunidadPropia = useMyCommunity();
+  const armazon = useAppStore((s) => s.armazon);
   const router = useRouter();
 
-  const [nombre, setNombre] = useState("");
-  const [password, setPassword] = useState("");
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [enviando, setEnviando] = useState(false);
-  // Una vez aceptada con éxito dejamos de derivar la UI del store: así
-  // evitamos que el flip a `estado: "aceptada"` (disparado por la propia
-  // aceptación) haga parpadear la rama "esta invitación ya fue usada"
-  // mientras el router todavía está navegando a /cursos.
-  const [aceptada, setAceptada] = useState(false);
-
-  // Mientras el store no hidrata desde localStorage, cualquier lectura de
-  // `invitaciones`/`comunidadesCreadas` puede no reflejar todavía lo que
-  // hay persistido (p. ej. una invitación ya aceptada en una sesión
-  // anterior) — mostramos un esqueleto neutro hasta que hydrated.
-  if (!hydrated) {
+  if (!hydrated || cargando) {
     return <EsqueletoInvitacion />;
   }
 
-  if (aceptada) {
-    return (
-      <MensajeInvitacion
-        icono={Sparkles}
-        titulo="¡Listo!"
-        descripcion="Te estamos llevando a tus cursos…"
-      />
-    );
-  }
-
-  if (!resultado) {
+  // Token inexistente, ya aceptado o academia suspendida — sin distinguir
+  // cuál, para no confirmar qué tokens existen.
+  if (!invitacion) {
+    // Si la persona ya tiene sesión, lo más probable es que su invitación se
+    // aceptara sola al entrar: en vez de un callejón sin salida, se la lleva
+    // a sus cursos.
+    if (user && armazon?.comunidad) {
+      return (
+        <MensajeInvitacion
+          icono={Sparkles}
+          titulo="Ya tienes acceso"
+          descripcion={`Esta invitación ya se usó. Entra a ${armazon.comunidad.nombre} desde tu cuenta.`}
+        />
+      );
+    }
     return (
       <MensajeInvitacion
         icono={MailQuestion}
-        titulo="Esta invitación no existe o expiró"
-        descripcion="Revisa que copiaste bien el enlace, o pídele al creador de la comunidad que te envíe uno nuevo."
+        titulo="Esta invitación no está disponible"
+        descripcion="Puede haber caducado o haberse usado ya. Pide una nueva a quien te invitó."
       />
     );
   }
 
-  const { invitacion, comunidad, cursos, todosLosCursos } = resultado;
-
-  if (invitacion.estado === "aceptada") {
-    return (
-      <MensajeInvitacion
-        icono={ShieldAlert}
-        titulo="Esta invitación ya fue usada"
-        descripcion="Esta cuenta ya se creó. Inicia sesión con el correo con el que te invitaron."
-      />
-    );
-  }
-
-  // Bloqueo de comunidad suspendida (T15), mismo criterio que `MemberShell`:
-  // si el superadmin suspendió `comunidad` desde `/plataforma/comunidades`,
-  // una invitación pendiente no debe poder crear la cuenta (entraría
-  // directo a una comunidad bloqueada). Se revisa después de "ya fue
-  // usada" a propósito: si la cuenta ya existe, ese es el mensaje más
-  // relevante para quien reabre el enlace.
-  if (comunidad.estado === "suspendida") {
-    return (
-      <MensajeInvitacion
-        icono={Lock}
-        titulo="Esta comunidad está suspendida"
-        descripcion={`${comunidad.nombre} no está disponible en este momento, así que no podemos crear tu cuenta todavía. Vuelve a intentarlo más tarde.`}
-      />
-    );
-  }
-
-  function validar(): boolean {
-    const next: FormErrors = {};
-    if (!nombre.trim()) next.nombre = "Cuéntanos cómo te llamas.";
-    if (password.length < 6) next.password = "Usa al menos 6 caracteres.";
-    setErrors(next);
-    return Object.keys(next).length === 0;
-  }
-
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (enviando) return;
-    if (!validar()) return;
-
-    setEnviando(true);
-    const nuevoUsuario = aceptarInvitacion(token, nombre.trim());
-
-    if (!nuevoUsuario) {
-      // Carrera improbable (doble submit, o el token cambió de estado
-      // entre el render y el click) — no hay nada que romper, solo
-      // avisamos y dejamos que el propio hook re-derive el estado (c).
-      toast.error("Esta invitación ya no está disponible.");
-      setEnviando(false);
-      return;
-    }
-
-    setAceptada(true);
-    toast.success(`¡Bienvenido, ${nuevoUsuario.nombre}! Tu cuenta fue creada.`);
-    router.replace(`/c/${comunidad.slug}/cursos`);
-  }
+  const slug = armazon?.comunidad?.slug ?? comunidadPropia?.slug ?? null;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      style={{ "--community-accent": comunidad.colorAcento } as React.CSSProperties}
+      style={{ "--community-accent": invitacion.comunidadColor } as React.CSSProperties}
     >
-      {/*
-       * Aquí manda la comunidad que invita, no la plataforma: su logo y su
-       * nombre van centrados y grandes, ocupando el sitio donde el resto de
-       * pantallas de auth ponen la marca (ver `AuthFormCard`). Poner las dos
-       * cosas dejaba el mismo logo repetido cuando quien invita es la
-       * comunidad de la propia marca.
-       */}
-      <div className="mb-8 flex flex-col items-center gap-3 text-center">
-        {/* eslint-disable-next-line @next/next/no-img-element -- URL libre del creador; next/image exigiría allowlist de dominios */}
-        <img
-          src={comunidad.logoUrl}
-          alt=""
-          className="size-14 shrink-0 rounded-2xl border border-border bg-white object-contain"
-          style={{ boxShadow: "0 0 0 2px var(--community-accent)" }}
-        />
-        <p className="font-display text-xl leading-tight font-bold tracking-tight text-balance text-foreground">
-          {comunidad.nombre}
-        </p>
+      <div className="mb-8 flex justify-center">
+        <Logo href="/login" orientacion="vertical" />
       </div>
 
-      <h1 className="text-center font-display text-xl font-bold tracking-tight text-foreground">
-        Fuiste invitado
+      {invitacion.comunidadLogo && (
+        // eslint-disable-next-line @next/next/no-img-element -- URL arbitraria del creador, sin dominio configurado en next/image
+        <img
+          src={invitacion.comunidadLogo}
+          alt=""
+          className="mx-auto size-14 rounded-2xl object-cover"
+        />
+      )}
+
+      <h1 className="mt-4 text-center font-display text-2xl font-bold tracking-tight text-foreground">
+        Bienvenido a {invitacion.comunidadNombre}
       </h1>
+
       <p className="mt-1.5 text-center text-sm text-muted-foreground">
-        {copyInvitacion(comunidad.nombre, todosLosCursos, cursos)} Crea tu cuenta para
-        empezar.
+        {copyInvitacion(
+          invitacion.comunidadNombre,
+          invitacion.todosLosCursos,
+          invitacion.cursos
+        )}
       </p>
 
-      <form onSubmit={handleSubmit} className="mt-7 space-y-4" noValidate>
-        <div className="space-y-1.5">
-          <Label htmlFor="nombre">Nombre completo</Label>
-          <Input
-            id="nombre"
-            autoComplete="name"
-            placeholder="Ej. Valentina Ríos"
-            value={nombre}
-            onChange={(e) => {
-              setNombre(e.target.value);
-              if (errors.nombre) setErrors((prev) => ({ ...prev, nombre: undefined }));
-            }}
-            aria-invalid={!!errors.nombre}
-            disabled={enviando}
-          />
-          {errors.nombre && <p className="text-xs text-destructive">{errors.nombre}</p>}
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="password">Crea una contraseña</Label>
-          <Input
-            id="password"
-            type="password"
-            autoComplete="new-password"
-            placeholder="Mínimo 6 caracteres"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
-            }}
-            aria-invalid={!!errors.password}
-            disabled={enviando}
-          />
-          {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
-        </div>
-
-        <Button type="submit" className="w-full" size="lg" disabled={enviando}>
-          {enviando ? <Loader2 className="animate-spin" /> : <UserPlus />}
-          {enviando ? "Creando tu cuenta…" : "Aceptar invitación y entrar"}
-        </Button>
-      </form>
-
-      <p className="mt-6 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-        <KeyRound className="size-3.5" />
+      <p className="mt-4 text-center text-xs text-muted-foreground">
         Invitación para {invitacion.email}
       </p>
+
+      {user && slug ? (
+        <Button
+          className="mt-7 w-full"
+          size="lg"
+          onClick={() => router.replace(`/c/${slug}/cursos`)}
+        >
+          <LogIn className="size-4" aria-hidden />
+          Entrar a la academia
+        </Button>
+      ) : (
+        // Sin sesión: llegó aquí por el enlace copiado, no por el de acceso.
+        // El de entrar está en el correo; desde el login puede pedir otro.
+        <Button asChild className="mt-7 w-full" size="lg">
+          <Link href="/login">Entrar con mi correo</Link>
+        </Button>
+      )}
     </motion.div>
   );
 }

@@ -25,6 +25,15 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
   const usuario = sesion.user;
   if (!usuario) throw new Error("cargarArmazon requiere una sesión activa");
 
+  // Antes de leer nada: si hay invitaciones pendientes para este correo, se
+  // convierten en acceso ahora. Si no las hay, no hace nada y no cuesta nada.
+  //
+  // Va aquí y no en el login por dos motivos: cubre a quien ya tenía la sesión
+  // abierta cuando lo invitaron, y cubre el caso que el trigger no ve —
+  // invitar a alguien que ya tenía cuenta no crea ninguna, así que el trigger
+  // nunca salta.
+  await supabase.rpc("aceptar_mis_invitaciones");
+
   const { data: perfilFila, error: errPerfil } = await supabase
     .from("perfiles")
     .select("id, nombre, avatar_url, bio, rol, puntos, creado_el")

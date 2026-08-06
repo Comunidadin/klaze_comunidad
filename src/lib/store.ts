@@ -5,7 +5,6 @@ import type {
   CommunityEvent,
   CommunitySection,
   Enrollment,
-  Invitation,
   LessonProgress,
   Plan,
   Post,
@@ -60,7 +59,6 @@ export interface AppState {
   currentUserId: string | null;
   establecerArmazon: (armazon: Armazon | null) => void;
   usuariosCreados: User[]; // alumnos que aceptaron invitación + creadores registrados
-  invitaciones: Invitation[];
   enrollmentsExtra: Enrollment[]; // generados por invitaciones aceptadas
   progreso: LessonProgress[];
   postsCreados: Post[];
@@ -125,7 +123,6 @@ export interface AppState {
   // completo, y `resolverPlan` lo aplica sobre `mockPlans` en `usePlatform`.
   planOverrides: Record<string, Plan>;
 
-  aceptarInvitacion: (token: string, nombre: string) => User | null;
   toggleLeccionCompleta: (leccionId: string) => void;
   crearPost: (post: Omit<Post, "id" | "creadoEl" | "likes" | "comentarios">) => void;
   toggleLike: (postId: string) => void;
@@ -275,7 +272,6 @@ export const useAppStore = create<AppState>()(
     (set, get) => ({
       currentUserId: null,
       usuariosCreados: [],
-      invitaciones: [],
       enrollmentsExtra: [],
       progreso: [],
       postsCreados: [],
@@ -303,45 +299,6 @@ export const useAppStore = create<AppState>()(
       // recoge lo que trajo.
       establecerArmazon: (armazon) =>
         set({ armazon, currentUserId: armazon?.perfil.id ?? null }),
-
-      aceptarInvitacion: (token, nombre) => {
-        const invitacion = get().invitaciones.find(
-          (inv) => inv.token === token && inv.estado === "pendiente"
-        );
-        if (!invitacion) return null;
-
-        const nuevoUsuario: User = {
-          id: `u-inv-${token}`,
-          email: invitacion.email,
-          nombre,
-          avatarUrl: `https://i.pravatar.cc/150?u=${token}`,
-          bio: "",
-          rol: "alumno",
-          comunidadIds: [invitacion.comunidadId],
-          puntos: 0,
-          nivel: 1,
-          creadoEl: new Date().toISOString(),
-        };
-
-        const nuevoEnrollment: Enrollment = {
-          id: `enr-inv-${token}`,
-          userId: nuevoUsuario.id,
-          comunidadId: invitacion.comunidadId,
-          cursoIds: invitacion.cursoIds,
-          estado: "activo",
-        };
-
-        set((state) => ({
-          usuariosCreados: [...state.usuariosCreados, nuevoUsuario],
-          invitaciones: state.invitaciones.map((inv) =>
-            inv.token === token ? { ...inv, estado: "aceptada" as const } : inv
-          ),
-          enrollmentsExtra: [...state.enrollmentsExtra, nuevoEnrollment],
-          currentUserId: nuevoUsuario.id,
-        }));
-
-        return nuevoUsuario;
-      },
 
       toggleLeccionCompleta: (leccionId) => {
         const userId = get().currentUserId;
