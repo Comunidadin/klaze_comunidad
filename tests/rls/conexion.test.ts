@@ -12,9 +12,13 @@ test("la clave secreta puede crear y autenticar un usuario", async () => {
   expect(data.user?.email).toBe("conexion@prueba.klaze");
 });
 
-test("apuntamos a una base sin nuestras tablas todavia", async () => {
-  // Pasa PORQUE la tabla aún no existe. Confirma que las migraciones se van
-  // a aplicar sobre el proyecto que creemos, y no sobre otro con datos.
-  const { error } = await admin.from("comunidades").select("*");
-  expect(error?.code).toBe("PGRST205");
+test("apuntamos al proyecto con nuestro esquema aplicado", async () => {
+  // Sustituye a la comprobacion de arranque ("la tabla aun no existe"), que
+  // dejo de valer en cuanto se aplico la primera migracion. Ahora confirma lo
+  // contrario: que el proyecto al que apuntamos es el que hemos migrado.
+  const { error } = await admin.from("comunidades").select("id").limit(1);
+  expect(error).toBeNull();
+
+  const { data } = await admin.from("planes").select("id").order("id");
+  expect((data ?? []).map((p) => p.id)).toEqual(["pro", "scale", "starter"]);
 });

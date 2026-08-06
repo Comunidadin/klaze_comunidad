@@ -3,8 +3,13 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 /**
  * Arnés de las pruebas de aislamiento.
  *
- * Bun carga `.env.local` solo, así que estas variables llegan sin
- * configuración extra. La clave secreta vive ahí y NO en una variable
+ * OJO: `bun test` **no** carga `.env.local` por su cuenta — en entorno de
+ * pruebas Bun se salta ese archivo a propósito. Por eso el script
+ * `test:rls` pasa `--env-file=.env.local` explícitamente (la bandera
+ * funciona aunque no aparezca en `bun test --help`). Sin ella, estas tres
+ * variables llegan vacías y el arnés falla antes de la primera prueba.
+ *
+ * La clave secreta vive ahí y NO en una variable
  * `NEXT_PUBLIC_`: se salta todas las políticas RLS, y solo se usa para
  * montar el escenario de cada prueba, nunca para comprobar el resultado.
  * Si se usara para comprobar, las pruebas pasarían siempre y no
