@@ -26,6 +26,7 @@ import {
 import { useCommunity } from "@/lib/hooks/use-community";
 import { useCourses, useLesson } from "@/lib/hooks/use-courses";
 import { useHydrated, useSession } from "@/lib/hooks/use-session";
+import { toast } from "sonner";
 import { useLessonComments } from "@/lib/hooks/use-lesson-comments";
 import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
@@ -88,10 +89,18 @@ function SeccionComentarios({ leccionId }: { leccionId: string }) {
   const { comentarios, agregar } = useLessonComments(leccionId);
   const [texto, setTexto] = useState("");
 
-  function enviar() {
-    if (!user || !texto.trim()) return;
-    agregar(user.id, texto);
+  async function enviar() {
+    const cuerpo = texto.trim();
+    if (!user || !cuerpo) return;
     setTexto("");
+    try {
+      await agregar(cuerpo);
+    } catch (e) {
+      // Se devuelve el texto al campo: perder lo escrito por un fallo de red
+      // es peor que el fallo.
+      setTexto(cuerpo);
+      toast.error(e instanceof Error ? e.message : "No se pudo comentar");
+    }
   }
 
   return (

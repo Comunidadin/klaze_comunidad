@@ -1,133 +1,111 @@
 "use client";
 
-import { useState } from "react";
-import { mockUsers } from "@/lib/mocks/users";
-import { haceDias } from "@/lib/mocks/fechas";
-import { useAppStore } from "@/lib/store";
+import { useCallback, useEffect, useState } from "react";
+import { crearClienteNavegador } from "@/lib/supabase/client";
+import {
+  comentarLeccion,
+  leerComentarios,
+  type ComentarioLeccion,
+} from "@/lib/supabase/comentarios-leccion";
 import type { User } from "@/lib/types";
 
+/**
+ * Comentario listo para pintar.
+ *
+ * Conserva la forma `{ autor: User }` que ya consume la pantalla de lección,
+ * aunque de la base solo lleguen nombre y avatar: rellenar el resto con
+ * valores neutros sale más barato que reescribir el componente.
+ */
 export interface LessonCommentConAutor {
   id: string;
   autor: User;
   cuerpo: string;
   creadoEl: string;
+  /** `null` en los de primer nivel; el id de su raíz en las respuestas. */
+  padreId: string | null;
 }
 
-const AUTOR_DESCONOCIDO: User = {
-  id: "u-desconocido",
-  email: "",
-  nombre: "Usuario",
-  avatarUrl: "https://i.pravatar.cc/150?u=u-desconocido",
-  bio: "",
-  rol: "alumno",
-  comunidadIds: [],
-  puntos: 0,
-  nivel: 1,
-  creadoEl: "2026-07-20T12:00:00.000Z",
-};
-
-// Textos genéricos que funcionan para cualquier lección — se combinan con
-// un hash determinístico del id de lección para variar autor/texto sin
-// necesitar contenido a medida por lección.
-const PLANTILLAS = [
-  "Excelente explicación, ya lo apliqué en mi negocio esta semana.",
-  "¿Alguien más lo probó con un producto físico? Cuéntenme cómo les fue.",
-  "De los módulos que más me ha servido hasta ahora, gracias por lo claro.",
-  "Tuve que verlo dos veces pero ahora quedó clarísimo.",
-  "¿Existe una plantilla descargable de esto o toca hacerlo desde cero?",
-  "Justo el empujón que necesitaba para animarme a lanzar.",
-];
-
-function hashDeterministico(texto: string): number {
-  let h = 0;
-  for (let i = 0; i < texto.length; i++) {
-    h = (h * 31 + texto.charCodeAt(i)) >>> 0;
-  }
-  return h;
-}
-
-/**
- * Siembra 2 comentarios mock por lección, solo para el curso 1 (el que se
- * usa en las demos/verificación). Autor y texto se derivan de un hash
- * determinístico del id de lección — nunca `Math.random()` — así que la
- * lista es estable entre renders y entre servidor/cliente.
- */
-function comentariosSemilla(leccionId: string): Omit<LessonCommentConAutor, "id">[] {
-  if (!leccionId.startsWith("c1-")) return [];
-
-  const candidatos = mockUsers.filter((u) => u.rol === "alumno" && u.id !== "u-alumno");
-  if (candidatos.length < 2) return [];
-
-  const base = hashDeterministico(leccionId);
-  const autor1 = candidatos[base % candidatos.length];
-  const autor2 = candidatos[(base + 7) % candidatos.length];
-
-  return [
-    {
-      autor: autor1,
-      cuerpo: PLANTILLAS[base % PLANTILLAS.length],
-      creadoEl: haceDias(3 + (base % 5)),
+function aComentario(c: ComentarioLeccion): LessonCommentConAutor {
+  return {
+    id: c.id,
+    autor: {
+      id: c.autorId,
+      email: "",
+      nombre: c.autorNombre,
+      avatarUrl: c.autorAvatar,
+      bio: "",
+      rol: "alumno",
+      comunidadIds: [],
+      puntos: 0,
+      nivel: 1,
+      creadoEl: "",
     },
-    {
-      autor: autor2,
-      cuerpo: PLANTILLAS[(base + 3) % PLANTILLAS.length],
-      creadoEl: haceDias(1 + (base % 3)),
-    },
-  ];
-}
-
-function sembrarConId(leccionId: string): LessonCommentConAutor[] {
-  return comentariosSemilla(leccionId).map((c, i) => ({ id: `${leccionId}-seed-${i}`, ...c }));
+    cuerpo: c.cuerpo,
+    creadoEl: c.creadoEl,
+    padreId: c.padreId,
+  };
 }
 
 export interface UseLessonCommentsResult {
   comentarios: LessonCommentConAutor[];
-  /** Agrega un comentario local (no persistido) firmado por `userId`. */
-  agregar: (userId: string, cuerpo: string) => void;
+  cargando: boolean;
+  /**
+   * Publica un comentario. Ya no recibe el `userId`: el autor sale de la
+   * sesión, así que no existe forma de firmar a nombre de otro.
+   */
+  agregar: (cuerpo: string, padreId?: string | null) => Promise<void>;
 }
 
 /**
- * Comentarios de una lección: 2 semillas determinísticas (solo curso 1) +
- * lo que el usuario agregue en esta sesión. Estado 100% local (`useState`),
- * se pierde al recargar — no hay persistencia ni backend para comentarios.
+ * Es `async` aunque la rama sin lección no espere nada, para que el `.then()`
+ * que fija el estado no corra de forma síncrona dentro del efecto.
+ */
+async function leer(leccionId: string): Promise<LessonCommentConAutor[]> {
+  if (!leccionId) return [];
+  const lista = await leerComentarios(crearClienteNavegador(), leccionId);
+  return lista.map(aComentario);
+}
+
+/**
+ * Comentarios de una lección.
+ *
+ * Antes eran decorado: se generaban de un cálculo sobre el identificador de la
+ * lección, aparecían solo en el curso 1, y escribir uno y recargar lo borraba.
+ * Ahora viven en su propia tabla, con los mismos permisos que el feed.
  */
 export function useLessonComments(leccionId: string): UseLessonCommentsResult {
-  // Usuarios creados en runtime (alumnos que aceptaron invitación, T6) —
-  // `agregar` debe poder resolverlos como autor, igual que `use-session.ts`
-  // combina `mockUsers` + `usuariosCreados` para la sesión activa.
-  const usuariosCreados = useAppStore((s) => s.usuariosCreados);
+  // El estado guarda DE QUÉ lección son los comentarios, no solo los
+  // comentarios. Así "está cargando" se deriva de comparar identificadores en
+  // vez de fijarse a mano, y al navegar a otra lección no se ven un instante
+  // los comentarios de la anterior bajo el vídeo nuevo.
+  const [estado, setEstado] = useState<{
+    leccionId: string;
+    lista: LessonCommentConAutor[];
+  } | null>(null);
 
-  // Si `leccionId` cambia (navegación a otra lección) reseteamos el estado
-  // sincrónicamente durante el render — patrón recomendado por React para
-  // "resetear estado cuando cambia una prop" sin depender de que el
-  // componente se remonte (no podemos garantizarlo en App Router).
-  const [leccionIdPrevia, setLeccionIdPrevia] = useState(leccionId);
-  const [comentarios, setComentarios] = useState<LessonCommentConAutor[]>(() =>
-    sembrarConId(leccionId)
+  useEffect(() => {
+    let vivo = true;
+    void leer(leccionId).then((lista) => {
+      if (vivo) setEstado({ leccionId, lista });
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [leccionId]);
+
+  const agregar = useCallback(
+    async (cuerpo: string, padreId: string | null = null) => {
+      await comentarLeccion(crearClienteNavegador(), leccionId, cuerpo, padreId);
+      setEstado({ leccionId, lista: await leer(leccionId) });
+    },
+    [leccionId]
   );
 
-  if (leccionId !== leccionIdPrevia) {
-    setLeccionIdPrevia(leccionId);
-    setComentarios(sembrarConId(leccionId));
-  }
+  const alDia = estado?.leccionId === leccionId;
 
-  function agregar(userId: string, cuerpo: string) {
-    const texto = cuerpo.trim();
-    if (!texto) return;
-    const autor =
-      mockUsers.find((u) => u.id === userId) ??
-      usuariosCreados.find((u) => u.id === userId) ??
-      AUTOR_DESCONOCIDO;
-    setComentarios((prev) => [
-      ...prev,
-      {
-        id: `${leccionId}-local-${prev.length}`,
-        autor,
-        cuerpo: texto,
-        creadoEl: new Date().toISOString(),
-      },
-    ]);
-  }
-
-  return { comentarios, agregar };
+  return {
+    comentarios: alDia ? estado.lista : [],
+    cargando: !alDia,
+    agregar,
+  };
 }

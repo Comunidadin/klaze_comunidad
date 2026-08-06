@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Post, PostComment, User, UserRole } from "@/lib/types";
+import { nombreVisible } from "@/lib/nombre-visible";
 
 export const POR_PAGINA = 20;
 
@@ -117,7 +118,7 @@ function aPost(f: any, yo: string): PostConAutor {
       ? {
           id: perfil.id,
           email: perfil.email,
-          nombre: perfil.nombre,
+          nombre: nombreVisible(perfil.nombre, perfil.email),
           avatarUrl: perfil.avatar_url,
           bio: perfil.bio,
           rol: perfil.rol as UserRole,
