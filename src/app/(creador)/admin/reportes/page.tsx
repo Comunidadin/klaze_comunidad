@@ -8,12 +8,10 @@ import {
   Trophy,
   UserCheck,
 } from "lucide-react";
-import { enrollmentCubreCurso, resolverEstadoEnrollment, useAppStore } from "@/lib/store";
-import { mockEnrollments } from "@/lib/mocks/enrollments";
 import { useHydrated } from "@/lib/hooks/use-session";
 import { useAhora } from "@/lib/hooks/use-ahora";
 import { useMyCommunity } from "@/lib/hooks/use-my-community";
-import { useMembers, progresoPromedioDe } from "@/lib/hooks/use-members";
+import { useMembers, progresoPromedioDe, type MemberConEstado } from "@/lib/hooks/use-members";
 import { useGamification } from "@/lib/hooks/use-gamification";
 import { useAdminCourses, type CourseConAdmin } from "@/lib/hooks/use-admin-courses";
 import { useFeed } from "@/lib/hooks/use-feed";
@@ -25,7 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import type { Enrollment, LessonProgress } from "@/lib/types";
+import type { LessonProgress } from "@/lib/types";
 
 function ReportesSkeleton() {
   return (
@@ -98,21 +96,28 @@ function leccionesPorSemana(
 
 function avancePorCurso(
   curso: CourseConAdmin,
-  comunidadId: string,
-  enrollmentsExtra: Enrollment[],
-  estadoOverrides: Record<string, Enrollment["estado"]>,
+  miembros: MemberConEstado[],
+  accesos: Map<string, { todos: boolean; cursoIds: string[] }>,
   progreso: LessonProgress[]
 ): number {
-  const enrollments = [...mockEnrollments, ...enrollmentsExtra].filter(
-    (e) =>
-      e.comunidadId === comunidadId &&
-      resolverEstadoEnrollment(e, estadoOverrides) === "activo" &&
-      enrollmentCubreCurso(e, curso.id)
-  );
-  if (enrollments.length === 0) return 0;
+  // Solo alumnos ACTIVOS con acceso a este curso. Antes se calculaba sobre
+  // mocks más overrides del store; ahora sale de los mismos datos que ve la
+  // lista de alumnos, así que no puede discrepar de ella.
+  const conAcceso = miembros.filter((m) => {
+    if (m.estado !== "activo") return false;
+    const acceso = accesos.get(m.id);
+    if (!acceso) return false;
+    return acceso.todos || acceso.cursoIds.includes(curso.id);
+  });
+  if (conAcceso.length === 0) return 0;
 
-  const promedios = enrollments.map((e) =>
-    progresoPromedioDe(e.cursoIds, [curso], e.userId, progreso)
+  const promedios = conAcceso.map((m) =>
+    progresoPromedioDe(
+      accesos.get(m.id)!.todos ? "todos" : accesos.get(m.id)!.cursoIds,
+      [curso],
+      m.id,
+      progreso
+    )
   );
   return Math.round(promedios.reduce((a, b) => a + b, 0) / promedios.length);
 }
@@ -196,14 +201,11 @@ export default function ReportesPage() {
   const community = useMyCommunity();
   const ahora = useAhora();
 
-  const { miembros } = useMembers(community?.id ?? "");
+  const { miembros, accesos, progreso } = useMembers(community?.id ?? "");
   const { rankingPorPeriodo } = useGamification(community?.id ?? "");
   const { cursos } = useAdminCourses(community?.id ?? "");
   const { posts } = useFeed(community?.id ?? "");
   const { eventos } = useEvents(community?.id ?? "");
-  const progreso = useAppStore((s) => s.progreso);
-  const enrollmentsExtra = useAppStore((s) => s.enrollmentsExtra);
-  const estadoOverrides = useAppStore((s) => s.estadoOverrides);
 
   if (!hydrated) {
     return <ReportesSkeleton />;
@@ -236,7 +238,7 @@ export default function ReportesPage() {
   const dataSemanas = leccionesPorSemana(progreso, leccionIdsComunidad);
   const dataAvancePorCurso: BarChartDatum[] = cursosPublicados.map((curso) => ({
     etiqueta: curso.titulo,
-    valor: avancePorCurso(curso, community.id, enrollmentsExtra, estadoOverrides, progreso),
+    valor: avancePorCurso(curso, miembros, accesos, progreso),
   }));
   const topAlumnos = rankingPorPeriodo.total.slice(0, 5);
   const topLecciones = topLeccionesVistas(cursosPublicados, progreso);

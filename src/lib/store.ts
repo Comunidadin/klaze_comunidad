@@ -5,8 +5,6 @@ import type {
   CommunityEvent,
   CommunitySection,
   Enrollment,
-  Invitation,
-  LessonProgress,
   Plan,
   Post,
   PostComment,
@@ -25,8 +23,6 @@ import { mockPosts } from "@/lib/mocks/posts";
  */
 const CLAVES_SIN_PERSISTIR: string[] = ["armazon", "currentUserId"];
 
-const CURSO_1_ID = "curso-1";
-
 /** Exportado porque `/admin/cursos` la reutiliza para derivar el slug de un curso nuevo. */
 export function slugify(texto: string): string {
   return texto
@@ -37,17 +33,6 @@ export function slugify(texto: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 }
-
-// Invitación pre-sembrada para poder probar /invitacion/inv-demo (Task 6)
-// sin depender de haber generado una invitación primero.
-const INVITACION_DEMO: Invitation = {
-  token: "inv-demo",
-  email: "invitado.demo@mail.com",
-  comunidadId: "com-principal",
-  cursoIds: [CURSO_1_ID],
-  estado: "pendiente",
-  creadaEl: "2026-07-13T12:00:00.000Z",
-};
 
 /** Override persistido de nombre/bio de un usuario (ver `actualizarPerfil`). */
 export interface PerfilOverride {
@@ -73,16 +58,13 @@ export interface AppState {
   currentUserId: string | null;
   establecerArmazon: (armazon: Armazon | null) => void;
   usuariosCreados: User[]; // alumnos que aceptaron invitación + creadores registrados
-  invitaciones: Invitation[];
   enrollmentsExtra: Enrollment[]; // generados por invitaciones aceptadas
-  progreso: LessonProgress[];
   postsCreados: Post[];
   likesDados: { postId: string; userId: string }[];
   comentariosCreados: { postId: string; comentario: PostComment; parentId: string | null }[];
   comunidadesCreadas: Community[]; // comunidades registradas por nuevos creadores
-  proximoInviteId: number; // contador determinístico para tokens "inv-N"
   // Contador determinístico para el id "post-nuevo-N" de `crearPost` — mismo
-  // patrón que `proximoInviteId`/`proximoLeccionId`: nunca derivar el N de
+  // mismo patrón de contador: nunca derivar el N de
   // `postsCreados.length`, porque `eliminarPost` quita posts de sesión de ese
   // array y un largo que vuelve a bajar generaría IDs duplicados con posts
   // que siguen vivos (keys de React y likes/comentarios keyed por postId
@@ -139,13 +121,6 @@ export interface AppState {
   // completo, y `resolverPlan` lo aplica sobre `mockPlans` en `usePlatform`.
   planOverrides: Record<string, Plan>;
 
-  crearInvitaciones: (
-    emails: string[],
-    comunidadId: string,
-    cursoIds: string[] | "todos"
-  ) => Invitation[];
-  aceptarInvitacion: (token: string, nombre: string) => User | null;
-  toggleLeccionCompleta: (leccionId: string) => void;
   crearPost: (post: Omit<Post, "id" | "creadoEl" | "likes" | "comentarios">) => void;
   toggleLike: (postId: string) => void;
   comentar: (postId: string, cuerpo: string, parentId: string | null) => void;
@@ -294,14 +269,11 @@ export const useAppStore = create<AppState>()(
     (set, get) => ({
       currentUserId: null,
       usuariosCreados: [],
-      invitaciones: [INVITACION_DEMO],
       enrollmentsExtra: [],
-      progreso: [],
       postsCreados: [],
       likesDados: [],
       comentariosCreados: [],
       comunidadesCreadas: [],
-      proximoInviteId: 1,
       proximoPostId: 1,
       perfilOverrides: {},
       estadoOverrides: {},
@@ -323,85 +295,6 @@ export const useAppStore = create<AppState>()(
       // recoge lo que trajo.
       establecerArmazon: (armazon) =>
         set({ armazon, currentUserId: armazon?.perfil.id ?? null }),
-
-      crearInvitaciones: (emails, comunidadId, cursoIds) => {
-        const inicio = get().proximoInviteId;
-        const nuevas: Invitation[] = emails.map((email, i) => ({
-          token: `inv-${inicio + i}`,
-          email: email.trim().toLowerCase(),
-          comunidadId,
-          cursoIds,
-          estado: "pendiente",
-          creadaEl: new Date().toISOString(),
-        }));
-        set((state) => ({
-          invitaciones: [...state.invitaciones, ...nuevas],
-          proximoInviteId: inicio + emails.length,
-        }));
-        return nuevas;
-      },
-
-      aceptarInvitacion: (token, nombre) => {
-        const invitacion = get().invitaciones.find(
-          (inv) => inv.token === token && inv.estado === "pendiente"
-        );
-        if (!invitacion) return null;
-
-        const nuevoUsuario: User = {
-          id: `u-inv-${token}`,
-          email: invitacion.email,
-          nombre,
-          avatarUrl: `https://i.pravatar.cc/150?u=${token}`,
-          bio: "",
-          rol: "alumno",
-          comunidadIds: [invitacion.comunidadId],
-          puntos: 0,
-          nivel: 1,
-          creadoEl: new Date().toISOString(),
-        };
-
-        const nuevoEnrollment: Enrollment = {
-          id: `enr-inv-${token}`,
-          userId: nuevoUsuario.id,
-          comunidadId: invitacion.comunidadId,
-          cursoIds: invitacion.cursoIds,
-          estado: "activo",
-        };
-
-        set((state) => ({
-          usuariosCreados: [...state.usuariosCreados, nuevoUsuario],
-          invitaciones: state.invitaciones.map((inv) =>
-            inv.token === token ? { ...inv, estado: "aceptada" as const } : inv
-          ),
-          enrollmentsExtra: [...state.enrollmentsExtra, nuevoEnrollment],
-          currentUserId: nuevoUsuario.id,
-        }));
-
-        return nuevoUsuario;
-      },
-
-      toggleLeccionCompleta: (leccionId) => {
-        const userId = get().currentUserId;
-        if (!userId) return;
-        set((state) => {
-          const yaExiste = state.progreso.some(
-            (p) => p.userId === userId && p.leccionId === leccionId
-          );
-          if (yaExiste) {
-            return {
-              progreso: state.progreso.filter(
-                (p) => !(p.userId === userId && p.leccionId === leccionId)
-              ),
-            };
-          }
-          const nuevo: LessonProgress = {
-            userId,
-            leccionId,
-            completadaEl: new Date().toISOString(),
-          };
-          return { progreso: [...state.progreso, nuevo] };
-        });
-      },
 
       crearPost: (post) => {
         set((state) => {

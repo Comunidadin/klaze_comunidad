@@ -5,6 +5,13 @@ export interface Armazon {
   perfil: User;
   comunidad: Community | null;
   cursos: Course[];
+  /**
+   * Ids de las lecciones que esta persona ha completado.
+   *
+   * RLS ya limita las filas a las propias, así que no hace falta filtrar por
+   * usuario aquí: si llega, es tuya.
+   */
+  progreso: string[];
 }
 
 /**
@@ -25,6 +32,15 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
   const usuario = sesion.user;
   if (!usuario) throw new Error("cargarArmazon requiere una sesión activa");
 
+  // Antes de leer nada: si hay invitaciones pendientes para este correo, se
+  // convierten en acceso ahora. Si no las hay, no hace nada y no cuesta nada.
+  //
+  // Va aquí y no en el login por dos motivos: cubre a quien ya tenía la sesión
+  // abierta cuando lo invitaron, y cubre el caso que el trigger no ve —
+  // invitar a alguien que ya tenía cuenta no crea ninguna, así que el trigger
+  // nunca salta.
+  await supabase.rpc("aceptar_mis_invitaciones");
+
   const { data: perfilFila, error: errPerfil } = await supabase
     .from("perfiles")
     .select("id, nombre, avatar_url, bio, rol, puntos, creado_el")
@@ -43,6 +59,8 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
     )
     .limit(1);
   const c = comunidades?.[0] ?? null;
+
+  const { data: progresoFilas } = await supabase.from("progreso").select("leccion_id");
 
   const { data: cursosFilas } = await supabase.from("cursos").select(
     `id, comunidad_id, slug, titulo, descripcion, portada_url,
@@ -121,5 +139,9 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
       })),
   }));
 
-  return { perfil, comunidad, cursos };
+  const progreso = ((progresoFilas ?? []) as { leccion_id: string }[]).map(
+    (p) => p.leccion_id
+  );
+
+  return { perfil, comunidad, cursos, progreso };
 }

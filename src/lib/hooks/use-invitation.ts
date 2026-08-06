@@ -1,55 +1,70 @@
 "use client";
 
-import { resolverComunidad, useAppStore } from "@/lib/store";
-import { mockCommunities } from "@/lib/mocks/communities";
-import { useCourses } from "@/lib/hooks/use-courses";
-import type { Community, Course, Invitation } from "@/lib/types";
+import { useEffect, useState } from "react";
+import { crearClienteNavegador } from "@/lib/supabase/client";
 
 export interface UseInvitationResult {
-  invitacion: Invitation;
-  comunidad: Community;
-  /** Cursos nombrados por la invitación. Vacío cuando `todosLosCursos` es true. */
-  cursos: Course[];
+  /** Correo al que se dirigió la invitación. */
+  email: string;
+  comunidadNombre: string;
+  comunidadLogo: string;
+  comunidadColor: string;
   todosLosCursos: boolean;
+  /** Títulos de los cursos incluidos. Vacío cuando `todosLosCursos` es true. */
+  cursos: string[];
 }
 
 /**
- * Resuelve una invitación por token contra `store.invitaciones` y su
- * comunidad (mock o creada en runtime vía `registrarCreador`). Devuelve
- * `null` solo cuando el token no existe o su comunidad no se pudo
- * resolver — la página distingue "pendiente" de "aceptada" leyendo
- * `invitacion.estado`, así puede mostrar el mensaje correcto en cada caso
- * sin que este hook tenga que modelar esos 3 estados.
+ * Resuelve una invitación por su token, **sin sesión**.
  *
- * No usa `useCommunity` (busca por slug y no aplica aquí: la invitación
- * solo tiene `comunidadId`), pero sí reutiliza `useCourses` para resolver
- * los títulos de los cursos incluidos.
+ * Llama a `invitacion_publica`, la función del esquema que devuelve un
+ * conjunto fijo de columnas: la marca de la academia y los títulos de los
+ * cursos incluidos. No devuelve la `Community` entera porque la pantalla no
+ * necesita más, y porque esa función es una de las dos únicas puertas abiertas
+ * a quien no ha iniciado sesión.
+ *
+ * Devuelve `null` para un token inexistente, uno ya aceptado o una academia
+ * suspendida — sin distinguir cuál de los tres. Distinguirlos permitiría
+ * averiguar qué tokens existen, que es justo lo que protege el correo del
+ * invitado.
+ *
+ * `cargando` importa aquí y no en otros hooks: la pantalla no puede decidir
+ * entre "bienvenido" y "esta invitación no vale" hasta tener la respuesta.
  */
-export function useInvitation(token: string): UseInvitationResult | null {
-  const invitaciones = useAppStore((s) => s.invitaciones);
-  const comunidadesCreadas = useAppStore((s) => s.comunidadesCreadas);
-  const comunidadOverrides = useAppStore((s) => s.comunidadOverrides);
+export function useInvitation(token: string): {
+  invitacion: UseInvitationResult | null;
+  cargando: boolean;
+} {
+  const [invitacion, setInvitacion] = useState<UseInvitationResult | null>(null);
+  const [cargando, setCargando] = useState(true);
 
-  const invitacion = invitaciones.find((inv) => inv.token === token) ?? null;
+  useEffect(() => {
+    let vivo = true;
 
-  const comunidadBase = invitacion
-    ? (comunidadesCreadas.find((c) => c.id === invitacion.comunidadId) ??
-      mockCommunities.find((c) => c.id === invitacion.comunidadId) ??
-      null)
-    : null;
-  const comunidad = comunidadBase ? resolverComunidad(comunidadBase, comunidadOverrides) : null;
+    void crearClienteNavegador()
+      .rpc("invitacion_publica", { p_token: token })
+      .then(({ data }) => {
+        if (!vivo) return;
+        const fila = data?.[0];
+        setInvitacion(
+          fila
+            ? {
+                email: fila.email,
+                comunidadNombre: fila.comunidad_nombre,
+                comunidadLogo: fila.comunidad_logo,
+                comunidadColor: fila.comunidad_color,
+                todosLosCursos: fila.todos_los_cursos,
+                cursos: fila.cursos ?? [],
+              }
+            : null
+        );
+        setCargando(false);
+      });
 
-  // Hooks siempre se llaman en el mismo orden: `useCourses` corre en cada
-  // render (con comunidadId vacío si aún no hay invitación resuelta) y el
-  // early-return va después.
-  const { cursos: cursosComunidad } = useCourses(invitacion?.comunidadId ?? "");
+    return () => {
+      vivo = false;
+    };
+  }, [token]);
 
-  if (!invitacion || !comunidad) return null;
-
-  const todosLosCursos = invitacion.cursoIds === "todos";
-  const cursos = todosLosCursos
-    ? []
-    : cursosComunidad.filter((c) => (invitacion.cursoIds as string[]).includes(c.id));
-
-  return { invitacion, comunidad, cursos, todosLosCursos };
+  return { invitacion, cargando };
 }

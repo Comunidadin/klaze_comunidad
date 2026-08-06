@@ -6,7 +6,8 @@ import { MoreHorizontal, Search, ShieldOff, UserCheck, Users } from "lucide-reac
 import { useHydrated } from "@/lib/hooks/use-session";
 import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { useMembers, type MemberConEstado } from "@/lib/hooks/use-members";
-import { useAppStore } from "@/lib/store";
+import { crearClienteNavegador } from "@/lib/supabase/client";
+import { cambiarEstadoAlumno } from "@/lib/supabase/alumnos";
 import { formatFechaLarga } from "@/lib/format-fecha";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -99,8 +100,7 @@ function AlumnosSkeleton() {
 export default function AlumnosPage() {
   const hydrated = useHydrated();
   const community = useMyCommunity();
-  const { miembros } = useMembers(community?.id ?? "");
-  const cambiarEstadoAlumno = useAppStore((s) => s.cambiarEstadoAlumno);
+  const { miembros, recargar } = useMembers(community?.id ?? "");
 
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>("todos");
@@ -144,15 +144,28 @@ export default function AlumnosPage() {
     );
   }
 
-  function confirmarCambio() {
+  async function confirmarCambio() {
     if (!pendiente || !community) return;
-    cambiarEstadoAlumno(pendiente.miembro.id, community.id, pendiente.nuevoEstado);
-    toast.success(
-      pendiente.nuevoEstado === "suspendido"
-        ? `Suspendiste a ${pendiente.miembro.nombre}.`
-        : `Reactivaste a ${pendiente.miembro.nombre}.`
-    );
+    const { miembro, nuevoEstado } = pendiente;
     setPendiente(null);
+    try {
+      await cambiarEstadoAlumno(
+        crearClienteNavegador(),
+        miembro.id,
+        community.id,
+        nuevoEstado
+      );
+      await recargar();
+      toast.success(
+        nuevoEstado === "suspendido"
+          ? `Suspendiste a ${miembro.nombre}. Ya no puede ver los cursos.`
+          : `Reactivaste a ${miembro.nombre}. Su progreso sigue intacto.`
+      );
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "No se pudo cambiar el estado"
+      );
+    }
   }
 
   return (

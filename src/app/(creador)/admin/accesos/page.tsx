@@ -7,6 +7,7 @@ import { useHydrated } from "@/lib/hooks/use-session";
 import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { useCourses } from "@/lib/hooks/use-courses";
 import { useInvitations } from "@/lib/hooks/use-invitations";
+import { pedirEnlaceInvitacion } from "@/lib/invitaciones-api";
 import { esEmailValido } from "@/lib/validation";
 import { resumenCursosInvitacion } from "@/lib/invitation-summary";
 import { formatFechaLarga } from "@/lib/format-fecha";
@@ -71,24 +72,49 @@ function parseCorreos(texto: string): CorreosParseados {
   return { validos, invalidos };
 }
 
-function CopiarLinkButton({ token }: { token: string }) {
+/**
+ * Copia el enlace de ACCESO, no la dirección de la pantalla de invitación.
+ *
+ * La diferencia importa: `/invitacion/{token}` muestra el ofrecimiento pero no
+ * deja entrar a nadie. El enlace de acceso sí crea la sesión, y lo genera el
+ * servidor porque hace falta la clave secreta.
+ *
+ * Pedirlo NO manda correo: quien copia un enlace para mandarlo por su cuenta
+ * no espera que además salga un correo.
+ */
+function CopiarLinkButton({
+  comunidadId,
+  email,
+  token,
+}: {
+  comunidadId: string;
+  email: string;
+  token: string;
+}) {
   const [copiado, setCopiado] = useState(false);
+  const [pidiendo, setPidiendo] = useState(false);
 
   async function copiar() {
-    const url = `${window.location.origin}/invitacion/${token}`;
+    if (pidiendo) return;
+    setPidiendo(true);
     try {
-      await navigator.clipboard.writeText(url);
+      const { enlace } = await pedirEnlaceInvitacion(comunidadId, email, token, true);
+      await navigator.clipboard.writeText(enlace);
       setCopiado(true);
       setTimeout(() => setCopiado(false), 1600);
-    } catch {
-      toast.error("No pudimos copiar el link. Cópialo manualmente.");
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "No pudimos preparar el enlace."
+      );
+    } finally {
+      setPidiendo(false);
     }
   }
 
   return (
     <Tooltip open={copiado || undefined}>
       <TooltipTrigger asChild>
-        <Button variant="outline" size="sm" onClick={copiar}>
+        <Button variant="outline" size="sm" onClick={copiar} disabled={pidiendo}>
           {copiado ? <Check /> : <Copy />}
           Copiar link
         </Button>
@@ -109,10 +135,14 @@ function AccesosSkeleton() {
 }
 
 /**
- * `/admin/accesos` — el flujo estrella del producto: pegar correos, elegir
- * a qué dan acceso y enviar invitaciones. Cada invitación queda como link
- * `/invitacion/{token}` (T6) que el creador copia y comparte manualmente
- * (no hay envío de correo real, es un MVP frontend-only).
+ * `/admin/accesos` — el flujo estrella del producto: pegar correos, elegir a
+ * qué dan acceso y enviar invitaciones.
+ *
+ * El correo sale de verdad, por Resend, con un enlace que crea la cuenta del
+ * alumno y le concede los cursos de una sola vez. El botón de copiar existe
+ * para la misma invitación por otra vía: los correos se pierden, se marcan
+ * como spam y se borran sin querer, y un alumno bloqueado por eso no puede
+ * esperar al siguiente intento.
  */
 export default function AccesosPage() {
   const hydrated = useHydrated();
@@ -123,6 +153,7 @@ export default function AccesosPage() {
   const [correosTexto, setCorreosTexto] = useState("");
   const [cursoIdsSeleccionados, setCursoIdsSeleccionados] = useState<string[]>([]);
   const [todaLaComunidad, setTodaLaComunidad] = useState(false);
+  const [enviando, setEnviando] = useState(false);
 
   const { validos, invalidos } = useMemo(() => parseCorreos(correosTexto), [correosTexto]);
   const haySeleccionDeCursos = todaLaComunidad || cursoIdsSeleccionados.length > 0;
@@ -154,13 +185,51 @@ export default function AccesosPage() {
     if (marcado) setCursoIdsSeleccionados([]);
   }
 
-  function handleEnviar() {
-    if (!puedeEnviar) return;
-    crear(validos, todaLaComunidad ? "todos" : cursoIdsSeleccionados);
-    toast.success(`📧 ${validos.length} invitaciones enviadas`);
-    setCorreosTexto("");
-    setCursoIdsSeleccionados([]);
-    setTodaLaComunidad(false);
+  async function handleEnviar() {
+    if (!puedeEnviar || enviando) return;
+    setEnviando(true);
+    try {
+      const creadas = await crear(
+        validos,
+        todaLaComunidad ? "todos" : cursoIdsSeleccionados
+      );
+
+      // Se envía uno a uno y se cuentan los fallos por separado: si el correo
+      // de alguien rebota, los demás ya salieron y su invitación sigue viva.
+      // Abortar el lote entero por un correo malo sería peor.
+      const fallidos: string[] = [];
+      for (const inv of creadas) {
+        try {
+          await pedirEnlaceInvitacion(community!.id, inv.email, inv.token);
+        } catch {
+          fallidos.push(inv.email);
+        }
+      }
+
+      if (fallidos.length === 0) {
+        toast.success(
+          creadas.length === 1
+            ? "Invitación enviada"
+            : `${creadas.length} invitaciones enviadas`
+        );
+      } else {
+        toast.warning(
+          `${creadas.length - fallidos.length} de ${creadas.length} enviadas. ` +
+            `No salió el correo de: ${fallidos.join(", ")}. ` +
+            `Su invitación está creada — copia el enlace desde la lista.`
+        );
+      }
+
+      setCorreosTexto("");
+      setCursoIdsSeleccionados([]);
+      setTodaLaComunidad(false);
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "No se pudieron crear las invitaciones"
+      );
+    } finally {
+      setEnviando(false);
+    }
   }
 
   const invitacionesOrdenadas = [...invitaciones].sort(
@@ -250,7 +319,7 @@ export default function AccesosPage() {
               )}
             </div>
 
-            <Button onClick={handleEnviar} disabled={!puedeEnviar} size="lg">
+            <Button onClick={handleEnviar} disabled={!puedeEnviar || enviando} size="lg">
               <Send /> Enviar invitaciones
             </Button>
           </CardContent>
@@ -299,7 +368,13 @@ export default function AccesosPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {inv.estado === "pendiente" && <CopiarLinkButton token={inv.token} />}
+                        {inv.estado === "pendiente" && (
+                          <CopiarLinkButton
+                            comunidadId={community.id}
+                            email={inv.email}
+                            token={inv.token}
+                          />
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

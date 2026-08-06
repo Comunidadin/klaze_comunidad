@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * Referencia estable para el caso "sin progreso". Devolver `[]` dentro del
+ * selector crearía un array nuevo en cada lectura y rompería el invariante de
+ * `useSyncExternalStore` en React 19 (ver CLAUDE.md).
+ */
+const VACIO: string[] = [];
+
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -15,7 +22,6 @@ import {
 } from "lucide-react";
 import { useCommunity } from "@/lib/hooks/use-community";
 import { useCourses } from "@/lib/hooks/use-courses";
-import { useSession } from "@/lib/hooks/use-session";
 import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -50,15 +56,16 @@ export interface CursoDetalleProps {
 export function CursoDetalle({ comunidadSlug, cursoSlug }: CursoDetalleProps) {
   const resultado = useCommunity(comunidadSlug);
   const { cursos } = useCourses(resultado?.community.id ?? "");
-  const { user } = useSession();
-  const progreso = useAppStore((s) => s.progreso);
+  const progreso = useAppStore((s) => s.armazon?.progreso ?? VACIO);
 
   const curso = cursos.find((c) => c.slug === cursoSlug);
 
-  const leccionesCompletadasIds = useMemo(() => {
-    if (!user) return new Set<string>();
-    return new Set(progreso.filter((p) => p.userId === user.id).map((p) => p.leccionId));
-  }, [progreso, user]);
+  // `armazon.progreso` ya son solo las lecciones de esta persona: RLS no deja
+  // ver las de nadie más, así que no hay que filtrar por usuario.
+  const leccionesCompletadasIds = useMemo(
+    () => new Set(progreso),
+    [progreso]
+  );
 
   // Módulo seleccionado en el grid de portadas — la lista de lecciones de
   // abajo se sincroniza con él. `null` hasta que se siembra el default (ver
