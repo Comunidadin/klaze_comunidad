@@ -9,7 +9,7 @@ Publica Klaze en Cloudflare Workers con el adaptador OpenNext, que ya estaba
 configurado y compilando. Lo que faltaba no era código: era el nombre del
 worker, los secretos del servidor y que Supabase reconozca el dominio nuevo.
 
-**URL:** `https://klaze.workers.dev`
+**URL:** `https://klaze.automatizacioncomunidad.workers.dev`
 **Cuenta:** `automatizacioncomunidad@gmail.com` (ID `01022d7888b61493d755cb0b16d43894`)
 
 ## Decisiones
@@ -17,7 +17,7 @@ worker, los secretos del servidor y que Supabase reconozca el dominio nuevo.
 | Decisión | Elegido | Por qué |
 |---|---|---|
 | Dónde | Cloudflare Workers | Ya configurado y compilando. Cambiar a Vercel tiraría lo que funciona; una VPS añade administrar un servidor a cambio de nada que se necesite. |
-| Dominio | `klaze.workers.dev` | Gratis e inmediato. Sirve para probar y para enseñar internamente, no para vender: se nota que es provisional. |
+| Dominio | `klaze.automatizacioncomunidad.workers.dev` | Gratis e inmediato. Sirve para probar y para enseñar internamente, no para vender: se nota que es provisional. |
 | Nombre del worker | `klaze` | Era `comunidad-intercambio`, y el nombre **decide la URL** — habría publicado bajo la marca que acabábamos de sacar de la interfaz. |
 | Vimeo | Fuera de alcance | Necesita la URL publicada para poder pegarla en su panel. Va después. |
 
@@ -59,7 +59,7 @@ Tres sitios, y confundirlos es la forma más rápida de filtrar una clave.
 4. **Cargar los tres secretos** con `wrangler secret put`.
 5. **Desplegar** con `bun run cf:deploy`.
 6. **Añadir la URL a Supabase** — `Authentication → URL Configuration`: la URL
-   del sitio y `https://klaze.workers.dev/callback` en las redirecciones
+   del sitio y `https://klaze.automatizacioncomunidad.workers.dev/callback` en las redirecciones
    permitidas.
 
    Sin esto, las invitaciones y los enlaces de acceso fallan **solo en
@@ -68,6 +68,25 @@ Tres sitios, y confundirlos es la forma más rápida de filtrar una clave.
 7. **Verificar en la URL publicada**: entrar como dueño, abrir `/plataforma`,
    dar de alta una academia de prueba y comprobar que la contraseña temporal
    sirve. Borrarla al terminar.
+
+## La ruta del proyecto no puede llevar corchetes
+
+Lo que casi hunde este despliegue no fue Next ni el adaptador: fue la carpeta.
+El proyecto vivía en `Desktop/[Claude Code V2]/[Klaze V2]`, y el adaptador
+construye su patrón de búsqueda de manifiestos pegando la ruta absoluta
+delante. En sintaxis de glob, `[...]` es una **clase de caracteres**: `[Klaze V2]`
+no significa "la carpeta Klaze V2" sino "un carácter que sea K, l, a, z, e,
+espacio, V o 2".
+
+Resultado: el glob encontraba **cero** manifiestos de 41, no se inlineaba
+ninguno, y el worker moría en el primero que Next pedía. El error apuntaba a
+las fuentes (`next-font-manifest.json`) y no tenía nada que ver con ellas.
+
+El proyecto se movió a `Desktop/Klaze V2`. **No lo devuelvas a una ruta con
+corchetes, llaves, asteriscos o interrogaciones**: `glob` lo usan decenas de
+herramientas de Node, y todas fallarán igual de lejos de la causa.
+
+Los otros siete proyectos de `[Claude Code V2]` tienen la misma bomba puesta.
 
 ## Errores previstos
 
