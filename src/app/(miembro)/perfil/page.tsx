@@ -12,7 +12,8 @@ import { useGamification } from "@/lib/hooks/use-gamification";
 import { useAppStore } from "@/lib/store";
 import { homePorRol } from "@/lib/routes";
 import { NIVEL_MAXIMO, puntosParaNivel } from "@/lib/levels";
-import { Logo } from "@/components/shared/logo";
+import { MarcaAcademia } from "@/components/shared/marca-academia";
+import { LogoPlataforma } from "@/components/shared/logo";
 import { LevelBadge } from "@/components/shared/level-badge";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -109,7 +110,18 @@ function PerfilContenido({ user }: { user: User }) {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur supports-backdrop-filter:bg-card/85">
         <div className="mx-auto flex h-16 max-w-2xl items-center justify-between px-4 sm:px-6">
-          <Logo size="sm" />
+          {comunidadPrincipal ? (
+            <MarcaAcademia
+              nombre={comunidadPrincipal.nombre}
+              logoUrl={comunidadPrincipal.logoUrl}
+              colorAcento={comunidadPrincipal.colorAcento}
+              size="sm"
+            />
+          ) : (
+            // Un superadmin sin academia propia mira su perfil desde la
+            // plataforma: ahí la marca correcta es la de Klaze.
+            <LogoPlataforma size="sm" />
+          )}
           <Button variant="ghost" size="sm" onClick={() => router.push(homePorRol(user))}>
             <ArrowLeft /> Volver
           </Button>

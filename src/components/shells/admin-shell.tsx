@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import { ChevronsLeft, ChevronsRight, LogOut, Menu } from "lucide-react";
 import { useSession } from "@/lib/hooks/use-session";
-import { Logo } from "@/components/shared/logo";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -23,6 +22,15 @@ export interface AdminShellProps {
   items: AdminNavItem[];
   /** Título mostrado en la barra superior (ej. "Panel de creador"). */
   titulo: string;
+  /**
+   * Qué marca va arriba. La decide quien monta el shell porque este sirve a
+   * dos áreas distintas: en `(creador)` es la academia del dueño, en
+   * `(superadmin)` es Klaze. Antes pintaba una constante fija, y por eso todo
+   * creador veía el nombre de otra empresa en su propio panel.
+   *
+   * Recibe `compacto` para poder encogerse en la barra colapsada.
+   */
+  marca: (compacto: boolean) => React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -37,7 +45,7 @@ function esActivo(pathname: string | null, href: string): boolean {
  * por `(creador)` y `(superadmin)` — cada layout pasa su propia lista de
  * `items`.
  */
-export function AdminShell({ items, titulo, children }: AdminShellProps) {
+export function AdminShell({ items, titulo, marca, children }: AdminShellProps) {
   const [colapsado, setColapsado] = useState(false);
   const [sheetAbierto, setSheetAbierto] = useState(false);
   const pathname = usePathname();
@@ -95,7 +103,7 @@ export function AdminShell({ items, titulo, children }: AdminShellProps) {
             colapsado ? "flex-col justify-center gap-1 px-0" : "justify-between"
           )}
         >
-          <Logo size="sm" href="/" soloMonograma={colapsado} />
+          {marca(colapsado)}
           <Button
             variant="ghost"
             size="icon-sm"
@@ -138,7 +146,7 @@ export function AdminShell({ items, titulo, children }: AdminShellProps) {
             <SheetContent side="left" className="w-64 gap-0 p-0">
               <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
               <div className="flex h-16 items-center px-4">
-                <Logo size="sm" />
+                {marca(false)}
               </div>
               {renderNav(false, () => setSheetAbierto(false))}
             </SheetContent>

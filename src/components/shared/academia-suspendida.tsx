@@ -3,11 +3,13 @@
 import { useRouter } from "next/navigation";
 import { Lock, LogOut } from "lucide-react";
 import { useSession } from "@/lib/hooks/use-session";
-import { Logo } from "@/components/shared/logo";
+import { MarcaAcademia } from "@/components/shared/marca-academia";
 import { Button } from "@/components/ui/button";
 
 export interface AcademiaSuspendidaProps {
   nombre: string;
+  logoUrl?: string;
+  colorAcento?: string;
   /**
    * El creador y el alumno necesitan saber cosas distintas: uno tiene que
    * hablar con quien administra la plataforma, el otro con su creador.
@@ -31,7 +33,12 @@ export interface AcademiaSuspendidaProps {
  * El botón de salir no es decorativo: sin él, quien entra con la academia
  * suspendida se queda en una pantalla sin ninguna salida.
  */
-export function AcademiaSuspendida({ nombre, quien }: AcademiaSuspendidaProps) {
+export function AcademiaSuspendida({
+  nombre,
+  logoUrl,
+  colorAcento,
+  quien,
+}: AcademiaSuspendidaProps) {
   const { logout } = useSession();
   const router = useRouter();
 
@@ -44,7 +51,12 @@ export function AcademiaSuspendida({ nombre, quien }: AcademiaSuspendidaProps) {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-4 text-center">
-      <Logo />
+      <MarcaAcademia
+        nombre={nombre}
+        logoUrl={logoUrl}
+        colorAcento={colorAcento}
+        orientacion="vertical"
+      />
       <div className="mt-2 flex size-14 items-center justify-center rounded-full bg-destructive/10 text-destructive">
         <Lock className="size-7" />
       </div>

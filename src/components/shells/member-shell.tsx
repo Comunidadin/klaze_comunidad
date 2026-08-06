@@ -75,7 +75,14 @@ export function MemberShell({ communitySlug, children }: MemberShellProps) {
   // mientras durase la suspensión. Dejó de ser cierto: las políticas también
   // lo dejan fuera, y el layout de `(creador)` enseña esta misma pantalla.
   if (community.estado === "suspendida" && user?.rol !== "superadmin") {
-    return <AcademiaSuspendida nombre={community.nombre} quien="miembro" />;
+    return (
+      <AcademiaSuspendida
+        nombre={community.nombre}
+        logoUrl={community.logoUrl}
+        colorAcento={community.colorAcento}
+        quien="miembro"
+      />
+    );
   }
 
   return (

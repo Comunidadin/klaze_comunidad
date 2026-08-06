@@ -104,7 +104,12 @@ export function CursosGrid({ comunidadSlug }: CursosGridProps) {
         </section>
       )}
 
-      <SiteFooter comunidadSlug={comunidadSlug} nombreComunidad={community.nombre} />
+      <SiteFooter
+        comunidadSlug={comunidadSlug}
+        nombreComunidad={community.nombre}
+        logoUrl={community.logoUrl}
+        colorAcento={community.colorAcento}
+      />
     </div>
   );
 }
