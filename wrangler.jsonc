@@ -1,6 +1,9 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "comunidad-intercambio",
+  // Este nombre decide la URL: `klaze.workers.dev`. Era
+  // "comunidad-intercambio", que habria publicado la plataforma bajo la marca
+  // de una de las empresas que aloja.
+  "name": "klaze",
   "main": ".open-next/worker.js",
   "compatibility_date": "2025-03-25",
   // `nodejs_compat` lo exige el runtime de Next; `global_fetch_strictly_public`
