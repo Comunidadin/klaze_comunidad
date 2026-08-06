@@ -46,6 +46,22 @@ const aplicadas = new Set(
 
 const archivos = (await readdir(DIR)).filter((f) => f.endsWith(".sql")).sort();
 
+// Dos archivos con el mismo sello de tiempo colisionan en el historial: solo
+// se aplicaria uno y el otro quedaria silenciosamente fuera. Pasa mas de lo que
+// parece — iCloud resuelve conflictos creando copias "nombre 2.sql", que
+// conservan el prefijo. Fallar aqui es mejor que descubrirlo con una tabla que
+// nadie creo.
+const versiones = archivos.map((f) => f.split("_")[0]);
+const repetidas = versiones.filter((v, i) => versiones.indexOf(v) !== i);
+if (repetidas.length > 0) {
+  const culpables = archivos.filter((f) => repetidas.includes(f.split("_")[0]));
+  throw new Error(
+    `Hay migraciones con el mismo sello de tiempo, y solo se aplicaria una:\n` +
+      culpables.map((f) => `  ${f}`).join("\n") +
+      `\n\nRenombra una con un sello posterior, o borra la copia sobrante.`
+  );
+}
+
 let nuevas = 0;
 for (const archivo of archivos) {
   const version = archivo.split("_")[0];
