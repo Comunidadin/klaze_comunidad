@@ -1,194 +1,131 @@
 "use client";
 
-import { resolverComunidad, useAppStore } from "@/lib/store";
-import { mockCommunities } from "@/lib/mocks/communities";
-import { mockPosts } from "@/lib/mocks/posts";
-import { mockUsers } from "@/lib/mocks/users";
+import { useCallback, useEffect, useState } from "react";
+import { useAppStore } from "@/lib/store";
+import { crearClienteNavegador } from "@/lib/supabase/client";
 import { cursosDeComunidad } from "@/lib/hooks/use-courses";
-import type { CommunitySection, Post, PostComment, User } from "@/lib/types";
+import { leerFijado, leerPagina, POR_PAGINA } from "@/lib/supabase/feed";
+import type { Post } from "@/lib/types";
+import type { PostConAutor } from "@/lib/supabase/feed";
 
-export type PostConAutor = Post & { autor: User };
+export type { PostConAutor } from "@/lib/supabase/feed";
 
-export type ComentarioCreado = {
-  postId: string;
-  comentario: PostComment;
-  parentId: string | null;
-};
-
-export type OrdenFeed = "reciente" | "comentado";
-
-/** Cuenta comentarios raíz + respuestas (modelo fijo de 2 niveles). Compartida por `PostCard` y `ContextoRail`. */
+/** Cuenta comentarios raíz + respuestas (modelo fijo de 2 niveles). */
 export function contarComentariosPost(post: Pick<Post, "comentarios">): number {
   return post.comentarios.reduce((total, raiz) => total + 1 + raiz.respuestas.length, 0);
 }
 
+export interface UseFeedResult {
+  /** Publicaciones cargadas, de más nueva a más vieja. Sin la fijada. */
+  posts: PostConAutor[];
+  /** La publicación fijada del curso, si la hay. Va aparte de la paginación. */
+  fijado: PostConAutor | null;
+  cargando: boolean;
+  /** `true` si la última página vino llena: puede haber más. */
+  hayMas: boolean;
+  cargarMas: () => Promise<void>;
+  recargar: () => Promise<void>;
+}
+
+/** Referencia estable para "sin cursos": un `[]` nuevo relanzaría el efecto en bucle. */
+const SIN_CURSOS: string[] = [];
+
 /**
- * Pliega los comentarios nuevos (creados en sesión) sobre el árbol base de
- * un post. Modelo de 2 niveles (raíz + respuestas): un comentario nuevo con
- * `parentId === null` se agrega como raíz; uno con `parentId` se busca entre
- * TODAS las raíces disponibles — tanto las del mock como las raíces creadas
- * en esta misma sesión (procesadas en orden de inserción, así que una raíz
- * creada primero ya está disponible cuando llega una respuesta posterior que
- * la referencia). Si el `parentId` no matchea ninguna raíz, se descarta de
- * forma defensiva en vez de perderse silenciosamente en otro lado.
+ * Es `async` aunque la rama sin cursos no espere nada, para que el `setState`
+ * de quien la llama nunca corra de forma síncrona dentro del efecto.
  */
-export function mergeComentarios(
-  comentariosBase: PostComment[],
-  comentariosCreados: ComentarioCreado[],
-  postId: string
-): PostComment[] {
-  const raices: PostComment[] = comentariosBase.map((c) => ({
-    ...c,
-    respuestas: [...c.respuestas],
-  }));
+async function leerTodo(
+  claveCursos: string,
+  cursoId: string | undefined,
+  espacioId: string | undefined
+): Promise<{ pagina: PostConAutor[]; elFijado: PostConAutor | null }> {
+  const ids = claveCursos ? claveCursos.split(",") : [];
+  if (ids.length === 0) return { pagina: [], elFijado: null };
 
-  for (const entrada of comentariosCreados) {
-    if (entrada.postId !== postId) continue;
+  const supabase = crearClienteNavegador();
+  const [pagina, elFijado] = await Promise.all([
+    leerPagina(supabase, { cursoIds: ids, espacioId }, null),
+    // Solo hay fijada dentro de un curso concreto: en la vista de toda la
+    // academia no tendría sentido destacar la de uno solo.
+    cursoId ? leerFijado(supabase, cursoId) : Promise.resolve(null),
+  ]);
 
-    if (entrada.parentId === null) {
-      raices.push({ ...entrada.comentario, respuestas: [] });
-      continue;
-    }
-
-    const raiz = raices.find((r) => r.id === entrada.parentId);
-    if (!raiz) continue; // parentId inválido/huérfano: se descarta.
-    raiz.respuestas = [...raiz.respuestas, entrada.comentario];
-  }
-
-  return raices;
-}
-
-const AUTOR_DESCONOCIDO: User = {
-  id: "u-desconocido",
-  email: "",
-  nombre: "Usuario",
-  avatarUrl: "https://i.pravatar.cc/150?u=u-desconocido",
-  bio: "",
-  rol: "alumno",
-  comunidadIds: [],
-  puntos: 0,
-  nivel: 1,
-  creadoEl: "2026-07-20T12:00:00.000Z",
-};
-
-/** Id del espacio "General" (slug `general`) dentro de `secciones` — respaldo al que se remapea un post cuyo `espacioId` ya no existe (espacio eliminado desde `/admin/comunidad`). */
-function espacioRespaldoId(secciones: CommunitySection[]): string | undefined {
-  return secciones.flatMap((s) => s.espacios).find((e) => e.slug === "general")?.id;
+  return { pagina, elFijado };
 }
 
 /**
- * Feed de una comunidad o, si se pasa `cursoId` (Cambio 3: la comunidad
- * social vive dentro de cada curso), el feed de ESE curso puntual —
- * filtrado por `Post.cursoId` en vez de solo `comunidadId`. Sin `cursoId`
- * conserva el comportamiento histórico (feed agregado de toda la
- * comunidad), que es lo que sigue usando `/admin/comunidad` para moderar.
+ * Feed de un curso o, sin `cursoId`, de toda la academia — que es lo que
+ * modera `/admin/comunidad`.
  *
- * `espacioId` filtra a un solo espacio dentro de ese ámbito (comunidad o
- * curso). `orden` controla el criterio de ordenamiento — los posts fijados
- * siempre van primero, sin importar el orden elegido.
+ * Es el primer hook que rompe la firma síncrona del proyecto, y es deliberado:
+ * el feed crece sin techo, así que no viaja en el armazón como el resto. Aquí
+ * el estado de carga sí es información que la pantalla necesita.
+ *
+ * El orden es siempre por fecha descendente. La opción de "más comentado"
+ * desapareció: ordenar así un feed paginado exige contar comentarios en la
+ * base, y hacerlo sobre lo ya cargado daría un orden que cambia según cuánto
+ * hayas bajado — un control que miente es peor que uno que no está.
  */
 export function useFeed(
   comunidadId: string,
   cursoId?: string,
-  espacioId?: string,
-  orden: OrdenFeed = "reciente"
-): { posts: PostConAutor[] } {
-  const postsCreados = useAppStore((s) => s.postsCreados);
-  const likesDados = useAppStore((s) => s.likesDados);
-  const comentariosCreados = useAppStore((s) => s.comentariosCreados);
-  const usuariosCreados = useAppStore((s) => s.usuariosCreados);
-  const postsEliminados = useAppStore((s) => s.postsEliminados);
-  const postFijadoPorComunidad = useAppStore((s) => s.postFijadoPorComunidad);
-  const comunidadesCreadas = useAppStore((s) => s.comunidadesCreadas);
-  const comunidadOverrides = useAppStore((s) => s.comunidadOverrides);
+  espacioId?: string
+): UseFeedResult {
   const armazon = useAppStore((s) => s.armazon);
+  const [posts, setPosts] = useState<PostConAutor[]>([]);
+  const [fijado, setFijado] = useState<PostConAutor | null>(null);
+  const [cargando, setCargando] = useState(true);
+  const [hayMas, setHayMas] = useState(false);
 
-  const todosLosUsuarios = [...mockUsers, ...usuariosCreados];
+  const cursosDeLaComunidad = cursosDeComunidad(comunidadId, armazon?.cursos ?? []);
+  const cursoIds = !comunidadId
+    ? SIN_CURSOS
+    : cursoId
+      ? [cursoId]
+      : cursosDeLaComunidad.map((c) => c.id);
 
-  // Secciones "efectivas" para remapear a "general" cualquier post cuyo
-  // espacio original ya no exista: las del CURSO (`Course.secciones`, con
-  // tal como vinieron del servidor) si hay `cursoId`, o las de la
-  // COMUNIDAD (`Community.secciones`, comportamiento histórico de
-  // `/admin/comunidad`) si no.
-  let seccionesEfectivas: CommunitySection[] = [];
-  if (cursoId) {
-    const curso = cursosDeComunidad(comunidadId, armazon?.cursos ?? []).find((c) => c.id === cursoId);
-    seccionesEfectivas = curso?.secciones ?? [];
-  } else {
-    const comunidadBase =
-      comunidadesCreadas.find((c) => c.id === comunidadId) ??
-      mockCommunities.find((c) => c.id === comunidadId);
-    seccionesEfectivas = comunidadBase
-      ? resolverComunidad(comunidadBase, comunidadOverrides).secciones
-      : [];
-  }
-  const espacioIdsValidos = new Set(seccionesEfectivas.flatMap((s) => s.espacios.map((e) => e.id)));
-  const espacioRespaldo = espacioRespaldoId(seccionesEfectivas);
+  // Clave estable para el efecto: el array se recrea en cada render, así que
+  // depender de él directamente relanzaría la carga sin parar.
+  const claveCursos = cursoIds.join(",");
 
-  const fijadoOverride = postFijadoPorComunidad[comunidadId];
+  const recargar = useCallback(async () => {
+    const { pagina, elFijado } = await leerTodo(claveCursos, cursoId, espacioId);
+    setPosts(pagina);
+    setFijado(elFijado);
+    setHayMas(pagina.length === POR_PAGINA);
+    setCargando(false);
+  }, [claveCursos, cursoId, espacioId]);
 
-  const posts = [...mockPosts, ...postsCreados].filter(
-    (p) =>
-      p.comunidadId === comunidadId &&
-      (!cursoId || p.cursoId === cursoId) &&
-      !postsEliminados.includes(p.id)
-  );
-
-  let conMergeDeLikesYComentarios: Post[] = posts.map((post) => {
-    // likesDados actúa como un conjunto de "toggles": si el par (post,user)
-    // está presente, invierte el estado base (lo agrega si no estaba, lo
-    // quita si ya estaba en el mock).
-    const likes = new Set(post.likes);
-    for (const l of likesDados) {
-      if (l.postId !== post.id) continue;
-      if (likes.has(l.userId)) likes.delete(l.userId);
-      else likes.add(l.userId);
-    }
-
-    const comentarios = mergeComentarios(
-      post.comentarios,
-      comentariosCreados,
-      post.id
-    );
-
-    const espacioIdEfectivo = espacioIdsValidos.has(post.espacioId)
-      ? post.espacioId
-      : (espacioRespaldo ?? post.espacioId);
-
-    // Si la comunidad tiene un post fijado en sesión, reemplaza por
-    // completo al `fijado` del seed (incluido "des-fijar" el que traía el
-    // mock) — solo puede haber uno.
-    const fijado = fijadoOverride ? post.id === fijadoOverride : post.fijado;
-
-    return {
-      ...post,
-      likes: Array.from(likes),
-      comentarios,
-      espacioId: espacioIdEfectivo,
-      fijado,
+  useEffect(() => {
+    let vivo = true;
+    // Se llama a `leerTodo` y no a `recargar` para que el `setState` viva en un
+    // `.then()` y nunca corra de forma síncrona dentro del efecto.
+    void leerTodo(claveCursos, cursoId, espacioId).then(({ pagina, elFijado }) => {
+      if (!vivo) return;
+      setPosts(pagina);
+      setFijado(elFijado);
+      setHayMas(pagina.length === POR_PAGINA);
+      setCargando(false);
+    });
+    return () => {
+      vivo = false;
     };
-  });
+  }, [claveCursos, cursoId, espacioId]);
 
-  if (espacioId) {
-    conMergeDeLikesYComentarios = conMergeDeLikesYComentarios.filter(
-      (p) => p.espacioId === espacioId
+  const cargarMas = useCallback(async () => {
+    if (posts.length === 0 || !hayMas) return;
+    const ids = claveCursos ? claveCursos.split(",") : [];
+    const ultima = posts[posts.length - 1].creadoEl;
+
+    const siguiente = await leerPagina(
+      crearClienteNavegador(),
+      { cursoIds: ids, espacioId },
+      ultima
     );
-  }
 
-  const conAutor: PostConAutor[] = conMergeDeLikesYComentarios.map((post) => ({
-    ...post,
-    autor:
-      todosLosUsuarios.find((u) => u.id === post.autorId) ?? AUTOR_DESCONOCIDO,
-  }));
+    setPosts((previas) => [...previas, ...siguiente]);
+    setHayMas(siguiente.length === POR_PAGINA);
+  }, [posts, hayMas, claveCursos, espacioId]);
 
-  conAutor.sort((a, b) => {
-    if (a.fijado !== b.fijado) return a.fijado ? -1 : 1;
-    if (orden === "comentado") {
-      const diff = contarComentariosPost(b) - contarComentariosPost(a);
-      if (diff !== 0) return diff;
-    }
-    return new Date(b.creadoEl).getTime() - new Date(a.creadoEl).getTime();
-  });
-
-  return { posts: conAutor };
+  return { posts, fijado, cargando, hayMas, cargarMas, recargar };
 }

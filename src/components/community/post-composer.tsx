@@ -2,8 +2,9 @@
 
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
+import { crearClienteNavegador } from "@/lib/supabase/client";
+import { crearPost } from "@/lib/supabase/feed";
 import { useSession } from "@/lib/hooks/use-session";
-import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,7 +27,8 @@ import {
 import type { CommunitySpace } from "@/lib/types";
 
 export interface PostComposerProps {
-  comunidadId: string;
+  /** Se llama tras publicar: el feed vive en el padre y es quien recarga. */
+  onCambio?: () => void | Promise<void>;
   /** Curso dentro del cual se crea la publicación (Cambio 3). */
   cursoId: string;
   /** Espacios en los que el usuario actual puede publicar (ya filtrados por `soloLectura`/dueño, ver `Feed`). */
@@ -44,7 +46,7 @@ export interface PostComposerProps {
  * `onOpenChange`), sin trigger propio.
  */
 export function PostComposer({
-  comunidadId,
+  onCambio,
   cursoId,
   espacios,
   espacioIdPorDefecto,
@@ -52,7 +54,21 @@ export function PostComposer({
   onOpenChange,
 }: PostComposerProps) {
   const { user } = useSession();
-  const crearPost = useAppStore((s) => s.crearPost);
+
+  async function publicar(espacio: string, titulo: string, cuerpo: string) {
+    try {
+      await crearPost(crearClienteNavegador(), {
+        cursoId,
+        espacioId: espacio,
+        titulo,
+        cuerpo,
+      });
+      await onCambio?.();
+      toast.success("Tu publicación ya está en el feed.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo publicar");
+    }
+  }
 
   const espacioDefault = espacioIdPorDefecto ?? espacios[0]?.id ?? "";
 
@@ -88,17 +104,7 @@ export function PostComposer({
       return;
     }
 
-    crearPost({
-      comunidadId,
-      cursoId,
-      autorId: user.id,
-      espacioId: espacioId || espacioDefault,
-      titulo: tituloLimpio,
-      cuerpo: cuerpoLimpio,
-      fijado: false,
-    });
-
-    toast.success("Tu publicación ya está en el feed.");
+    void publicar(espacioId || espacioDefault, tituloLimpio, cuerpoLimpio);
     handleOpenChange(false);
   }
 

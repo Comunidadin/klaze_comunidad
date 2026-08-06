@@ -12,6 +12,8 @@ import {
 import { useHydrated } from "@/lib/hooks/use-session";
 import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { useFeed, type PostConAutor } from "@/lib/hooks/use-feed";
+import { crearClienteNavegador } from "@/lib/supabase/client";
+import { eliminarPost, fijarPost } from "@/lib/supabase/feed";
 import { useEspacios } from "@/lib/hooks/use-espacios";
 import { slugify, useAppStore } from "@/lib/store";
 import { formatFechaLarga } from "@/lib/format-fecha";
@@ -118,9 +120,15 @@ function PostModeracionRow({
   );
 }
 
-function PostsTab({ posts }: { posts: PostConAutor[] }) {
-  const eliminarPost = useAppStore((s) => s.eliminarPost);
-  const fijarPost = useAppStore((s) => s.fijarPost);
+function PostsTab({
+  posts,
+  onCambio,
+}: {
+  posts: PostConAutor[];
+  onCambio: () => Promise<void>;
+}) {
+  
+  
 
   const [postAEliminar, setPostAEliminar] = useState<PostConAutor | null>(null);
   // Ver docstring del mismo patrón en /admin/alumnos: retiene el último post
@@ -131,16 +139,27 @@ function PostsTab({ posts }: { posts: PostConAutor[] }) {
     setMostrado(postAEliminar);
   }
 
-  function confirmarEliminar() {
+  async function confirmarEliminar() {
     if (!postAEliminar) return;
-    eliminarPost(postAEliminar.id);
-    toast.success("Publicación eliminada.");
+    const post = postAEliminar;
     setPostAEliminar(null);
+    try {
+      await eliminarPost(crearClienteNavegador(), post.id);
+      await onCambio();
+      toast.success("Publicación eliminada.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo eliminar");
+    }
   }
 
-  function handleFijar(post: PostConAutor) {
-    fijarPost(post.id);
-    toast.success(`«${post.titulo}» fijado — reemplaza al fijado anterior.`);
+  async function handleFijar(post: PostConAutor) {
+    try {
+      await fijarPost(crearClienteNavegador(), post.id);
+      await onCambio();
+      toast.success(`«${post.titulo}» fijado — reemplaza al fijado anterior.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo fijar");
+    }
   }
 
   if (posts.length === 0) {
@@ -487,7 +506,7 @@ function NivelesTab({
 export default function ComunidadPage() {
   const hydrated = useHydrated();
   const community = useMyCommunity();
-  const { posts } = useFeed(community?.id ?? "");
+  const { posts, recargar } = useFeed(community?.id ?? "");
 
   if (!hydrated) {
     return <ComunidadSkeleton />;
@@ -504,16 +523,23 @@ export default function ComunidadPage() {
   }
 
   return (
-    <ComunidadContenido key={community.id} community={community} posts={posts} />
+    <ComunidadContenido
+      key={community.id}
+      community={community}
+      posts={posts}
+      onCambio={recargar}
+    />
   );
 }
 
 function ComunidadContenido({
   community,
   posts,
+  onCambio,
 }: {
   community: Community;
   posts: PostConAutor[];
+  onCambio: () => Promise<void>;
 }) {
   return (
     <div>
@@ -535,7 +561,7 @@ function ComunidadContenido({
         </TabsList>
 
         <TabsContent value="posts">
-          <PostsTab posts={posts} />
+          <PostsTab posts={posts} onCambio={onCambio} />
         </TabsContent>
 
         <TabsContent value="espacios">

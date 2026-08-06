@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Heart, MessageCircle } from "lucide-react";
+import { crearClienteNavegador } from "@/lib/supabase/client";
+import { alternarMeGusta } from "@/lib/supabase/feed";
+import { toast } from "sonner";
 import { useSession } from "@/lib/hooks/use-session";
-import { useAppStore } from "@/lib/store";
 import { useEspacios } from "@/lib/hooks/use-espacios";
 import { contarComentariosPost, type PostConAutor } from "@/lib/hooks/use-feed";
 import { CommentThread } from "@/components/community/comment-thread";
@@ -16,6 +18,11 @@ import { cn } from "@/lib/utils";
 
 export interface PostCardProps {
   post: PostConAutor;
+  /**
+   * Se llama tras escribir en la base. El feed vive en el padre, así que la
+   * tarjeta no puede recargarse sola: avisa y quien tiene los datos decide.
+   */
+  onCambio?: () => void | Promise<void>;
   className?: string;
 }
 
@@ -29,9 +36,9 @@ const CUERPO_LARGO_UMBRAL = 220;
  * "📌 Fijado" — la jerarquía visual que hace evidente qué leer primero.
  * Reutilizada por la moderación de comunidad para vista previa de posts.
  */
-export function PostCard({ post, className }: PostCardProps) {
+export function PostCard({ post, onCambio, className }: PostCardProps) {
   const { user } = useSession();
-  const toggleLike = useAppStore((s) => s.toggleLike);
+  const [guardandoLike, setGuardandoLike] = useState(false);
   const { secciones } = useEspacios(post.comunidadId);
 
   const [expandido, setExpandido] = useState(false);
@@ -42,9 +49,17 @@ export function PostCard({ post, className }: PostCardProps) {
   const totalComentarios = contarComentariosPost(post);
   const espacio = secciones.flatMap((s) => s.espacios).find((e) => e.id === post.espacioId);
 
-  function handleLike() {
-    if (!user) return;
-    toggleLike(post.id);
+  async function handleLike() {
+    if (!user || guardandoLike) return;
+    setGuardandoLike(true);
+    try {
+      await alternarMeGusta(crearClienteNavegador(), post.id, post.meGusta);
+      await onCambio?.();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo guardar el me gusta");
+    } finally {
+      setGuardandoLike(false);
+    }
   }
 
   return (
@@ -141,7 +156,7 @@ export function PostCard({ post, className }: PostCardProps) {
         </button>
       </div>
 
-      {mostrarComentarios && <CommentThread postId={post.id} comentarios={post.comentarios} />}
+      {mostrarComentarios && <CommentThread postId={post.id} comentarios={post.comentarios} onCambio={onCambio} />}
     </article>
   );
 }

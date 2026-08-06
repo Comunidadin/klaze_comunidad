@@ -5,9 +5,9 @@ import { Menu, MessagesSquare, PenSquare, SearchX } from "lucide-react";
 import { useCommunity } from "@/lib/hooks/use-community";
 import { useCourses } from "@/lib/hooks/use-courses";
 import { useEspacios } from "@/lib/hooks/use-espacios";
-import { useFeed, type OrdenFeed } from "@/lib/hooks/use-feed";
-import { useHydrated } from "@/lib/hooks/use-session";
 import { useAppStore } from "@/lib/store";
+import { useFeed } from "@/lib/hooks/use-feed";
+import { useHydrated } from "@/lib/hooks/use-session";
 import { PostComposer } from "@/components/community/post-composer";
 import { PostCard } from "@/components/community/post-card";
 import { ContextoRail } from "@/components/community/contexto-rail";
@@ -16,13 +16,6 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 export interface FeedProps {
   comunidadSlug: string;
@@ -78,7 +71,6 @@ export function Feed({ comunidadSlug, cursoSlug, espacioSlug }: FeedProps) {
   const hydrated = useHydrated();
   const { secciones } = useEspacios(comunidadId, cursoId);
   const marcarEspacioVisto = useAppStore((s) => s.marcarEspacioVisto);
-  const [orden, setOrden] = useState<OrdenFeed>("reciente");
   const [composerAbierto, setComposerAbierto] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
 
@@ -86,7 +78,11 @@ export function Feed({ comunidadSlug, cursoSlug, espacioSlug }: FeedProps) {
   const espacio = espacioSlug ? todosLosEspacios.find((e) => e.slug === espacioSlug) : undefined;
   const espacioId = espacio?.id;
 
-  const { posts } = useFeed(comunidadId, cursoId, espacioId, orden);
+  const { posts, fijado, cargando, hayMas, cargarMas, recargar } = useFeed(
+    comunidadId,
+    cursoId,
+    espacioId
+  );
 
   // Marca el espacio como visitado (limpia su contador de no leídos en la
   // sidebar) solo cuando se está viendo ESE espacio puntual — el agregado
@@ -163,15 +159,6 @@ export function Feed({ comunidadSlug, cursoSlug, espacioSlug }: FeedProps) {
 
           {hydrated && (
             <div className="flex shrink-0 items-center gap-2">
-              <Select value={orden} onValueChange={(v) => setOrden(v as OrdenFeed)}>
-                <SelectTrigger className="w-[168px]" aria-label="Ordenar publicaciones">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="reciente">Más reciente</SelectItem>
-                  <SelectItem value="comentado">Más comentado</SelectItem>
-                </SelectContent>
-              </Select>
               {puedePublicarAqui && (
                 <Button onClick={() => setComposerAbierto(true)}>
                   <PenSquare /> Nueva publicación
@@ -187,16 +174,27 @@ export function Feed({ comunidadSlug, cursoSlug, espacioSlug }: FeedProps) {
           <>
             {puedePublicarAqui && (
               <PostComposer
-                comunidadId={community.id}
                 cursoId={cursoId}
                 espacios={espaciosSeleccionables}
                 espacioIdPorDefecto={espacio?.id}
                 open={composerAbierto}
                 onOpenChange={setComposerAbierto}
+                onCambio={recargar}
               />
             )}
 
-            {posts.length === 0 ? (
+            {fijado && (
+              <div className="mb-4">
+                <PostCard post={fijado} onCambio={recargar} />
+              </div>
+            )}
+
+            {cargando ? (
+              <div className="space-y-4">
+                <Skeleton className="h-40 rounded-2xl" />
+                <Skeleton className="h-40 rounded-2xl" />
+              </div>
+            ) : posts.length === 0 && !fijado ? (
               <EmptyState
                 icono={MessagesSquare}
                 titulo={espacio ? `Aún no hay publicaciones en ${espacio.nombre}` : "Aún no hay publicaciones"}
@@ -210,8 +208,16 @@ export function Feed({ comunidadSlug, cursoSlug, espacioSlug }: FeedProps) {
             ) : (
               <div className="space-y-4">
                 {posts.map((post) => (
-                  <PostCard key={post.id} post={post} />
+                  <PostCard key={post.id} post={post} onCambio={recargar} />
                 ))}
+
+                {hayMas && (
+                  <div className="flex justify-center pt-2">
+                    <Button variant="outline" onClick={() => void cargarMas()}>
+                      Cargar más publicaciones
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </>
