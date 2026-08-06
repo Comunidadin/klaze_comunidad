@@ -142,7 +142,7 @@ function ConfiguracionForm({
   const [logoUrl, setLogoUrl] = useState(community.logoUrl);
   const [colorAcento, setColorAcento] = useState(community.colorAcento);
 
-  function handleGuardar() {
+  async function handleGuardar() {
     const nombreLimpio = nombre.trim();
     if (!nombreLimpio) {
       toast.error("El nombre de la comunidad no puede estar vacío.");
@@ -246,7 +246,7 @@ function ConfiguracionForm({
             <PreviewEncabezado nombre={nombre} logoUrl={logoUrl} colorAcento={colorAcento} />
           </div>
 
-          <Button onClick={handleGuardar} size="lg">
+          <Button onClick={() => void handleGuardar()} size="lg">
             <Save /> Guardar cambios
           </Button>
         </CardContent>

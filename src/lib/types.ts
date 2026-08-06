@@ -145,6 +145,8 @@ export interface PostComment {
    */
   autorNombre?: string;
   autorAvatar?: string;
+  /** Nivel del autor, derivado de sus puntos al leer (ver `nivelPorPuntos`). */
+  autorNivel?: number;
   cuerpo: string;
   likes: string[];
   respuestas: PostComment[]; // solo 1 nivel de anidación extra (2 niveles total)

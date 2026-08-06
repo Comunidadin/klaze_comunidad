@@ -128,6 +128,7 @@ export function CommentThread({ postId, comentarios, onCambio, className }: Comm
             const autorRaiz = {
               nombre: raiz.autorNombre ?? "Usuario",
               avatarUrl: raiz.autorAvatar ?? "",
+              nivel: raiz.autorNivel ?? 1,
               id: raiz.autorId,
             };
             return (
@@ -176,6 +177,7 @@ export function CommentThread({ postId, comentarios, onCambio, className }: Comm
                         const autorRespuesta = {
                           nombre: respuesta.autorNombre ?? "Usuario",
                           avatarUrl: respuesta.autorAvatar ?? "",
+                          nivel: respuesta.autorNivel ?? 1,
                           id: respuesta.autorId,
                         };
                         return (

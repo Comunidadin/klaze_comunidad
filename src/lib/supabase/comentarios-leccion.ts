@@ -1,11 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { nombreVisible } from "@/lib/nombre-visible";
+import { nivelPorPuntos } from "@/lib/levels";
 
 export interface ComentarioLeccion {
   id: string;
   autorId: string;
   autorNombre: string;
   autorAvatar: string;
+  /** Nivel del autor, derivado de sus puntos al leer. */
+  autorNivel: number;
   cuerpo: string;
   /** `null` para los de primer nivel; el id de su raíz para las respuestas. */
   padreId: string | null;
@@ -16,6 +19,7 @@ interface FilaPerfilAutor {
   nombre: string;
   email: string;
   avatar_url: string;
+  puntos: number;
 }
 
 /**
@@ -36,7 +40,7 @@ export async function leerComentarios(
   const { data, error } = await supabase
     .from("comentarios_leccion")
     .select(
-      "id, autor_id, cuerpo, padre_id, creado_el, perfiles!comentarios_leccion_autor_id_fkey ( nombre, email, avatar_url )"
+      "id, autor_id, cuerpo, padre_id, creado_el, perfiles!comentarios_leccion_autor_id_fkey ( nombre, email, avatar_url, puntos )"
     )
     .eq("leccion_id", leccionId)
     .order("creado_el", { ascending: true });
@@ -54,6 +58,7 @@ export async function leerComentarios(
       autorId: f.autor_id,
       autorNombre: nombreVisible(perfil?.nombre ?? "", perfil?.email ?? ""),
       autorAvatar: perfil?.avatar_url ?? "",
+      autorNivel: nivelPorPuntos(perfil?.puntos ?? 0),
       cuerpo: f.cuerpo,
       padreId: f.padre_id,
       creadoEl: f.creado_el,

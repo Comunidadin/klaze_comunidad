@@ -37,7 +37,7 @@ function aComentario(c: ComentarioLeccion): LessonCommentConAutor {
       rol: "alumno",
       comunidadIds: [],
       puntos: 0,
-      nivel: 1,
+      nivel: c.autorNivel,
       creadoEl: "",
     },
     cuerpo: c.cuerpo,

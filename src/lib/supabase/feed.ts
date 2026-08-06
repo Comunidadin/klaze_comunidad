@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Post, PostComment, User, UserRole } from "@/lib/types";
 import { nombreVisible } from "@/lib/nombre-visible";
+import { nivelPorPuntos } from "@/lib/levels";
 
 export const POR_PAGINA = 20;
 
@@ -37,7 +38,7 @@ export interface FiltroFeed {
 const CAMPOS = `
   id, curso_id, espacio_id, autor_id, titulo, cuerpo, fijado, creado_el,
   perfiles!publicaciones_autor_id_fkey ( id, nombre, email, avatar_url, bio, rol, puntos, creado_el ),
-  comentarios ( id, autor_id, cuerpo, padre_id, creado_el, perfiles!comentarios_autor_id_fkey ( nombre, email, avatar_url ) ),
+  comentarios ( id, autor_id, cuerpo, padre_id, creado_el, perfiles!comentarios_autor_id_fkey ( nombre, email, avatar_url, puntos ) ),
   me_gusta ( usuario_id )
 `;
 
@@ -64,7 +65,14 @@ interface FilaComentario {
   cuerpo: string;
   padre_id: string | null;
   creado_el: string;
-  perfiles?: { nombre: string; email: string; avatar_url: string } | { nombre: string; email: string; avatar_url: string }[];
+  perfiles?: FilaPerfilComentario | FilaPerfilComentario[];
+}
+
+interface FilaPerfilComentario {
+  nombre: string;
+  email: string;
+  avatar_url: string;
+  puntos: number;
 }
 
 function autorDe(c: FilaComentario) {
@@ -72,6 +80,7 @@ function autorDe(c: FilaComentario) {
   return {
     autorNombre: nombreVisible(p?.nombre ?? "", p?.email ?? ""),
     autorAvatar: p?.avatar_url ?? "",
+    autorNivel: nivelPorPuntos(p?.puntos ?? 0),
   };
 }
 
@@ -135,7 +144,7 @@ function aPost(f: any, yo: string): PostConAutor {
           rol: perfil.rol as UserRole,
           comunidadIds: [],
           puntos: perfil.puntos,
-          nivel: 1,
+          nivel: nivelPorPuntos(perfil.puntos),
           creadoEl: perfil.creado_el,
         }
       : AUTOR_DESCONOCIDO,
