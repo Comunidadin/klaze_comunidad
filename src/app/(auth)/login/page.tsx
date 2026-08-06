@@ -12,6 +12,26 @@ import { AuthFormCard } from "../_components/auth-form-card";
 type Modo = "enlace" | "clave";
 
 /**
+ * Traduce el fallo a algo accionable, sin contar de más.
+ *
+ * "Correo sin confirmar" SÍ se dice: significa que esa persona nunca abrió su
+ * invitación, y saberlo es la diferencia entre reenviársela y perder una tarde
+ * buscando un fallo que no existe. El resto queda ambiguo a propósito, para no
+ * convertir el formulario en un detector de qué correos tienen cuenta.
+ */
+function mensajeDeError(bruto?: string): string {
+  const texto = (bruto ?? "").toLowerCase();
+
+  if (texto.includes("not confirmed")) {
+    return "Esta cuenta todavía no ha abierto su invitación, así que aún no puede entrar con contraseña. Usa el enlace de acceso que recibiste por correo.";
+  }
+  if (texto.includes("rate limit") || texto.includes("too many")) {
+    return "Demasiados intentos seguidos. Espera un momento y vuelve a probar.";
+  }
+  return "No pudimos entrar. Revisa el correo y la contraseña.";
+}
+
+/**
  * Dos vías de entrada, y cada una para quien la necesita.
  *
  * **Enlace por correo** es la vía de los alumnos: no se les pone contraseña al
@@ -55,9 +75,10 @@ export default function LoginPage() {
       // El layout de (auth) redirige por rol en cuanto hay sesión; esto solo
       // adelanta la navegación para que no se vea un parpadeo del formulario.
       router.replace("/callback");
-    } else {
-      setError("No pudimos entrar. Revisa el correo y la contraseña.");
+      return;
     }
+
+    setError(mensajeDeError(r.error));
   }
 
   if (enviado) {
