@@ -42,6 +42,21 @@ Las ediciones/acciones del admin no mutan mocks: se guardan como **overrides** e
 
 Si agregas un consumidor nuevo de comunidad/enrollment/cursos, usa estos helpers. Cada bug importante que encontró la revisión de este repo fue un consumidor que re-derivó esta lógica por su cuenta.
 
+## Base de datos (cimiento completado)
+
+El esquema vive en `supabase/migrations/`. Los cuatro resolvers de la sección anterior tienen su **gemelo SQL** en el esquema `privado` (`pertenece_a`, `cubre_curso`, `es_propietario_de`, `es_superadmin`, más `comparte_comunidad_con`), y ahí son inevitables: ninguna consulta los puede rodear. La app aún lee mocks — migrar las lecturas es el proyecto 2. Ver `docs/superpowers/specs/2026-08-05-backend-cimiento-design.md`.
+
+```bash
+supabase migration new <nombre>   # crea el archivo SQL
+bun run db:push                   # aplica lo pendiente al proyecto alojado
+bun run test:rls                  # pruebas de aislamiento — deben quedar verdes
+```
+
+- **No hay base local** (esta máquina no tiene Docker): las migraciones van al proyecto alojado. `bun run db:push` conecta directo a Postgres y registra cada migración en `supabase_migrations.schema_migrations`, así que `supabase db push` sigue siendo válido si alguien enlaza la CLI.
+- **RLS activado en toda tabla nueva, en su misma migración**, nunca después. Y `grant` explícito: crear una tabla por SQL no la expone al API sola.
+- Toda función `security definer` lleva `set search_path = ''` y referencia tablas con esquema explícito. `tests/rls/auditoria.test.ts` lo verifica en cada ejecución.
+- **Nunca uses `user_metadata` para decidir permisos** — el propio usuario lo edita desde el navegador. Los roles van en `app_metadata`.
+
 ## Determinismo
 
 - **Seeds** (`src/lib/mocks/`): cero `Math.random()`/`Date.now()`; fechas derivadas de la fecha base fija en `src/lib/mocks/fechas.ts`; datos generados por índice.
