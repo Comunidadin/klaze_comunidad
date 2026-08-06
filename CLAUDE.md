@@ -60,7 +60,8 @@ bun run test:rls                  # pruebas de aislamiento — deben quedar verd
 ## Determinismo
 
 - **Seeds** (`src/lib/mocks/`): cero `Math.random()`/`Date.now()`; fechas derivadas de la fecha base fija en `src/lib/mocks/fechas.ts`; datos generados por índice.
-- **IDs creados en runtime** (posts, invitaciones, cursos/módulos/lecciones): contadores persistidos en el store (`proximoInviteId`, `proximoPostId`, `siguienteCursoId`...). Nunca `array.length + 1` (colisiona tras eliminar) ni `Math.random`. Sigue el patrón existente si necesitas un ID nuevo.
+- **IDs de entidades que viven en Postgres** (cursos, módulos, lecciones): `crypto.randomUUID()` en el navegador. Los contadores del store (`siguienteCursoId`, `siguienteModuloId`, `siguienteLeccionId`) se retiraron al migrar: eran deterministas para la demo, pero con datos reales dos personas editando a la vez generarían el mismo `curso-4` y una pisaría a la otra. Generarlos en el cliente —en vez de dejar que los ponga la base— permite que el editor monte el curso entero en memoria y lo guarde de una vez, sin identificadores provisionales.
+- **IDs de lo que sigue en el store** (posts, invitaciones, eventos): contadores persistidos (`proximoInviteId`, `proximoPostId`, `proximoEventoId`). Nunca `array.length + 1`: colisiona tras eliminar. Migrarán a UUID cuando esas entidades pasen a la base.
 - Excepción: `new Date().toISOString()` sí se usa para `creadoEl` de entidades creadas por el usuario en sesión — es estado real, no seed.
 
 ## Selectores de Zustand (React 19)

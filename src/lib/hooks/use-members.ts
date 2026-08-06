@@ -67,14 +67,14 @@ export function useMembers(comunidadId: string, cursoId?: string): { miembros: M
   const enrollmentsExtra = useAppStore((s) => s.enrollmentsExtra);
   const perfilOverrides = useAppStore((s) => s.perfilOverrides);
   const estadoOverrides = useAppStore((s) => s.estadoOverrides);
-  const cursosEditados = useAppStore((s) => s.cursosEditados);
+  const armazon = useAppStore((s) => s.armazon);
   const progreso = useAppStore((s) => s.progreso);
 
   const todosLosUsuarios = [...mockUsers, ...usuariosCreados];
   const enrollments = [...mockEnrollments, ...enrollmentsExtra].filter(
     (e) => e.comunidadId === comunidadId && (!cursoId || enrollmentCubreCurso(e, cursoId))
   );
-  const cursosComunidad = cursosVisiblesParaMiembro(comunidadId, cursosEditados);
+  const cursosComunidad = cursosVisiblesParaMiembro(comunidadId, armazon?.cursos ?? []);
 
   const miembros = enrollments
     .map((e) => {

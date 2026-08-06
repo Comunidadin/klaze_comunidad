@@ -4,7 +4,6 @@ import type {
   Community,
   CommunityEvent,
   CommunitySection,
-  Course,
   Enrollment,
   Invitation,
   LessonProgress,
@@ -13,9 +12,18 @@ import type {
   PostComment,
   User,
 } from "@/lib/types";
-import { mockUsers } from "@/lib/mocks/users";
+import type { Armazon } from "@/lib/supabase/consultas";
 import { mockPosts } from "@/lib/mocks/posts";
-import { crearSeccionesDefault } from "@/lib/mocks/espacios";
+
+/**
+ * Claves que NO se guardan en localStorage.
+ *
+ * Son datos del servidor atados a una sesión: persistirlos significaría que
+ * quien abra este navegador después vea el contenido —y la identidad— de quien
+ * lo usó antes, sin haber iniciado sesión. La sesión real la guarda Supabase
+ * en su propia cookie, y `establecerArmazon` los repone en cada arranque.
+ */
+const CLAVES_SIN_PERSISTIR: string[] = ["armazon", "currentUserId"];
 
 const CURSO_1_ID = "curso-1";
 
@@ -29,18 +37,6 @@ export function slugify(texto: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 }
-
-const NOMBRES_NIVELES_DEFAULT = [
-  "Novato",
-  "Explorador",
-  "Aprendiz",
-  "Constructor",
-  "Práctico",
-  "Avanzado",
-  "Experto",
-  "Mentor",
-  "Leyenda",
-];
 
 // Invitación pre-sembrada para poder probar /invitacion/inv-demo (Task 6)
 // sin depender de haber generado una invitación primero.
@@ -60,7 +56,22 @@ export interface PerfilOverride {
 }
 
 export interface AppState {
+  /**
+   * Datos traídos del servidor al iniciar sesión: quién eres, tu academia y
+   * sus cursos. Reemplaza a los mocks como origen del armazón.
+   *
+   * NO se persiste en localStorage — ver `partialize`. Son datos del servidor
+   * y guardarlos significaría enseñar el contenido de una sesión anterior a
+   * quien abra después ese mismo navegador.
+   */
+  armazon: Armazon | null;
+  /**
+   * Lo fija `establecerArmazon`, nunca a mano. Se conserva como campo aparte
+   * (en vez de leer `armazon.perfil.id` en cada sitio) porque varias acciones
+   * internas del store lo usan y así no cambian.
+   */
   currentUserId: string | null;
+  establecerArmazon: (armazon: Armazon | null) => void;
   usuariosCreados: User[]; // alumnos que aceptaron invitación + creadores registrados
   invitaciones: Invitation[];
   enrollmentsExtra: Enrollment[]; // generados por invitaciones aceptadas
@@ -68,7 +79,6 @@ export interface AppState {
   postsCreados: Post[];
   likesDados: { postId: string; userId: string }[];
   comentariosCreados: { postId: string; comentario: PostComment; parentId: string | null }[];
-  cursosEditados: Course[]; // overrides de cursos creados/editados en admin
   comunidadesCreadas: Community[]; // comunidades registradas por nuevos creadores
   proximoInviteId: number; // contador determinístico para tokens "inv-N"
   // Contador determinístico para el id "post-nuevo-N" de `crearPost` — mismo
@@ -85,16 +95,6 @@ export interface AppState {
   // hook que resuelve un `User` (useSession, useMembers, useGamification)
   // aplica el override al final vía `aplicarPerfilOverride`.
   perfilOverrides: Record<string, PerfilOverride>;
-  // Contadores determinísticos para los IDs que genera el editor de cursos
-  // (T13) — mismo patrón que `proximoInviteId`: nunca `Math.random`, así los
-  // IDs son estables y no colisionan aunque se cree/borre varias veces en la
-  // misma sesión. `proximoLeccionId` es el más sensible de los tres: el ID
-  // de lección es la clave de `LessonProgress.leccionId` (sin `cursoId`), así
-  // que debe ser único en TODA la app, no solo dentro de un curso — por eso
-  // es un contador global y no algo derivado del curso/módulo que lo contiene.
-  proximoCursoId: number;
-  proximoModuloId: number;
-  proximoLeccionId: number;
   // Override persistido de `Enrollment.estado`, keyed por `${userId}:${comunidadId}`
   // (una sola membresía por par usuario+comunidad). Ver `cambiarEstadoAlumno`:
   // suspender/reactivar desde /admin/alumnos no muta `mockEnrollments` ni
@@ -121,7 +121,7 @@ export interface AppState {
   // `resolverComunidad`, así ninguna pantalla necesita su propio parche.
   comunidadOverrides: Record<string, Partial<Community>>;
   // Eventos creados/editados desde /admin/eventos — mismo patrón que
-  // `cursosEditados`: un `CommunityEvent` cuyo `id` coincide con uno de
+  // lo que hacían los cursos editados: un `CommunityEvent` cuyo `id` coincide con uno de
   // `mockEvents` es una edición (lo reemplaza); uno sin match es un evento
   // nuevo. `useEvents` hace el merge (ver `mergeEventos`).
   eventosEditados: CommunityEvent[];
@@ -133,14 +133,12 @@ export interface AppState {
   proximoEventoId: number;
   // --- T15: panel super-admin de plataforma -------------------------------
   // Override completo de un `Plan`, keyed por `Plan.id`. A diferencia de
-  // `comunidadOverrides`/`cursosEditados` (que mergean parcialmente o
+  // `comunidadOverrides` (que mergea parcialmente o
   // distinguen "nuevo" de "editado"), acá solo hay 3 planes fijos que nunca
   // se crean ni se borran — así que `guardarPlan` siempre reemplaza el plan
   // completo, y `resolverPlan` lo aplica sobre `mockPlans` en `usePlatform`.
   planOverrides: Record<string, Plan>;
 
-  login: (email: string) => boolean;
-  logout: () => void;
   crearInvitaciones: (
     emails: string[],
     comunidadId: string,
@@ -151,18 +149,6 @@ export interface AppState {
   crearPost: (post: Omit<Post, "id" | "creadoEl" | "likes" | "comentarios">) => void;
   toggleLike: (postId: string) => void;
   comentar: (postId: string, cuerpo: string, parentId: string | null) => void;
-  guardarCurso: (curso: Course) => void;
-  /** ID determinístico "curso-nuevo-N" para un curso creado desde /admin/cursos. */
-  siguienteCursoId: () => string;
-  /** ID determinístico "mod-N" para un módulo nuevo del editor. */
-  siguienteModuloId: () => string;
-  /** ID determinístico "lec-N" para una lección nueva del editor — único en toda la app (ver docstring de `proximoLeccionId`). */
-  siguienteLeccionId: () => string;
-  registrarCreador: (
-    nombre: string,
-    email: string,
-    nombreComunidad: string
-  ) => { user: User; community: Community };
   actualizarPerfil: (nombre: string, bio: string) => void;
   cambiarEstadoAlumno: (
     userId: string,
@@ -314,13 +300,9 @@ export const useAppStore = create<AppState>()(
       postsCreados: [],
       likesDados: [],
       comentariosCreados: [],
-      cursosEditados: [],
       comunidadesCreadas: [],
       proximoInviteId: 1,
       proximoPostId: 1,
-      proximoCursoId: 1,
-      proximoModuloId: 1,
-      proximoLeccionId: 1,
       perfilOverrides: {},
       estadoOverrides: {},
       postsEliminados: [],
@@ -333,16 +315,14 @@ export const useAppStore = create<AppState>()(
       espaciosVistos: {},
       proximoEspacioId: 1,
 
-      login: (email) => {
-        const objetivo = email.trim().toLowerCase();
-        const todos = [...mockUsers, ...get().usuariosCreados];
-        const encontrado = todos.find((u) => u.email.toLowerCase() === objetivo);
-        if (!encontrado) return false;
-        set({ currentUserId: encontrado.id });
-        return true;
-      },
+      armazon: null,
 
-      logout: () => set({ currentUserId: null }),
+      // Único punto que fija la sesión. Antes lo hacía `login(email)`, que
+      // aceptaba cualquier contraseña porque solo comprobaba que el correo
+      // existiera en un array. Ahora la sesión la da Supabase y esto solo
+      // recoge lo que trajo.
+      establecerArmazon: (armazon) =>
+        set({ armazon, currentUserId: armazon?.perfil.id ?? null }),
 
       crearInvitaciones: (emails, comunidadId, cursoIds) => {
         const inicio = get().proximoInviteId;
@@ -478,76 +458,6 @@ export const useAppStore = create<AppState>()(
         });
       },
 
-      guardarCurso: (curso) => {
-        set((state) => {
-          const existe = state.cursosEditados.some((c) => c.id === curso.id);
-          const cursosEditados = existe
-            ? state.cursosEditados.map((c) => (c.id === curso.id ? curso : c))
-            : [...state.cursosEditados, curso];
-          return { cursosEditados };
-        });
-      },
-
-      siguienteCursoId: () => {
-        const id = `curso-nuevo-${get().proximoCursoId}`;
-        set((s) => ({ proximoCursoId: s.proximoCursoId + 1 }));
-        return id;
-      },
-
-      siguienteModuloId: () => {
-        const id = `mod-${get().proximoModuloId}`;
-        set((s) => ({ proximoModuloId: s.proximoModuloId + 1 }));
-        return id;
-      },
-
-      siguienteLeccionId: () => {
-        const id = `lec-${get().proximoLeccionId}`;
-        set((s) => ({ proximoLeccionId: s.proximoLeccionId + 1 }));
-        return id;
-      },
-
-      registrarCreador: (nombre, email, nombreComunidad) => {
-        const state = get();
-        const idComunidad = `com-${slugify(nombreComunidad)}-${state.comunidadesCreadas.length + 1}`;
-        const idUsuario = `u-creador-nueva-${state.comunidadesCreadas.length + 1}`;
-
-        const nuevoUsuario: User = {
-          id: idUsuario,
-          email: email.trim().toLowerCase(),
-          nombre,
-          avatarUrl: `https://i.pravatar.cc/150?u=${idUsuario}`,
-          bio: "",
-          rol: "creador",
-          comunidadIds: [idComunidad],
-          puntos: 0,
-          nivel: 1,
-          creadoEl: new Date().toISOString(),
-        };
-
-        const nuevaComunidad: Community = {
-          id: idComunidad,
-          slug: slugify(nombreComunidad),
-          nombre: nombreComunidad,
-          descripcion: "",
-          logoUrl: `https://api.dicebear.com/7.x/shapes/svg?seed=${idComunidad}`,
-          colorAcento: "#06ABEB", // cian de la marca (mismo valor que `--brand`)
-          ownerId: idUsuario,
-          plan: "starter",
-          estado: "activa",
-          nombresNiveles: NOMBRES_NIVELES_DEFAULT,
-          secciones: crearSeccionesDefault(),
-          creadoEl: new Date().toISOString(),
-        };
-
-        set((s) => ({
-          usuariosCreados: [...s.usuariosCreados, nuevoUsuario],
-          comunidadesCreadas: [...s.comunidadesCreadas, nuevaComunidad],
-          currentUserId: nuevoUsuario.id,
-        }));
-
-        return { user: nuevoUsuario, community: nuevaComunidad };
-      },
-
       actualizarPerfil: (nombre, bio) => {
         const userId = get().currentUserId;
         if (!userId) return;
@@ -674,6 +584,21 @@ export const useAppStore = create<AppState>()(
     {
       name: "intercambio-v1",
       skipHydration: true,
+      /**
+       * `armazon` y `currentUserId` quedan fuera de localStorage a propósito.
+       *
+       * Son datos del servidor atados a una sesión: persistirlos significaría
+       * que quien abra este navegador después vea el contenido —y la
+       * identidad— de quien lo usó antes, sin haber iniciado sesión. La sesión
+       * real la guarda Supabase en su cookie, y `establecerArmazon` los repone
+       * en cada arranque.
+       */
+      partialize: (state) =>
+        Object.fromEntries(
+          Object.entries(state).filter(
+            ([clave]) => !CLAVES_SIN_PERSISTIR.includes(clave)
+          )
+        ) as AppState,
     }
   )
 );

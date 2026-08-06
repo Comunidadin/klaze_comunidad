@@ -44,8 +44,11 @@ export function AdminShell({ items, titulo, children }: AdminShellProps) {
   const { user, logout } = useSession();
   const router = useRouter();
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    // `logout` es asincrono: cierra la sesion en Supabase. Sin el await, el
+    // redirect puede adelantarse y dejar la cookie viva un instante, con lo
+    // que el guard del layout te devuelve dentro.
+    await logout();
     router.replace("/login");
   }
 

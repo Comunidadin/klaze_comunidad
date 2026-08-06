@@ -1,8 +1,7 @@
 "use client";
 
-import { enrollmentCubreCurso, resolverEstadoEnrollment, useAppStore } from "@/lib/store";
-import { mockCourses } from "@/lib/mocks/courses";
-import { mockEnrollments } from "@/lib/mocks/enrollments";
+import { useMemo } from "react";
+import { useAppStore } from "@/lib/store";
 import { useSession } from "@/lib/hooks/use-session";
 import { nivelPorPuntos } from "@/lib/levels";
 import type { Course, Lesson } from "@/lib/types";
@@ -19,90 +18,72 @@ function leccionesDeCurso(curso: Course): Lesson[] {
 }
 
 /**
- * Aplica los overrides de `cursosEditados` (admin) sobre los mocks base.
- * Exportada porque `useMembers` la reutiliza para calcular el progreso
- * promedio por alumno sobre el mismo set de cursos "reales" de la comunidad.
+ * Cursos de `comunidadId` dentro de los que el servidor nos entregó.
+ *
+ * Antes se llamaba `mergeCursos` y mezclaba mocks con overrides del admin. Ya
+ * no hay nada que mezclar: la lista viene de Postgres y es la única verdad.
+ * El segundo parámetro es esa lista (normalmente `armazon.cursos`), no unos
+ * overrides.
  */
-export function mergeCursos(comunidadId: string, cursosEditados: Course[]): Course[] {
-  const base = mockCourses.filter((c) => c.comunidadId === comunidadId);
-  const overridesMismaComunidad = cursosEditados.filter(
-    (c) => c.comunidadId === comunidadId
-  );
-
-  const resultado = base.map((curso) => {
-    const override = overridesMismaComunidad.find((c) => c.id === curso.id);
-    return override ?? curso;
-  });
-
-  const nuevos = overridesMismaComunidad.filter(
-    (c) => !base.some((b) => b.id === c.id)
-  );
-
-  return [...resultado, ...nuevos];
+export function cursosDeComunidad(comunidadId: string, cursos: Course[]): Course[] {
+  return cursos.filter((c) => c.comunidadId === comunidadId);
 }
 
 /**
- * Cursos "publicados" de `comunidadId` — el subconjunto de `mergeCursos` que
- * un miembro puede llegar a ver: un borrador nunca debe aparecer en el
- * classroom, sin importar el acceso del usuario. Punto único de verdad para
- * ese filtro — lo usa tanto `useCourses` (candado por acceso/nivel) como
- * `useMembers` (progreso promedio: un borrador con lecciones no debe arrastrar
- * hacia abajo el % de alumnos que ni siquiera pueden verlo). Para el admin,
- * que sí necesita ver y editar borradores, usar `useAdminCourses`, que opera
- * sobre `mergeCursos` sin este filtro.
+ * Cursos que un miembro puede llegar a ver: los publicados.
+ *
+ * El filtro de `publicado` se conserva aquí aunque RLS ya lo aplique. No es
+ * redundancia inútil: al dueño la base SÍ le manda sus borradores, y este
+ * helper lo usan también pantallas de cara al miembro (p. ej. el progreso
+ * promedio en `useMembers`), donde un borrador no debe contar.
  */
 export function cursosVisiblesParaMiembro(
   comunidadId: string,
-  cursosEditados: Course[]
+  cursos: Course[]
 ): Course[] {
-  return mergeCursos(comunidadId, cursosEditados).filter((c) => c.publicado);
+  return cursosDeComunidad(comunidadId, cursos).filter((c) => c.publicado);
 }
 
+/**
+ * Cursos del classroom, con su candado y su porcentaje de avance.
+ *
+ * OJO con `acceso`: la base solo entrega los cursos que el acceso del alumno
+ * cubre (ver `privado.cubre_curso`), así que "sin-acceso" ya no ocurre para un
+ * miembro — un curso que no compró no llega, no llega con candado. El estado
+ * se conserva en el tipo porque el dueño sí recibe todos los suyos.
+ */
 export function useCourses(comunidadId: string): { cursos: CourseConAcceso[] } {
-  const cursosEditados = useAppStore((s) => s.cursosEditados);
-  const enrollmentsExtra = useAppStore((s) => s.enrollmentsExtra);
+  const armazon = useAppStore((s) => s.armazon);
   const progreso = useAppStore((s) => s.progreso);
-  const estadoOverrides = useAppStore((s) => s.estadoOverrides);
   const { user } = useSession();
 
-  const cursos = cursosVisiblesParaMiembro(comunidadId, cursosEditados);
-  const enrollments = [...mockEnrollments, ...enrollmentsExtra];
+  // Derivar con useMemo, nunca dentro del selector: crear arrays nuevos ahí
+  // rompe el invariante de `useSyncExternalStore` en React 19.
+  return useMemo(() => {
+    const cursos = cursosVisiblesParaMiembro(comunidadId, armazon?.cursos ?? []);
+    const nivelUsuario = user ? nivelPorPuntos(user.puntos) : 0;
 
-  const enrollment = user
-    ? enrollments.find(
-        (e) =>
-          e.userId === user.id &&
-          e.comunidadId === comunidadId &&
-          resolverEstadoEnrollment(e, estadoOverrides) === "activo"
-      )
-    : undefined;
+    const cursosConAcceso: CourseConAcceso[] = cursos.map((curso) => {
+      const lecciones = leccionesDeCurso(curso);
+      const completadas = user
+        ? progreso.filter(
+            (p) => p.userId === user.id && lecciones.some((l) => l.id === p.leccionId)
+          ).length
+        : 0;
+      const progresoPct =
+        lecciones.length === 0 ? 0 : Math.round((completadas / lecciones.length) * 100);
 
-  const cursosConAcceso: CourseConAcceso[] = cursos.map((curso) => {
-    const lecciones = leccionesDeCurso(curso);
-    const completadas = user
-      ? progreso.filter(
-          (p) =>
-            p.userId === user.id && lecciones.some((l) => l.id === p.leccionId)
-        ).length
-      : 0;
-    const progresoPct =
-      lecciones.length === 0 ? 0 : Math.round((completadas / lecciones.length) * 100);
-
-    let acceso: AccesoCurso = "sin-acceso";
-    const tieneEnrollment = !!enrollment && enrollmentCubreCurso(enrollment, curso.id);
-
-    if (tieneEnrollment) {
-      const nivelUsuario = user ? nivelPorPuntos(user.puntos) : 0;
-      acceso =
-        curso.nivelRequerido === null || nivelUsuario >= curso.nivelRequerido
+      const acceso: AccesoCurso = !user
+        ? "sin-acceso"
+        : curso.nivelRequerido === null || nivelUsuario >= curso.nivelRequerido
           ? "si"
           : "candado-nivel";
-    }
 
-    return { ...curso, acceso, progresoPct };
-  });
+      return { ...curso, acceso, progresoPct };
+    });
 
-  return { cursos: cursosConAcceso };
+    return { cursos: cursosConAcceso };
+  }, [armazon, comunidadId, progreso, user]);
 }
 
 export interface UseLessonResult {
@@ -115,13 +96,12 @@ export function useLesson(
   cursoId: string,
   leccionId: string
 ): UseLessonResult | null {
-  const cursosEditados = useAppStore((s) => s.cursosEditados);
+  const armazon = useAppStore((s) => s.armazon);
   const progreso = useAppStore((s) => s.progreso);
   const toggleLeccionCompleta = useAppStore((s) => s.toggleLeccionCompleta);
   const { user } = useSession();
 
-  const override = cursosEditados.find((c) => c.id === cursoId);
-  const curso = override ?? mockCourses.find((c) => c.id === cursoId);
+  const curso = (armazon?.cursos ?? []).find((c) => c.id === cursoId);
   if (!curso) return null;
 
   const leccion = leccionesDeCurso(curso).find((l) => l.id === leccionId);

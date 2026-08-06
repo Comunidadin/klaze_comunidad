@@ -1,73 +1,124 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
-import { aplicarPerfilOverride, useAppStore } from "@/lib/store";
-import { mockUsers } from "@/lib/mocks/users";
+import { useCallback, useEffect, useState } from "react";
+import { crearClienteNavegador } from "@/lib/supabase/client";
+import { cargarArmazon } from "@/lib/supabase/consultas";
+import { useAppStore } from "@/lib/store";
 import type { User } from "@/lib/types";
 
-function subscribeHydration(onChange: () => void): () => void {
-  return useAppStore.persist.onFinishHydration(onChange);
-}
-
-function getHydratedSnapshot(): boolean {
-  return useAppStore.persist.hasHydrated();
-}
-
-function getServerHydratedSnapshot(): boolean {
-  return false;
-}
-
 /**
- * El store usa `skipHydration` para evitar mismatches SSR/localStorage.
- * Este hook dispara la rehidratación en el cliente (efecto, sin setState
- * directo) y expone el estado de hidratación vía useSyncExternalStore.
- * Mientras `hydrated` es false, cualquier hook que lea estado persistido
- * debe comportarse como si no hubiera sesión (currentUserId === null).
+ * `true` cuando ya sabemos quién eres —o que no eres nadie— y, si hay sesión,
+ * tus datos han llegado del servidor.
+ *
+ * Antes significaba "el store terminó de leer localStorage". Cambia de
+ * significado pero **no de firma**, y por eso los 24 archivos que ya lo
+ * consultan (incluidos los 4 layouts de grupo, que gobiernan el acceso a
+ * todas las áreas) siguen esperando correctamente sin tocar una línea. Es la
+ * pieza que abarata toda esta migración.
+ *
+ * Sigue disparando la rehidratación del store, que conserva el estado de
+ * interfaz (tema, espacios vistos) aunque ya no guarde la sesión.
  */
 export function useHydrated(): boolean {
-  const hydrated = useSyncExternalStore(
-    subscribeHydration,
-    getHydratedSnapshot,
-    getServerHydratedSnapshot
-  );
+  const [listo, setListo] = useState(false);
+  const establecerArmazon = useAppStore((s) => s.establecerArmazon);
 
   useEffect(() => {
-    useAppStore.persist.rehydrate();
-  }, []);
+    let vivo = true;
+    void useAppStore.persist.rehydrate();
+    const supabase = crearClienteNavegador();
 
-  return hydrated;
+    async function sincronizar() {
+      const { data } = await supabase.auth.getSession();
+      if (!vivo) return;
+
+      if (!data.session) {
+        establecerArmazon(null);
+        setListo(true);
+        return;
+      }
+
+      try {
+        const armazon = await cargarArmazon(supabase);
+        if (vivo) establecerArmazon(armazon);
+      } catch {
+        // Sesión válida pero datos ilegibles (p. ej. la academia fue
+        // suspendida). Se trata como "sin sesión" para que los layouts
+        // redirijan al login en vez de dejar una pantalla a medias.
+        if (vivo) establecerArmazon(null);
+      } finally {
+        if (vivo) setListo(true);
+      }
+    }
+
+    void sincronizar();
+
+    // Sin esto, tras abrir el enlace del correo la app se quedaría con los
+    // datos (vacíos) de antes hasta que alguien recargue a mano.
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      void sincronizar();
+    });
+
+    return () => {
+      vivo = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [establecerArmazon]);
+
+  return listo;
 }
 
 export interface UseSessionResult {
   user: User | null;
-  login: (email: string) => boolean;
-  logout: () => void;
+  /**
+   * Envía el enlace de acceso al correo. **No inicia sesión**: eso ocurre
+   * cuando la persona abre el enlace. Por eso ya no se llama `login()` — ese
+   * nombre prometía algo que este método no hace.
+   */
+  enviarEnlace: (email: string) => Promise<{ ok: boolean; error?: string }>;
+  /**
+   * Entrada con contraseña. Existe para quien administra la academia: el
+   * enlace por correo depende de tener un emisor configurado y un dominio
+   * verificado, y hasta entonces dejaría al dueño fuera de su propia app.
+   *
+   * Los alumnos entran por enlace — no se les pone contraseña al invitarlos,
+   * así que esta vía sencillamente no les aplica.
+   */
+  entrarConClave: (
+    email: string,
+    clave: string
+  ) => Promise<{ ok: boolean; error?: string }>;
+  logout: () => Promise<void>;
 }
 
 /**
- * Sesión simulada. `user === null` significa "no hay sesión" O "todavía no
- * se hidrató en el cliente" — las pantallas no necesitan distinguir ambos
- * casos, solo esperar a que `user` deje de ser null para renderizar UI
- * dependiente de sesión.
+ * `user === null` significa "no hay sesión" O "todavía no llegaron los datos".
+ * Las pantallas no necesitan distinguir: para eso está `useHydrated`.
  */
 export function useSession(): UseSessionResult {
-  const hydrated = useHydrated();
-  const currentUserId = useAppStore((s) => s.currentUserId);
-  const usuariosCreados = useAppStore((s) => s.usuariosCreados);
-  const perfilOverrides = useAppStore((s) => s.perfilOverrides);
-  const login = useAppStore((s) => s.login);
-  const logout = useAppStore((s) => s.logout);
+  const armazon = useAppStore((s) => s.armazon);
 
-  if (!hydrated || !currentUserId) {
-    return { user: null, login, logout };
-  }
+  const enviarEnlace = useCallback(async (email: string) => {
+    const supabase = crearClienteNavegador();
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/callback` },
+    });
+    return error ? { ok: false, error: error.message } : { ok: true };
+  }, []);
 
-  const base =
-    mockUsers.find((u) => u.id === currentUserId) ??
-    usuariosCreados.find((u) => u.id === currentUserId) ??
-    null;
+  const entrarConClave = useCallback(async (email: string, clave: string) => {
+    const supabase = crearClienteNavegador();
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password: clave,
+    });
+    return error ? { ok: false, error: error.message } : { ok: true };
+  }, []);
 
-  const user = base ? aplicarPerfilOverride(base, perfilOverrides) : null;
+  const logout = useCallback(async () => {
+    await crearClienteNavegador().auth.signOut();
+  }, []);
 
-  return { user, login, logout };
+  return { user: armazon?.perfil ?? null, enviarEnlace, entrarConClave, logout };
 }

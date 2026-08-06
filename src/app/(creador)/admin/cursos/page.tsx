@@ -8,7 +8,9 @@ import { useHydrated } from "@/lib/hooks/use-session";
 import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { useAdminCourses } from "@/lib/hooks/use-admin-courses";
 import { slugify, useAppStore } from "@/lib/store";
-import { crearSeccionesDefault } from "@/lib/mocks/espacios";
+import { crearClienteNavegador } from "@/lib/supabase/client";
+import { cargarArmazon } from "@/lib/supabase/consultas";
+import { guardarCurso } from "@/lib/supabase/guardar-curso";
 import { AdminCourseCard } from "@/components/admin/admin-course-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -54,8 +56,7 @@ export default function AdminCursosPage() {
   const hydrated = useHydrated();
   const community = useMyCommunity();
   const { cursos } = useAdminCourses(community?.id ?? "");
-  const guardarCurso = useAppStore((s) => s.guardarCurso);
-  const siguienteCursoId = useAppStore((s) => s.siguienteCursoId);
+  const establecerArmazon = useAppStore((s) => s.establecerArmazon);
   const router = useRouter();
 
   const [dialogAbierto, setDialogAbierto] = useState(false);
@@ -88,12 +89,14 @@ export default function AdminCursosPage() {
     }
   }
 
-  function crearCurso() {
+  async function crearCurso() {
     if (!community || !titulo.trim()) return;
 
-    const id = siguienteCursoId();
-    const numero = id.replace("curso-nuevo-", "");
+    const id = crypto.randomUUID();
+    // El slug tiene que ser unico por comunidad, y dos cursos pueden llamarse
+    // igual. Se le pega un sufijo corto del id, que ya es unico.
     const base = slugify(titulo) || "curso";
+    const numero = id.slice(0, 8);
 
     const curso: Course = {
       id,
@@ -106,14 +109,23 @@ export default function AdminCursosPage() {
       nivelRequerido: null,
       modulos: [],
       publicado: false,
-      // Cambio 3: la comunidad social vive dentro de cada curso — un curso
-      // nuevo nace con sus propios espacios (namespaced por `id`, ver
-      // docstring de `crearSeccionesDefault`) para que su pestaña
-      // "Comunidad" nunca arranque vacía de estructura.
-      secciones: crearSeccionesDefault(id),
+      // Vacío a propósito: los espacios del feed todavía no se guardan en la
+      // base (llegan con el resto de la vida social en la rebanada 3).
+      // Sembrarlos aquí crearía estructura que se perdería al recargar.
+      secciones: [],
     };
 
-    guardarCurso(curso);
+    const supabase = crearClienteNavegador();
+    try {
+      await guardarCurso(supabase, curso);
+      establecerArmazon(await cargarArmazon(supabase));
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "No se pudo crear el curso"
+      );
+      return;
+    }
+
     toast.success(`«${curso.titulo}» creado como borrador`);
     handleOpenChange(false);
     router.push(`/admin/cursos/${curso.id}`);

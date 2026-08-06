@@ -38,6 +38,29 @@ test("A2. toda tabla de `public` tiene al menos una politica", async () => {
   expect(sinPolitica.map((r: { tablename: string }) => r.tablename)).toEqual([]);
 });
 
+test("A2b. ninguna tabla se queda solo con politica de lectura", async () => {
+  // A2 comprobaba "al menos una politica", y eso dejo pasar seis tablas con
+  // SELECT y nada mas: nadie podia escribir en ellas, ni su propio dueno. Lo
+  // encontro la primera prueba que intento guardar un curso, no la auditoria.
+  // Esta comprobacion existe para que no vuelva a colarse.
+  const soloLectura = await sql`
+    select t.tablename
+    from pg_tables t
+    where t.schemaname = 'public'
+      and exists (
+        select 1 from pg_policies p
+        where p.schemaname = 'public' and p.tablename = t.tablename
+      )
+      and not exists (
+        select 1 from pg_policies p
+        where p.schemaname = 'public' and p.tablename = t.tablename
+          and p.cmd in ('ALL', 'INSERT', 'UPDATE', 'DELETE')
+      )
+    order by 1
+  `;
+  expect(soloLectura.map((r: { tablename: string }) => r.tablename)).toEqual([]);
+});
+
 test("A3. toda funcion `security definer` fija su search_path", async () => {
   // Sin `set search_path = ''`, alguien puede anteponer un esquema propio y
   // cambiar el significado de la funcion desde dentro.

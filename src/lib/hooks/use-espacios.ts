@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { resolverComunidad, useAppStore } from "@/lib/store";
 import { mockCommunities } from "@/lib/mocks/communities";
 import { mockPosts } from "@/lib/mocks/posts";
-import { mergeCursos } from "@/lib/hooks/use-courses";
+import { cursosDeComunidad } from "@/lib/hooks/use-courses";
 import type { CommunitySection, CommunitySpace } from "@/lib/types";
 
 export type EspacioConNoLeidos = CommunitySpace & { noLeidos: number };
@@ -37,7 +37,7 @@ export type SeccionConEspacios = Omit<CommunitySection, "espacios"> & {
 export function useEspacios(comunidadId: string, cursoId?: string): { secciones: SeccionConEspacios[] } {
   const comunidadesCreadas = useAppStore((s) => s.comunidadesCreadas);
   const comunidadOverrides = useAppStore((s) => s.comunidadOverrides);
-  const cursosEditados = useAppStore((s) => s.cursosEditados);
+  const armazon = useAppStore((s) => s.armazon);
   const postsCreados = useAppStore((s) => s.postsCreados);
   const postsEliminados = useAppStore((s) => s.postsEliminados);
   const espaciosVistos = useAppStore((s) => s.espaciosVistos);
@@ -46,7 +46,7 @@ export function useEspacios(comunidadId: string, cursoId?: string): { secciones:
     let seccionesBase: CommunitySection[] | null = null;
 
     if (cursoId) {
-      const curso = mergeCursos(comunidadId, cursosEditados).find((c) => c.id === cursoId);
+      const curso = cursosDeComunidad(comunidadId, armazon?.cursos ?? []).find((c) => c.id === cursoId);
       seccionesBase = curso?.secciones ?? null;
     } else {
       const base =
@@ -97,7 +97,7 @@ export function useEspacios(comunidadId: string, cursoId?: string): { secciones:
     cursoId,
     comunidadesCreadas,
     comunidadOverrides,
-    cursosEditados,
+    armazon,
     postsCreados,
     postsEliminados,
     espaciosVistos,

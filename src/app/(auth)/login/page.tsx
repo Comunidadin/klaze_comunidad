@@ -1,133 +1,143 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import Link from "next/link";
-import { LogIn } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { KeyRound, MailCheck, Send } from "lucide-react";
 import { useSession } from "@/lib/hooks/use-session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AuthFormCard } from "../_components/auth-form-card";
 
-const CUENTAS_DEMO = [
-  { email: "alumno@intercambio.app", etiqueta: "Alumno" },
-  { email: "creador@intercambio.app", etiqueta: "Creadora" },
-  { email: "admin@intercambio.app", etiqueta: "Super-admin" },
-];
+type Modo = "enlace" | "clave";
 
 /**
- * Login: correo + cualquier contraseña. `login()` solo valida que el
- * correo exista entre mockUsers/usuariosCreados (T3). El redirect por rol
- * no ocurre aquí: en cuanto `login()` deja sesión activa, el layout de
- * `(auth)` detecta el cambio y navega vía `homePorRol`, así que esta
- * pantalla solo se preocupa de mostrar el error o el estado de carga.
+ * Dos vías de entrada, y cada una para quien la necesita.
+ *
+ * **Enlace por correo** es la vía de los alumnos: no se les pone contraseña al
+ * invitarlos, así que no tienen ninguna que recordar ni perder.
+ *
+ * **Contraseña** es la vía de quien administra. El enlace depende de tener un
+ * emisor de correo configurado y un dominio verificado; sin eso, el dueño se
+ * quedaría fuera de su propia academia.
+ *
+ * En ambos casos la respuesta es la misma exista o no la cuenta. Si dijera
+ * "ese correo no está registrado", el formulario serviría para averiguar quién
+ * tiene cuenta aquí — y en esta base conviven academias de empresas distintas.
  */
 export default function LoginPage() {
-  const { login } = useSession();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [entrando, setEntrando] = useState(false);
+  const { enviarEnlace, entrarConClave } = useSession();
+  const router = useRouter();
 
-  function handleSubmit(e: FormEvent) {
+  const [modo, setModo] = useState<Modo>("clave");
+  const [email, setEmail] = useState("");
+  const [clave, setClave] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [enviado, setEnviado] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setEntrando(true);
-    const ok = login(email);
-    if (!ok) {
-      setError("No encontramos una cuenta con ese correo.");
-      setEntrando(false);
+    setEnviando(true);
+
+    if (modo === "enlace") {
+      const r = await enviarEnlace(email.trim());
+      setEnviando(false);
+      if (r.ok) setEnviado(true);
+      else setError("No pudimos enviar el enlace. Revisa que el correo esté configurado.");
+      return;
     }
+
+    const r = await entrarConClave(email.trim(), clave);
+    setEnviando(false);
+    if (r.ok) {
+      // El layout de (auth) redirige por rol en cuanto hay sesión; esto solo
+      // adelanta la navegación para que no se vea un parpadeo del formulario.
+      router.replace("/callback");
+    } else {
+      setError("No pudimos entrar. Revisa el correo y la contraseña.");
+    }
+  }
+
+  if (enviado) {
+    return (
+      <AuthFormCard
+        titulo="Revisa tu correo"
+        subtitulo={`Si ${email} tiene cuenta, le hemos enviado un enlace para entrar.`}
+      >
+        <div className="flex flex-col items-center gap-3 py-4 text-center text-sm text-muted-foreground">
+          <MailCheck className="size-10 text-primary" aria-hidden />
+          <p>El enlace caduca en una hora. Puedes cerrar esta pestaña.</p>
+        </div>
+      </AuthFormCard>
+    );
   }
 
   return (
     <AuthFormCard
-      titulo="Bienvenido de nuevo"
-      subtitulo="Inicia sesión para entrar a tu comunidad."
-      footer={
-        <div className="space-y-4">
-          <div>
-            <p className="mb-2 text-xs font-medium text-muted-foreground">
-              Cuentas demo (cualquier contraseña):
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {CUENTAS_DEMO.map((cuenta) => (
-                <button
-                  key={cuenta.email}
-                  type="button"
-                  onClick={() => {
-                    setEmail(cuenta.email);
-                    setError(null);
-                  }}
-                  className="rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs text-foreground transition-colors hover:border-primary/40 hover:bg-muted"
-                >
-                  <span className="font-medium">{cuenta.etiqueta}</span>
-                  <span className="text-muted-foreground"> · {cuenta.email}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            ¿Eres creador y aún no tienes cuenta?{" "}
-            <Link href="/registro" className="font-medium text-primary hover:underline">
-              Crea tu comunidad
-            </Link>
-          </p>
-        </div>
+      titulo="Entra a tu academia"
+      subtitulo={
+        modo === "clave"
+          ? "Con tu correo y contraseña."
+          : "Te enviamos un enlace de acceso. Sin contraseñas."
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-        <div className="space-y-1.5">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
           <Label htmlFor="email">Correo</Label>
           <Input
             id="email"
             type="email"
-            autoComplete="email"
-            placeholder="tucorreo@ejemplo.com"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              if (error) setError(null);
-            }}
-            aria-invalid={!!error}
             required
+            autoComplete="email"
+            placeholder="tu@empresa.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
         </div>
 
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password">Contraseña</Label>
-            <Link
-              href="/recuperar"
-              className="text-xs text-muted-foreground hover:text-primary hover:underline"
-            >
-              ¿Olvidaste tu contraseña?
-            </Link>
+        {modo === "clave" && (
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="clave">Contraseña</Label>
+            <Input
+              id="clave"
+              type="password"
+              required
+              autoComplete="current-password"
+              value={clave}
+              onChange={(e) => setClave(e.target.value)}
+            />
           </div>
-          <Input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
+        )}
 
         {error && (
-          <p
-            role="alert"
-            className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
-          >
+          <p role="alert" className="text-sm text-destructive">
             {error}
           </p>
         )}
 
-        <Button type="submit" className="w-full" size="lg" disabled={entrando}>
-          <LogIn />
-          {entrando ? "Entrando…" : "Iniciar sesión"}
+        <Button type="submit" disabled={enviando} className="w-full">
+          {modo === "clave" ? (
+            <KeyRound className="size-4" aria-hidden />
+          ) : (
+            <Send className="size-4" aria-hidden />
+          )}
+          {enviando ? "Entrando..." : modo === "clave" ? "Entrar" : "Enviarme el enlace"}
         </Button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setModo(modo === "clave" ? "enlace" : "clave");
+            setError(null);
+          }}
+          className="cursor-pointer text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        >
+          {modo === "clave"
+            ? "Prefiero recibir un enlace por correo"
+            : "Prefiero entrar con contraseña"}
+        </button>
       </form>
     </AuthFormCard>
   );
