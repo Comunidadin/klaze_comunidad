@@ -33,7 +33,7 @@ la clave secreta: alta de empresas, envío de invitaciones. Son un puñado.
 
 ## 2. Modelo de datos
 
-16 tablas en el esquema `public`, nombres en español y `snake_case`. Claves
+17 tablas en el esquema `public`, nombres en español y `snake_case`. Claves
 primarias `uuid` generadas por la base; los `slug` se conservan porque son los
 que aparecen en las URLs y no deben cambiar.
 
@@ -50,6 +50,7 @@ que aparecen en las URLs y no deben cambiar.
 | `inscripciones` | `Enrollment` | `usuario_id`, `comunidad_id`, `estado` |
 | `inscripcion_cursos` | `Enrollment.cursoIds` | ver decisión 2.2 |
 | `invitaciones` | `Invitation` | `token` aleatorio — ver decisión 2.4 |
+| `invitacion_cursos` | `Invitation.cursoIds` | Gemela de `inscripcion_cursos`, por el mismo motivo (2.2) |
 | `publicaciones` | `Post` | `curso_id`, `espacio_id`, `fijado` |
 | `comentarios` | `PostComment` | `publicacion_id`, `padre_id` (auto-referencia) |
 | `me_gusta` | `Post.likes` | ver decisión 2.1 |
@@ -98,7 +99,8 @@ Hoy son `inv-1`, `inv-2`, `inv-3`… (contador `proximoInviteId` del store).
 Cualquiera puede probar `inv-4` y leer a qué correo se invitó y a qué empresa.
 Con datos reales eso es una fuga de datos personales.
 
-Pasan a `encode(gen_random_bytes(32), 'base64url')`, con índice único. El token
+Pasan a `encode(gen_random_bytes(32), 'hex')` — 64 caracteres seguros en una URL,
+sin depender de la versión de Postgres — con índice único. El token
 es el secreto que protege la pantalla de invitación (ver §5).
 
 ## 3. De dónde sale la autoridad
