@@ -52,6 +52,21 @@ test("suspender corta el acceso a cursos Y a lecciones", async () => {
   expect((tras ?? []).length).toBeGreaterThan(0);
 });
 
+test("el dueno sigue viendo el perfil de un alumno SUSPENDIDO", async () => {
+  // Si deja de verlo, no puede ni encontrarlo para reactivarlo — y la lista
+  // recibe filas con el correo y la fecha vacios, que revientan al formatear.
+  await cambiarEstadoAlumno(e.duenoA.cliente, e.alumnoA.id, e.comunidadA, "suspendido");
+
+  const lista = await listarAlumnos(e.duenoA.cliente, e.comunidadA);
+  const suspendido = lista.find((a) => a.usuarioId === e.alumnoA.id);
+
+  expect(suspendido?.estado).toBe("suspendido");
+  expect(suspendido?.email).not.toBe("");
+  expect(suspendido?.creadoEl).not.toBe("");
+
+  await cambiarEstadoAlumno(e.duenoA.cliente, e.alumnoA.id, e.comunidadA, "activo");
+});
+
 test("el dueno ve el avance de sus alumnos, con la fecha", async () => {
   // Atada al curso de ESTE escenario: los archivos de prueba corren en
   // paralelo y un `.limit(1)` suelto coge la lección de cualquier otro.

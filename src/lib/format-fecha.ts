@@ -34,7 +34,13 @@ export function formatFechaGrupo(iso: string): string {
 
 /** "23 de julio de 2026" — fecha de ingreso en el perfil de un miembro. */
 export function formatFechaLarga(iso: string): string {
-  return FORMATO_FECHA_LARGA.format(new Date(iso));
+  // Una fecha vacía o mal formada tumbaba la página entera con un
+  // `RangeError` de `Intl`. Pasó de verdad: al suspender a un alumno, su
+  // perfil dejaba de ser legible y llegaba una fecha vacía. Aquello se
+  // arregló en la base, pero una fecha ausente nunca debe costar la pantalla.
+  const fecha = new Date(iso);
+  if (Number.isNaN(fecha.getTime())) return "—";
+  return FORMATO_FECHA_LARGA.format(fecha);
 }
 
 /** "19:00" */
