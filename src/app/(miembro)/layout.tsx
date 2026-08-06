@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useHydrated, useSession } from "@/lib/hooks/use-session";
-import { UserSwitcher } from "@/components/shared/user-switcher";
 import { FullScreenLoader } from "@/components/shared/full-screen-loader";
 
 /**
@@ -32,7 +31,6 @@ export default function MiembroLayout({ children }: { children: React.ReactNode 
   return (
     <>
       {children}
-      <UserSwitcher />
     </>
   );
 }

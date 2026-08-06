@@ -7,7 +7,6 @@ import { useHydrated, useSession } from "@/lib/hooks/use-session";
 import { homePorRol } from "@/lib/routes";
 import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { AdminShell, type AdminNavItem } from "@/components/shells/admin-shell";
-import { UserSwitcher } from "@/components/shared/user-switcher";
 import { FullScreenLoader } from "@/components/shared/full-screen-loader";
 
 const ITEMS_BASE: AdminNavItem[] = [
@@ -59,7 +58,6 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
       <AdminShell items={items} titulo="Panel de plataforma">
         {children}
       </AdminShell>
-      <UserSwitcher />
     </>
   );
 }

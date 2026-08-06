@@ -16,7 +16,6 @@ import {
 import { useHydrated, useSession } from "@/lib/hooks/use-session";
 import { homePorRol } from "@/lib/routes";
 import { AdminShell, type AdminNavItem } from "@/components/shells/admin-shell";
-import { UserSwitcher } from "@/components/shared/user-switcher";
 import { FullScreenLoader } from "@/components/shared/full-screen-loader";
 
 const ITEMS_BASE: AdminNavItem[] = [
@@ -72,7 +71,6 @@ export default function CreadorLayout({ children }: { children: React.ReactNode 
       <AdminShell items={items} titulo="Panel de creador">
         {children}
       </AdminShell>
-      <UserSwitcher />
     </>
   );
 }

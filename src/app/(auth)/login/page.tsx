@@ -1,132 +1,83 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import Link from "next/link";
-import { LogIn } from "lucide-react";
+import { MailCheck, Send } from "lucide-react";
 import { useSession } from "@/lib/hooks/use-session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AuthFormCard } from "../_components/auth-form-card";
 
-const CUENTAS_DEMO = [
-  { email: "alumno@intercambio.app", etiqueta: "Alumno" },
-  { email: "creador@intercambio.app", etiqueta: "Creadora" },
-  { email: "admin@intercambio.app", etiqueta: "Super-admin" },
-];
-
 /**
- * Login: correo + cualquier contraseña. `login()` solo valida que el
- * correo exista entre mockUsers/usuariosCreados (T3). El redirect por rol
- * no ocurre aquí: en cuanto `login()` deja sesión activa, el layout de
- * `(auth)` detecta el cambio y navega vía `homePorRol`, así que esta
- * pantalla solo se preocupa de mostrar el error o el estado de carga.
+ * Entrada por enlace de correo. No hay contraseña que recordar ni recuperar.
+ *
+ * Responde lo mismo exista o no la cuenta. Si dijera "ese correo no está
+ * registrado", el formulario se convertiría en una herramienta para averiguar
+ * quién tiene cuenta aquí — y con academias de empresas distintas conviviendo
+ * en la misma base, eso es información de más.
+ *
+ * El redirect por rol no ocurre aquí: cuando la persona abre el enlace de su
+ * correo aterriza en `/callback`, que decide a dónde llevarla.
  */
 export default function LoginPage() {
-  const { login } = useSession();
+  const { enviarEnlace } = useSession();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [enviado, setEnviado] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [entrando, setEntrando] = useState(false);
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setEntrando(true);
-    const ok = login(email);
-    if (!ok) {
-      setError("No encontramos una cuenta con ese correo.");
-      setEntrando(false);
-    }
+    setEnviando(true);
+    const r = await enviarEnlace(email.trim());
+    setEnviando(false);
+    if (r.ok) setEnviado(true);
+    else setError("No pudimos enviar el enlace. Inténtalo de nuevo en un momento.");
+  }
+
+  if (enviado) {
+    return (
+      <AuthFormCard
+        titulo="Revisa tu correo"
+        subtitulo={`Si ${email} tiene cuenta, le hemos enviado un enlace para entrar.`}
+      >
+        <div className="flex flex-col items-center gap-3 py-4 text-center text-sm text-muted-foreground">
+          <MailCheck className="size-10 text-primary" aria-hidden />
+          <p>El enlace caduca en una hora. Puedes cerrar esta pestaña.</p>
+        </div>
+      </AuthFormCard>
+    );
   }
 
   return (
     <AuthFormCard
-      titulo="Bienvenido de nuevo"
-      subtitulo="Inicia sesión para entrar a tu comunidad."
-      footer={
-        <div className="space-y-4">
-          <div>
-            <p className="mb-2 text-xs font-medium text-muted-foreground">
-              Cuentas demo (cualquier contraseña):
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {CUENTAS_DEMO.map((cuenta) => (
-                <button
-                  key={cuenta.email}
-                  type="button"
-                  onClick={() => {
-                    setEmail(cuenta.email);
-                    setError(null);
-                  }}
-                  className="rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs text-foreground transition-colors hover:border-primary/40 hover:bg-muted"
-                >
-                  <span className="font-medium">{cuenta.etiqueta}</span>
-                  <span className="text-muted-foreground"> · {cuenta.email}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            ¿Eres creador y aún no tienes cuenta?{" "}
-            <Link href="/registro" className="font-medium text-primary hover:underline">
-              Crea tu comunidad
-            </Link>
-          </p>
-        </div>
-      }
+      titulo="Entra a tu academia"
+      subtitulo="Te enviamos un enlace de acceso. Sin contraseñas."
     >
-      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-        <div className="space-y-1.5">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
           <Label htmlFor="email">Correo</Label>
           <Input
             id="email"
             type="email"
+            required
             autoComplete="email"
-            placeholder="tucorreo@ejemplo.com"
+            placeholder="tu@empresa.com"
             value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              if (error) setError(null);
-            }}
-            aria-invalid={!!error}
-            required
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password">Contraseña</Label>
-            <Link
-              href="/recuperar"
-              className="text-xs text-muted-foreground hover:text-primary hover:underline"
-            >
-              ¿Olvidaste tu contraseña?
-            </Link>
-          </div>
-          <Input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
+            onChange={(e) => setEmail(e.target.value)}
           />
         </div>
 
         {error && (
-          <p
-            role="alert"
-            className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
-          >
+          <p role="alert" className="text-sm text-destructive">
             {error}
           </p>
         )}
 
-        <Button type="submit" className="w-full" size="lg" disabled={entrando}>
-          <LogIn />
-          {entrando ? "Entrando…" : "Iniciar sesión"}
+        <Button type="submit" disabled={enviando} className="w-full">
+          <Send className="size-4" aria-hidden />
+          {enviando ? "Enviando..." : "Enviarme el enlace"}
         </Button>
       </form>
     </AuthFormCard>

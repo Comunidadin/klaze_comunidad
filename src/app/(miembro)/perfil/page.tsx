@@ -36,16 +36,16 @@ export default function PerfilPage() {
   // frame inicial antes de esa redirección.
   if (!user) return null;
 
-  // `key={user.id}` fuerza un remount completo si el usuario activo cambia
-  // (p. ej. vía UserSwitcher, visible también en esta ruta), para que el
-  // formulario re-inicialice su estado local con los datos del nuevo user
-  // en vez de arrastrar lo que se estaba escribiendo para el anterior.
+  // `key={user.id}` fuerza un remount completo si el usuario activo cambia,
+  // para que el formulario re-inicialice su estado local con los datos del
+  // nuevo user en vez de arrastrar lo que se estaba escribiendo para el
+  // anterior.
   return <PerfilContenido key={user.id} user={user} />;
 }
 
 function PerfilContenido({ user }: { user: User }) {
   const router = useRouter();
-  const logout = useAppStore((s) => s.logout);
+  const { logout } = useSession();
   const actualizarPerfil = useAppStore((s) => s.actualizarPerfil);
   const comunidadesCreadas = useAppStore((s) => s.comunidadesCreadas);
   const comunidadOverrides = useAppStore((s) => s.comunidadOverrides);
@@ -82,8 +82,11 @@ function PerfilContenido({ user }: { user: User }) {
     toast.success("Tu perfil se actualizó correctamente.");
   }
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    // `logout` ahora es asíncrono: cierra la sesión en Supabase antes de
+    // navegar. Sin el await, el redirect puede adelantarse y dejar la cookie
+    // viva un instante, con lo que el guard del layout te devuelve dentro.
+    await logout();
     router.replace("/login");
   }
 
