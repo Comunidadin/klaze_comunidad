@@ -46,3 +46,10 @@ next-env.d.ts
 # Cloudflare (OpenNext)
 .open-next
 .wrangler
+
+# Duplicados de iCloud. Sincronizando esta carpeta, iCloud restaura copias de
+# archivos borrados con el sufijo " 2" y se cuelan en los commits: ya pasó con
+# una migración (con un timestamp que colisionaba), con los mocks y con el
+# guion de alta, que volvió en su versión anterior al refactor.
+* 2.*
+* 3.*
