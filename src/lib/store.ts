@@ -2,16 +2,11 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {
   Community,
-  CommunityEvent,
-  CommunitySection,
   Enrollment,
   Plan,
-  Post,
-  PostComment,
   User,
 } from "@/lib/types";
 import type { Armazon } from "@/lib/supabase/consultas";
-import { mockPosts } from "@/lib/mocks/posts";
 
 /**
  * Claves que NO se guardan en localStorage.
@@ -59,9 +54,6 @@ export interface AppState {
   establecerArmazon: (armazon: Armazon | null) => void;
   usuariosCreados: User[]; // alumnos que aceptaron invitación + creadores registrados
   enrollmentsExtra: Enrollment[]; // generados por invitaciones aceptadas
-  postsCreados: Post[];
-  likesDados: { postId: string; userId: string }[];
-  comentariosCreados: { postId: string; comentario: PostComment; parentId: string | null }[];
   comunidadesCreadas: Community[]; // comunidades registradas por nuevos creadores
   // Contador determinístico para el id "post-nuevo-N" de `crearPost` — mismo
   // mismo patrón de contador: nunca derivar el N de
@@ -69,7 +61,6 @@ export interface AppState {
   // array y un largo que vuelve a bajar generaría IDs duplicados con posts
   // que siguen vivos (keys de React y likes/comentarios keyed por postId
   // contaminados entre posts distintos).
-  proximoPostId: number;
   // Overrides de nombre/bio editados desde /perfil, keyed por userId. Se
   // guardan aparte (en vez de mutar mockUsers/usuariosCreados) porque
   // mockUsers es un array estático importado en múltiples sitios: mutarlo
@@ -84,17 +75,14 @@ export interface AppState {
   // tanto `useMembers` (estado de cada fila) como `useCourses` (gate de
   // acceso a cursos/lecciones) la aplican vía el helper `resolverEstadoEnrollment`
   // para que suspender revoque acceso real, no solo el badge de admin.
-  estadoOverrides: Record<string, Enrollment["estado"]>;
   // --- T14: moderación de comunidad, eventos y configuración -------------
   // IDs de posts eliminados desde /admin/comunidad. Solo aplica a posts del
   // seed (`mockPosts`): un post creado en sesión se quita directamente de
   // `postsCreados` en `eliminarPost` (ver docstring de esa acción), así que
   // nunca termina acá.
-  postsEliminados: string[];
   // Un solo post fijado por comunidad — fijar reemplaza al anterior (mock o
   // ya fijado en sesión). `useFeed` lo aplica sobre `Post.fijado`: si la
   // comunidad tiene entrada acá, ignora el `fijado` del seed por completo.
-  postFijadoPorComunidad: Record<string, string>;
   // Override parcial de `Community`, keyed por comunidadId. Punto único de
   // verdad para nombre/logoUrl/colorAcento (`guardarComunidad`),
   // `secciones` (`guardarSecciones`) y `nombresNiveles`
@@ -106,13 +94,10 @@ export interface AppState {
   // lo que hacían los cursos editados: un `CommunityEvent` cuyo `id` coincide con uno de
   // `mockEvents` es una edición (lo reemplaza); uno sin match es un evento
   // nuevo. `useEvents` hace el merge (ver `mergeEventos`).
-  eventosEditados: CommunityEvent[];
   // IDs de eventos eliminados — cubre tanto eventos del seed como eventos
   // creados en sesión (a diferencia de los posts, acá no hace falta separar
   // por origen: `useEvents` simplemente excluye cualquier id presente acá
   // del resultado final del merge).
-  eventosEliminados: string[];
-  proximoEventoId: number;
   // --- T15: panel super-admin de plataforma -------------------------------
   // Override completo de un `Plan`, keyed por `Plan.id`. A diferencia de
   // `comunidadOverrides` (que mergea parcialmente o
@@ -121,29 +106,6 @@ export interface AppState {
   // completo, y `resolverPlan` lo aplica sobre `mockPlans` en `usePlatform`.
   planOverrides: Record<string, Plan>;
 
-  crearPost: (post: Omit<Post, "id" | "creadoEl" | "likes" | "comentarios">) => void;
-  toggleLike: (postId: string) => void;
-  comentar: (postId: string, cuerpo: string, parentId: string | null) => void;
-  actualizarPerfil: (nombre: string, bio: string) => void;
-  cambiarEstadoAlumno: (
-    userId: string,
-    comunidadId: string,
-    estado: Enrollment["estado"]
-  ) => void;
-  /** Elimina un post (mock -> `postsEliminados`; creado en sesión -> se quita de `postsCreados`). */
-  eliminarPost: (postId: string) => void;
-  /** Fija `postId` en su comunidad, reemplazando cualquier fijado anterior (solo 1 por comunidad). */
-  fijarPost: (postId: string) => void;
-  /** `nombres` debe traer los 9 nombres de nivel, en orden (nivel 1..9). */
-  guardarNombresNiveles: (comunidadId: string, nombres: string[]) => void;
-  guardarComunidad: (
-    comunidadId: string,
-    cambios: Partial<Pick<Community, "nombre" | "logoUrl" | "colorAcento">>
-  ) => void;
-  /** ID determinístico "evt-nuevo-N" para un evento nuevo creado desde /admin/eventos. */
-  siguienteEventoId: () => string;
-  guardarEvento: (evento: CommunityEvent) => void;
-  eliminarEvento: (eventoId: string) => void;
   /**
    * Suspende/reactiva una comunidad desde `/plataforma/comunidades`. Mismo
    * mecanismo que `guardarComunidad` (override parcial en
@@ -168,8 +130,6 @@ export interface AppState {
   espaciosVistos: Record<string, string>;
   marcarEspacioVisto: (espacioId: string) => void;
   /** Contador determinístico para el id "esp-nuevo-N" de un espacio creado desde `/admin/comunidad` — mismo patrón que `proximoEventoId`. */
-  proximoEspacioId: number;
-  siguienteEspacioId: () => string;
   /**
    * Reemplaza por completo `Community.secciones` de `comunidadId` en el
    * override (mismo patrón que `guardarCategorias` antes de este cambio):
@@ -177,7 +137,6 @@ export interface AppState {
    * secciones/espacios y llama esta acción en cada cambio (agregar,
    * renombrar, eliminar), así que no hace falta un merge parcial acá.
    */
-  guardarSecciones: (comunidadId: string, secciones: CommunitySection[]) => void;
 }
 
 /**
@@ -205,7 +164,6 @@ export function aplicarPerfilOverride<T extends User>(
  */
 export function resolverEstadoEnrollment(
   enrollment: Enrollment,
-  estadoOverrides: Record<string, Enrollment["estado"]>
 ): Enrollment["estado"] {
   return (
     estadoOverrides[`${enrollment.userId}:${enrollment.comunidadId}`] ??
@@ -266,26 +224,15 @@ export function resolverPlan(base: Plan, overrides: Record<string, Plan>): Plan 
 
 export const useAppStore = create<AppState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       currentUserId: null,
       usuariosCreados: [],
       enrollmentsExtra: [],
-      postsCreados: [],
-      likesDados: [],
-      comentariosCreados: [],
       comunidadesCreadas: [],
-      proximoPostId: 1,
       perfilOverrides: {},
-      estadoOverrides: {},
-      postsEliminados: [],
-      postFijadoPorComunidad: {},
       comunidadOverrides: {},
-      eventosEditados: [],
-      eventosEliminados: [],
-      proximoEventoId: 1,
       planOverrides: {},
       espaciosVistos: {},
-      proximoEspacioId: 1,
 
       armazon: null,
 
@@ -295,157 +242,6 @@ export const useAppStore = create<AppState>()(
       // recoge lo que trajo.
       establecerArmazon: (armazon) =>
         set({ armazon, currentUserId: armazon?.perfil.id ?? null }),
-
-      crearPost: (post) => {
-        set((state) => {
-          const nuevo: Post = {
-            ...post,
-            id: `post-nuevo-${state.proximoPostId}`,
-            creadoEl: new Date().toISOString(),
-            likes: [],
-            comentarios: [],
-          };
-          return {
-            postsCreados: [...state.postsCreados, nuevo],
-            proximoPostId: state.proximoPostId + 1,
-          };
-        });
-      },
-
-      toggleLike: (postId) => {
-        const userId = get().currentUserId;
-        if (!userId) return;
-        set((state) => {
-          const yaExiste = state.likesDados.some(
-            (l) => l.postId === postId && l.userId === userId
-          );
-          if (yaExiste) {
-            return {
-              likesDados: state.likesDados.filter(
-                (l) => !(l.postId === postId && l.userId === userId)
-              ),
-            };
-          }
-          return { likesDados: [...state.likesDados, { postId, userId }] };
-        });
-      },
-
-      comentar: (postId, cuerpo, parentId) => {
-        const userId = get().currentUserId;
-        if (!userId) return;
-        set((state) => {
-          const nuevoComentario: PostComment = {
-            id: `comentario-nuevo-${state.comentariosCreados.length + 1}`,
-            autorId: userId,
-            cuerpo,
-            likes: [],
-            respuestas: [],
-            creadoEl: new Date().toISOString(),
-          };
-          return {
-            comentariosCreados: [
-              ...state.comentariosCreados,
-              { postId, comentario: nuevoComentario, parentId },
-            ],
-          };
-        });
-      },
-
-      actualizarPerfil: (nombre, bio) => {
-        const userId = get().currentUserId;
-        if (!userId) return;
-        set((state) => ({
-          perfilOverrides: {
-            ...state.perfilOverrides,
-            [userId]: { nombre, bio },
-          },
-        }));
-      },
-
-      cambiarEstadoAlumno: (userId, comunidadId, estado) => {
-        set((state) => ({
-          estadoOverrides: {
-            ...state.estadoOverrides,
-            [`${userId}:${comunidadId}`]: estado,
-          },
-        }));
-      },
-
-      eliminarPost: (postId) => {
-        set((state) => {
-          const esCreadoEnSesion = state.postsCreados.some((p) => p.id === postId);
-          if (esCreadoEnSesion) {
-            return { postsCreados: state.postsCreados.filter((p) => p.id !== postId) };
-          }
-          if (state.postsEliminados.includes(postId)) return state;
-          return { postsEliminados: [...state.postsEliminados, postId] };
-        });
-      },
-
-      fijarPost: (postId) => {
-        // Se resuelve la comunidad del post ANTES de `set` (no dentro del
-        // callback) porque necesita `mockPosts` + el `postsCreados` vigente:
-        // un post recién creado en esta misma sesión debe poder fijarse
-        // igual que uno del seed.
-        const post = [...mockPosts, ...get().postsCreados].find((p) => p.id === postId);
-        if (!post) return;
-        set((state) => ({
-          postFijadoPorComunidad: {
-            ...state.postFijadoPorComunidad,
-            [post.comunidadId]: postId,
-          },
-        }));
-      },
-
-      guardarSecciones: (comunidadId, secciones) => {
-        set((state) => ({
-          comunidadOverrides: {
-            ...state.comunidadOverrides,
-            [comunidadId]: { ...state.comunidadOverrides[comunidadId], secciones },
-          },
-        }));
-      },
-
-      guardarNombresNiveles: (comunidadId, nombres) => {
-        set((state) => ({
-          comunidadOverrides: {
-            ...state.comunidadOverrides,
-            [comunidadId]: { ...state.comunidadOverrides[comunidadId], nombresNiveles: nombres },
-          },
-        }));
-      },
-
-      guardarComunidad: (comunidadId, cambios) => {
-        set((state) => ({
-          comunidadOverrides: {
-            ...state.comunidadOverrides,
-            [comunidadId]: { ...state.comunidadOverrides[comunidadId], ...cambios },
-          },
-        }));
-      },
-
-      siguienteEventoId: () => {
-        const id = `evt-nuevo-${get().proximoEventoId}`;
-        set((s) => ({ proximoEventoId: s.proximoEventoId + 1 }));
-        return id;
-      },
-
-      guardarEvento: (evento) => {
-        set((state) => {
-          const existe = state.eventosEditados.some((e) => e.id === evento.id);
-          const eventosEditados = existe
-            ? state.eventosEditados.map((e) => (e.id === evento.id ? evento : e))
-            : [...state.eventosEditados, evento];
-          return { eventosEditados };
-        });
-      },
-
-      eliminarEvento: (eventoId) => {
-        set((state) => {
-          if (state.eventosEliminados.includes(eventoId)) return state;
-          return { eventosEliminados: [...state.eventosEliminados, eventoId] };
-        });
-      },
 
       cambiarEstadoComunidad: (comunidadId, estado) => {
         set((state) => ({
@@ -466,12 +262,6 @@ export const useAppStore = create<AppState>()(
         set((state) => ({
           espaciosVistos: { ...state.espaciosVistos, [espacioId]: new Date().toISOString() },
         }));
-      },
-
-      siguienteEspacioId: () => {
-        const id = `esp-nuevo-${get().proximoEspacioId}`;
-        set((s) => ({ proximoEspacioId: s.proximoEspacioId + 1 }));
-        return id;
       },
     }),
     {

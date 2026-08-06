@@ -136,6 +136,15 @@ export interface Post {
 export interface PostComment {
   id: string;
   autorId: string;
+  /**
+   * Nombre y avatar del autor, resueltos al leer.
+   *
+   * Van aquí y no se buscan luego en una lista de usuarios porque el autor de
+   * un comentario puede no estar entre los miembros cargados —se dio de baja,
+   * o pertenece a otro curso— y entonces su comentario aparecería sin firmar.
+   */
+  autorNombre?: string;
+  autorAvatar?: string;
   cuerpo: string;
   likes: string[];
   respuestas: PostComment[]; // solo 1 nivel de anidación extra (2 niveles total)

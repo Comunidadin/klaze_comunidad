@@ -37,7 +37,7 @@ export interface FiltroFeed {
 const CAMPOS = `
   id, curso_id, espacio_id, autor_id, titulo, cuerpo, fijado, creado_el,
   perfiles!publicaciones_autor_id_fkey ( id, nombre, email, avatar_url, bio, rol, puntos, creado_el ),
-  comentarios ( id, autor_id, cuerpo, padre_id, creado_el ),
+  comentarios ( id, autor_id, cuerpo, padre_id, creado_el, perfiles!comentarios_autor_id_fkey ( nombre, email, avatar_url ) ),
   me_gusta ( usuario_id )
 `;
 
@@ -64,6 +64,15 @@ interface FilaComentario {
   cuerpo: string;
   padre_id: string | null;
   creado_el: string;
+  perfiles?: { nombre: string; email: string; avatar_url: string } | { nombre: string; email: string; avatar_url: string }[];
+}
+
+function autorDe(c: FilaComentario) {
+  const p = Array.isArray(c.perfiles) ? c.perfiles[0] : c.perfiles;
+  return {
+    autorNombre: nombreVisible(p?.nombre ?? "", p?.email ?? ""),
+    autorAvatar: p?.avatar_url ?? "",
+  };
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- la fila anidada de
@@ -83,6 +92,7 @@ function aPost(f: any, yo: string): PostConAutor {
     .map((c) => ({
       id: c.id,
       autorId: c.autor_id,
+      ...autorDe(c),
       cuerpo: c.cuerpo,
       likes: [],
       creadoEl: c.creado_el,
@@ -92,6 +102,7 @@ function aPost(f: any, yo: string): PostConAutor {
         .map((r) => ({
           id: r.id,
           autorId: r.autor_id,
+          ...autorDe(r),
           cuerpo: r.cuerpo,
           likes: [],
           respuestas: [],

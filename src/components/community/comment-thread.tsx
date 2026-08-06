@@ -6,7 +6,6 @@ import { crearClienteNavegador } from "@/lib/supabase/client";
 import { comentar } from "@/lib/supabase/feed";
 import { toast } from "sonner";
 import { useSession } from "@/lib/hooks/use-session";
-import { useUsuarios } from "@/lib/hooks/use-users";
 import { LevelBadge } from "@/components/shared/level-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -82,7 +81,6 @@ function CampoNuevoComentario({
  */
 export function CommentThread({ postId, comentarios, onCambio, className }: CommentThreadProps) {
   const { user } = useSession();
-  const { resolver } = useUsuarios();
 
   async function enviar(texto: string, padreId: string | null) {
     try {
@@ -124,7 +122,14 @@ export function CommentThread({ postId, comentarios, onCambio, className }: Comm
       ) : (
         <div className="space-y-4">
           {comentarios.map((raiz) => {
-            const autorRaiz = resolver(raiz.autorId);
+            // El autor viene con el comentario. Antes se buscaba en una
+            // lista de usuarios, y quien no estuviera en ella aparecía sin
+            // firmar — pasa con quien se dio de baja o es de otro curso.
+            const autorRaiz = {
+              nombre: raiz.autorNombre ?? "Usuario",
+              avatarUrl: raiz.autorAvatar ?? "",
+              id: raiz.autorId,
+            };
             return (
               <div key={raiz.id} className="flex gap-2.5">
                 <Avatar size="sm" className="mt-0.5">
@@ -168,7 +173,11 @@ export function CommentThread({ postId, comentarios, onCambio, className }: Comm
                   {raiz.respuestas.length > 0 && (
                     <div className="mt-3 space-y-3 border-l-2 border-border pl-4">
                       {raiz.respuestas.map((respuesta) => {
-                        const autorRespuesta = resolver(respuesta.autorId);
+                        const autorRespuesta = {
+                          nombre: respuesta.autorNombre ?? "Usuario",
+                          avatarUrl: respuesta.autorAvatar ?? "",
+                          id: respuesta.autorId,
+                        };
                         return (
                           <div key={respuesta.id} className="flex gap-2.5">
                             <Avatar size="sm" className="mt-0.5">
