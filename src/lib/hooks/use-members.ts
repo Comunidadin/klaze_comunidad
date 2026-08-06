@@ -1,15 +1,11 @@
 "use client";
 
-import {
-  aplicarPerfilOverride,
-  cursoIdsCubreCurso,
-  enrollmentCubreCurso,
-  resolverEstadoEnrollment,
-  useAppStore,
-} from "@/lib/store";
-import { mockUsers } from "@/lib/mocks/users";
-import { mockEnrollments } from "@/lib/mocks/enrollments";
+import { useCallback, useEffect, useState } from "react";
+import { cursoIdsCubreCurso, useAppStore } from "@/lib/store";
+import { crearClienteNavegador } from "@/lib/supabase/client";
+import { listarAlumnos, type AlumnoEnComunidad } from "@/lib/supabase/alumnos";
 import { cursosVisiblesParaMiembro } from "@/lib/hooks/use-courses";
+import { nivelPorPuntos } from "@/lib/levels";
 import type { Course, Enrollment, LessonProgress, User } from "@/lib/types";
 
 export type MemberConEstado = User & {
@@ -19,18 +15,15 @@ export type MemberConEstado = User & {
 };
 
 /**
- * Progreso promedio de un alumno: para cada curso al que tiene acceso
- * (según `cursoIds` de su enrollment — "todos" o una lista puntual) calcula
+ * Progreso promedio de un alumno: para cada curso al que tiene acceso calcula
  * `lecciones completadas / lecciones del curso`, y promedia esos ratios.
- * Un alumno sin cursos accesibles (comunidad recién creada, sin cursos aún)
- * queda en 0 en vez de NaN. `cursosComunidad` debe venir ya filtrada a
- * cursos publicados (`cursosVisiblesParaMiembro`) — un borrador con
- * lecciones no debe arrastrar hacia abajo el % de un alumno con acceso
- * "todos" que ni siquiera puede verlo.
  *
- * Exportada porque `/admin/reportes` la reutiliza para calcular el % de
- * avance de un curso puntual — mismo cálculo, solo que ahí se le pasa
- * `cursosComunidad` con un único curso en vez de todos los del alumno.
+ * Un alumno sin cursos accesibles queda en 0 en vez de NaN. `cursosComunidad`
+ * debe venir ya filtrada a publicados: un borrador con lecciones no debe
+ * arrastrar hacia abajo el porcentaje de alguien que ni siquiera puede verlo.
+ *
+ * Exportada porque `/admin/reportes` la reutiliza para el avance de un curso
+ * puntual — mismo cálculo, pasándole un solo curso.
  */
 export function progresoPromedioDe(
   cursoIds: Enrollment["cursoIds"],
@@ -39,7 +32,6 @@ export function progresoPromedioDe(
   progreso: LessonProgress[]
 ): number {
   const cursosConAcceso = cursosComunidad.filter((c) => cursoIdsCubreCurso(cursoIds, c.id));
-
   if (cursosConAcceso.length === 0) return 0;
 
   const ratios = cursosConAcceso.map((curso) => {
@@ -55,45 +47,125 @@ export function progresoPromedioDe(
   return Math.round(promedio * 100);
 }
 
-/**
- * Miembros de `comunidadId` o, si se pasa `cursoId` (Cambio 3: "Miembros" es
- * ahora una pestaña por curso), solo quienes tienen acceso a ESE curso
- * (`enrollmentCubreCurso`, punto único de verdad para ese criterio). Sin
- * `cursoId` conserva el comportamiento histórico (directorio completo de la
- * comunidad), que es lo que sigue usando `/admin/alumnos` y `/admin/reportes`.
- */
-export function useMembers(comunidadId: string, cursoId?: string): { miembros: MemberConEstado[] } {
-  const usuariosCreados = useAppStore((s) => s.usuariosCreados);
-  const enrollmentsExtra = useAppStore((s) => s.enrollmentsExtra);
-  const perfilOverrides = useAppStore((s) => s.perfilOverrides);
-  const estadoOverrides = useAppStore((s) => s.estadoOverrides);
-  const armazon = useAppStore((s) => s.armazon);
-  const progreso = useAppStore((s) => s.progreso);
+function aMiembro(
+  alumno: AlumnoEnComunidad,
+  comunidadId: string,
+  progresoPromedio: number
+): MemberConEstado {
+  return {
+    id: alumno.usuarioId,
+    email: alumno.email,
+    nombre: alumno.nombre,
+    avatarUrl: alumno.avatarUrl,
+    bio: alumno.bio,
+    rol: alumno.rol as User["rol"],
+    comunidadIds: [comunidadId],
+    puntos: alumno.puntos,
+    nivel: nivelPorPuntos(alumno.puntos),
+    creadoEl: alumno.creadoEl,
+    estado: alumno.estado,
+    progresoPromedio,
+  };
+}
 
-  const todosLosUsuarios = [...mockUsers, ...usuariosCreados];
-  const enrollments = [...mockEnrollments, ...enrollmentsExtra].filter(
-    (e) => e.comunidadId === comunidadId && (!cursoId || enrollmentCubreCurso(e, cursoId))
-  );
+/**
+ * Es `async` aunque una rama no espere nada, para que el `.then()` que fija el
+ * estado no corra de forma síncrona dentro del efecto.
+ */
+async function leerMiembros(
+  comunidadId: string
+): Promise<{ alumnos: AlumnoEnComunidad[]; progreso: LessonProgress[] }> {
+  if (!comunidadId) return { alumnos: [], progreso: [] };
+
+  const supabase = crearClienteNavegador();
+  const alumnos = await listarAlumnos(supabase, comunidadId);
+
+  // El avance de los alumnos NO sale de la tabla `progreso` —es privada, hasta
+  // para el dueño— sino de una función que solo devuelve (usuario, lección).
+  // Así el dueño sabe cuánto ha avanzado alguien, pero no a qué hora estudia.
+  const { data } = await supabase.rpc("progreso_de_mis_alumnos", {
+    p_comunidad: comunidadId,
+  });
+
+  const progreso: LessonProgress[] = (
+    (data ?? []) as { usuario_id: string; leccion_id: string }[]
+  ).map((p) => ({
+    userId: p.usuario_id,
+    leccionId: p.leccion_id,
+    completadaEl: "",
+  }));
+
+  return { alumnos, progreso };
+}
+
+/**
+ * Miembros de `comunidadId` o, si se pasa `cursoId`, solo quienes tienen
+ * acceso a ESE curso. Conserva su forma de retorno para que ninguna pantalla
+ * cambie.
+ */
+export function useMembers(
+  comunidadId: string,
+  cursoId?: string
+): {
+  miembros: MemberConEstado[];
+  /**
+   * Qué cursos cubre el acceso de cada alumno, indexado por su id.
+   *
+   * Se expone porque `useAdminCourses` cuenta alumnos por curso y necesita ese
+   * criterio. Antes lo recalculaba sobre mocks y overrides, con el riesgo de
+   * discrepar de lo que decide la base: dos verdades para la misma pregunta.
+   */
+  accesos: Map<string, { todos: boolean; cursoIds: string[] }>;
+  recargar: () => Promise<void>;
+} {
+  const armazon = useAppStore((s) => s.armazon);
+  const [alumnos, setAlumnos] = useState<AlumnoEnComunidad[]>([]);
+  const [progreso, setProgreso] = useState<LessonProgress[]>([]);
+
+  const recargar = useCallback(async () => {
+    const r = await leerMiembros(comunidadId);
+    setAlumnos(r.alumnos);
+    setProgreso(r.progreso);
+  }, [comunidadId]);
+
+  useEffect(() => {
+    let vivo = true;
+    void leerMiembros(comunidadId).then((r) => {
+      if (!vivo) return;
+      setAlumnos(r.alumnos);
+      setProgreso(r.progreso);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [comunidadId]);
+
   const cursosComunidad = cursosVisiblesParaMiembro(comunidadId, armazon?.cursos ?? []);
 
-  const miembros = enrollments
-    .map((e) => {
-      const usuario = todosLosUsuarios.find((u) => u.id === e.userId);
-      if (!usuario) return null;
-      const estado = resolverEstadoEnrollment(e, estadoOverrides);
-      const progresoPromedio = progresoPromedioDe(
-        e.cursoIds,
-        cursosComunidad,
-        e.userId,
-        progreso
-      );
-      return {
-        ...aplicarPerfilOverride(usuario, perfilOverrides),
-        estado,
-        progresoPromedio,
-      };
+  const miembros = alumnos
+    .filter((a) => {
+      if (!cursoId) return true;
+      return a.todosLosCursos || a.cursoIds.includes(cursoId);
     })
-    .filter((m): m is MemberConEstado => m !== null);
+    .map((a) =>
+      aMiembro(
+        a,
+        comunidadId,
+        progresoPromedioDe(
+          a.todosLosCursos ? "todos" : a.cursoIds,
+          cursosComunidad,
+          a.usuarioId,
+          progreso
+        )
+      )
+    );
 
-  return { miembros };
+  const accesos = new Map(
+    alumnos.map((a) => [
+      a.usuarioId,
+      { todos: a.todosLosCursos, cursoIds: a.cursoIds },
+    ])
+  );
+
+  return { miembros, accesos, recargar };
 }

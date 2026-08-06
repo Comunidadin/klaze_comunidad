@@ -1,9 +1,9 @@
 "use client";
 
-import { enrollmentCubreCurso, resolverEstadoEnrollment, useAppStore } from "@/lib/store";
-import { mockEnrollments } from "@/lib/mocks/enrollments";
+import { useAppStore } from "@/lib/store";
 import { cursosDeComunidad } from "@/lib/hooks/use-courses";
-import type { Course, Enrollment } from "@/lib/types";
+import { useMembers } from "@/lib/hooks/use-members";
+import type { Course } from "@/lib/types";
 
 export type CourseConAdmin = Course & {
   /** Alumnos con `Enrollment` activo que cubre este curso (`cursoIds === "todos"` o lo incluye). */
@@ -17,18 +17,25 @@ export type CourseConAdmin = Course & {
  * criterio de acceso que usa `useCourses` para el candado de un alumno, pero
  * contado en vez de evaluado para uno solo.
  */
+/**
+ * Alumnos ACTIVOS con acceso a un curso.
+ *
+ * Sale de `useMembers`, que ya trae solo los inscritos de esa comunidad con su
+ * estado real. Antes se calculaba sobre mocks más overrides del store, y ese
+ * cálculo podía discrepar del que hacía la base: dos verdades para la misma
+ * pregunta.
+ */
 function contarAlumnosConAcceso(
   cursoId: string,
-  comunidadId: string,
-  enrollments: Enrollment[],
-  estadoOverrides: Record<string, Enrollment["estado"]>
+  miembros: { estado: string; id: string }[],
+  accesos: Map<string, { todos: boolean; cursoIds: string[] }>
 ): number {
-  return enrollments.filter(
-    (e) =>
-      e.comunidadId === comunidadId &&
-      resolverEstadoEnrollment(e, estadoOverrides) === "activo" &&
-      enrollmentCubreCurso(e, cursoId)
-  ).length;
+  return miembros.filter((m) => {
+    if (m.estado !== "activo") return false;
+    const acceso = accesos.get(m.id);
+    if (!acceso) return false;
+    return acceso.todos || acceso.cursoIds.includes(cursoId);
+  }).length;
 }
 
 /**
@@ -41,17 +48,15 @@ function contarAlumnosConAcceso(
  */
 export function useAdminCourses(comunidadId: string): { cursos: CourseConAdmin[] } {
   const armazon = useAppStore((s) => s.armazon);
-  const enrollmentsExtra = useAppStore((s) => s.enrollmentsExtra);
-  const estadoOverrides = useAppStore((s) => s.estadoOverrides);
+  const { miembros, accesos } = useMembers(comunidadId);
 
   // Sin filtrar por `publicado`: el dueno ve sus borradores, y la base ya se
   // los ha entregado.
   const cursos = cursosDeComunidad(comunidadId, armazon?.cursos ?? []);
-  const enrollments = [...mockEnrollments, ...enrollmentsExtra];
 
   const cursosConAdmin: CourseConAdmin[] = cursos.map((curso) => ({
     ...curso,
-    numAlumnos: contarAlumnosConAcceso(curso.id, comunidadId, enrollments, estadoOverrides),
+    numAlumnos: contarAlumnosConAcceso(curso.id, miembros, accesos),
   }));
 
   return { cursos: cursosConAdmin };
