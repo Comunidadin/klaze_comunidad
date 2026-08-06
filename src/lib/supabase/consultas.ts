@@ -5,6 +5,13 @@ export interface Armazon {
   perfil: User;
   comunidad: Community | null;
   cursos: Course[];
+  /**
+   * Ids de las lecciones que esta persona ha completado.
+   *
+   * RLS ya limita las filas a las propias, así que no hace falta filtrar por
+   * usuario aquí: si llega, es tuya.
+   */
+  progreso: string[];
 }
 
 /**
@@ -52,6 +59,8 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
     )
     .limit(1);
   const c = comunidades?.[0] ?? null;
+
+  const { data: progresoFilas } = await supabase.from("progreso").select("leccion_id");
 
   const { data: cursosFilas } = await supabase.from("cursos").select(
     `id, comunidad_id, slug, titulo, descripcion, portada_url,
@@ -130,5 +139,9 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
       })),
   }));
 
-  return { perfil, comunidad, cursos };
+  const progreso = ((progresoFilas ?? []) as { leccion_id: string }[]).map(
+    (p) => p.leccion_id
+  );
+
+  return { perfil, comunidad, cursos, progreso };
 }

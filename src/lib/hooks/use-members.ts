@@ -80,19 +80,22 @@ async function leerMiembros(
   const supabase = crearClienteNavegador();
   const alumnos = await listarAlumnos(supabase, comunidadId);
 
-  // El avance de los alumnos NO sale de la tabla `progreso` —es privada, hasta
-  // para el dueño— sino de una función que solo devuelve (usuario, lección).
-  // Así el dueño sabe cuánto ha avanzado alguien, pero no a qué hora estudia.
+  // El avance NO sale de la tabla `progreso` —es privada, hasta para el dueño—
+  // sino de una función que solo devuelve las filas de SUS cursos.
   const { data } = await supabase.rpc("progreso_de_mis_alumnos", {
     p_comunidad: comunidadId,
   });
 
   const progreso: LessonProgress[] = (
-    (data ?? []) as { usuario_id: string; leccion_id: string }[]
+    (data ?? []) as {
+      usuario_id: string;
+      leccion_id: string;
+      completada_el: string;
+    }[]
   ).map((p) => ({
     userId: p.usuario_id,
     leccionId: p.leccion_id,
-    completadaEl: "",
+    completadaEl: p.completada_el,
   }));
 
   return { alumnos, progreso };
@@ -116,6 +119,14 @@ export function useMembers(
    * discrepar de lo que decide la base: dos verdades para la misma pregunta.
    */
   accesos: Map<string, { todos: boolean; cursoIds: string[] }>;
+  /**
+   * Lecciones completadas por los alumnos de esta comunidad.
+   *
+   * Sale de `progreso_de_mis_alumnos`, no de la tabla `progreso`, que es
+   * privada de cada alumno. La expone para `/admin/reportes`, que necesita
+   * el detalle para sus gráficas.
+   */
+  progreso: LessonProgress[];
   recargar: () => Promise<void>;
 } {
   const armazon = useAppStore((s) => s.armazon);
@@ -167,5 +178,5 @@ export function useMembers(
     ])
   );
 
-  return { miembros, accesos, recargar };
+  return { miembros, accesos, progreso, recargar };
 }

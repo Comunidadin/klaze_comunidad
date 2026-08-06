@@ -3,6 +3,9 @@
 import { useMemo } from "react";
 import { useAppStore } from "@/lib/store";
 import { useSession } from "@/lib/hooks/use-session";
+import { crearClienteNavegador } from "@/lib/supabase/client";
+import { cargarArmazon } from "@/lib/supabase/consultas";
+import { marcarLeccion } from "@/lib/supabase/progreso";
 import { nivelPorPuntos } from "@/lib/levels";
 import type { Course, Lesson } from "@/lib/types";
 
@@ -54,7 +57,6 @@ export function cursosVisiblesParaMiembro(
  */
 export function useCourses(comunidadId: string): { cursos: CourseConAcceso[] } {
   const armazon = useAppStore((s) => s.armazon);
-  const progreso = useAppStore((s) => s.progreso);
   const { user } = useSession();
 
   // Derivar con useMemo, nunca dentro del selector: crear arrays nuevos ahí
@@ -62,14 +64,15 @@ export function useCourses(comunidadId: string): { cursos: CourseConAcceso[] } {
   return useMemo(() => {
     const cursos = cursosVisiblesParaMiembro(comunidadId, armazon?.cursos ?? []);
     const nivelUsuario = user ? nivelPorPuntos(user.puntos) : 0;
+    const completadasIds = new Set(armazon?.progreso ?? []);
 
     const cursosConAcceso: CourseConAcceso[] = cursos.map((curso) => {
       const lecciones = leccionesDeCurso(curso);
-      const completadas = user
-        ? progreso.filter(
-            (p) => p.userId === user.id && lecciones.some((l) => l.id === p.leccionId)
-          ).length
-        : 0;
+      // `armazon.progreso` ya son solo las lecciones de esta persona: RLS no
+      // deja ver las de nadie más, así que no hay que filtrar por usuario.
+      const completadas = lecciones.filter((l) =>
+        completadasIds.has(l.id)
+      ).length;
       const progresoPct =
         lecciones.length === 0 ? 0 : Math.round((completadas / lecciones.length) * 100);
 
@@ -83,13 +86,13 @@ export function useCourses(comunidadId: string): { cursos: CourseConAcceso[] } {
     });
 
     return { cursos: cursosConAcceso };
-  }, [armazon, comunidadId, progreso, user]);
+  }, [armazon, comunidadId, user]);
 }
 
 export interface UseLessonResult {
   leccion: Lesson;
   completada: boolean;
-  toggle: () => void;
+  toggle: () => Promise<void>;
 }
 
 export function useLesson(
@@ -97,9 +100,7 @@ export function useLesson(
   leccionId: string
 ): UseLessonResult | null {
   const armazon = useAppStore((s) => s.armazon);
-  const progreso = useAppStore((s) => s.progreso);
-  const toggleLeccionCompleta = useAppStore((s) => s.toggleLeccionCompleta);
-  const { user } = useSession();
+  const establecerArmazon = useAppStore((s) => s.establecerArmazon);
 
   const curso = (armazon?.cursos ?? []).find((c) => c.id === cursoId);
   if (!curso) return null;
@@ -107,13 +108,17 @@ export function useLesson(
   const leccion = leccionesDeCurso(curso).find((l) => l.id === leccionId);
   if (!leccion) return null;
 
-  const completada = user
-    ? progreso.some((p) => p.userId === user.id && p.leccionId === leccionId)
-    : false;
+  const completada = (armazon?.progreso ?? []).includes(leccionId);
 
   return {
     leccion,
     completada,
-    toggle: () => toggleLeccionCompleta(leccionId),
+    // Escribe en la base y recarga el armazón: sin la recarga, la marca se
+    // vería puesta pero desaparecería al cambiar de pantalla.
+    toggle: async () => {
+      const supabase = crearClienteNavegador();
+      await marcarLeccion(supabase, leccionId, !completada);
+      establecerArmazon(await cargarArmazon(supabase));
+    },
   };
 }

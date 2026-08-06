@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * Referencia estable para el caso "sin progreso". Devolver `[]` dentro del
+ * selector crearía un array nuevo en cada lectura y rompería el invariante de
+ * `useSyncExternalStore` en React 19 (ver CLAUDE.md).
+ */
+const VACIO: string[] = [];
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
@@ -147,13 +154,14 @@ export function LeccionDetalle({ comunidadSlug, cursoSlug, leccionId }: LeccionD
   const curso = cursos.find((c) => c.slug === cursoSlug);
   const leccionResult = useLesson(curso?.id ?? "", leccionId);
   const hydrated = useHydrated();
-  const { user } = useSession();
-  const progreso = useAppStore((s) => s.progreso);
+  const progreso = useAppStore((s) => s.armazon?.progreso ?? VACIO);
 
-  const leccionesCompletadasIds = useMemo(() => {
-    if (!user) return new Set<string>();
-    return new Set(progreso.filter((p) => p.userId === user.id).map((p) => p.leccionId));
-  }, [progreso, user]);
+  // `armazon.progreso` ya son solo las lecciones de esta persona: RLS no deja
+  // ver las de nadie más, así que no hay que filtrar por usuario.
+  const leccionesCompletadasIds = useMemo(
+    () => new Set(progreso),
+    [progreso]
+  );
 
   const [mostrarConfetti, setMostrarConfetti] = useState(false);
   // `null` = todavía no sembrado. Antes de hidratar, `useSession` devuelve

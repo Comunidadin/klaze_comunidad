@@ -5,7 +5,6 @@ import type {
   CommunityEvent,
   CommunitySection,
   Enrollment,
-  LessonProgress,
   Plan,
   Post,
   PostComment,
@@ -60,7 +59,6 @@ export interface AppState {
   establecerArmazon: (armazon: Armazon | null) => void;
   usuariosCreados: User[]; // alumnos que aceptaron invitación + creadores registrados
   enrollmentsExtra: Enrollment[]; // generados por invitaciones aceptadas
-  progreso: LessonProgress[];
   postsCreados: Post[];
   likesDados: { postId: string; userId: string }[];
   comentariosCreados: { postId: string; comentario: PostComment; parentId: string | null }[];
@@ -123,7 +121,6 @@ export interface AppState {
   // completo, y `resolverPlan` lo aplica sobre `mockPlans` en `usePlatform`.
   planOverrides: Record<string, Plan>;
 
-  toggleLeccionCompleta: (leccionId: string) => void;
   crearPost: (post: Omit<Post, "id" | "creadoEl" | "likes" | "comentarios">) => void;
   toggleLike: (postId: string) => void;
   comentar: (postId: string, cuerpo: string, parentId: string | null) => void;
@@ -273,7 +270,6 @@ export const useAppStore = create<AppState>()(
       currentUserId: null,
       usuariosCreados: [],
       enrollmentsExtra: [],
-      progreso: [],
       postsCreados: [],
       likesDados: [],
       comentariosCreados: [],
@@ -299,29 +295,6 @@ export const useAppStore = create<AppState>()(
       // recoge lo que trajo.
       establecerArmazon: (armazon) =>
         set({ armazon, currentUserId: armazon?.perfil.id ?? null }),
-
-      toggleLeccionCompleta: (leccionId) => {
-        const userId = get().currentUserId;
-        if (!userId) return;
-        set((state) => {
-          const yaExiste = state.progreso.some(
-            (p) => p.userId === userId && p.leccionId === leccionId
-          );
-          if (yaExiste) {
-            return {
-              progreso: state.progreso.filter(
-                (p) => !(p.userId === userId && p.leccionId === leccionId)
-              ),
-            };
-          }
-          const nuevo: LessonProgress = {
-            userId,
-            leccionId,
-            completadaEl: new Date().toISOString(),
-          };
-          return { progreso: [...state.progreso, nuevo] };
-        });
-      },
 
       crearPost: (post) => {
         set((state) => {

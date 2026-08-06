@@ -52,7 +52,7 @@ test("suspender corta el acceso a cursos Y a lecciones", async () => {
   expect((tras ?? []).length).toBeGreaterThan(0);
 });
 
-test("el dueno ve el avance de sus alumnos, pero no cuando estudian", async () => {
+test("el dueno ve el avance de sus alumnos, con la fecha", async () => {
   // Atada al curso de ESTE escenario: los archivos de prueba corren en
   // paralelo y un `.limit(1)` suelto coge la lección de cualquier otro.
   const { data: mod } = await admin
@@ -78,8 +78,10 @@ test("el dueno ve el avance de sus alumnos, pero no cuando estudian", async () =
   expect((data ?? []).map((p: { usuario_id: string }) => p.usuario_id)).toContain(
     e.alumnoA.id
   );
-  // Se acota a proposito: cuanto ha avanzado si, a que hora estudia no.
-  expect(data?.[0]).not.toHaveProperty("completada_el");
+  // La fecha SI se incluye: sin ella no hay grafico de actividad, y en una
+  // plataforma de formacion es informacion normal para quien ensena. Lo que
+  // sigue acotado es quien la ve: solo el dueno de esa academia.
+  expect(data?.[0]).toHaveProperty("completada_el");
 });
 
 test("el dueno de B no ve el avance de los alumnos de A", async () => {
