@@ -45,12 +45,27 @@ export async function comoUsuario(
   email: string
 ): Promise<{ id: string; cliente: SupabaseClient }> {
   const password = "prueba-" + email;
-  const { data, error } = await admin.auth.admin.createUser({
+
+  let { data, error } = await admin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
   });
+
+  // El proyecto es real y compartido: si una prueba anterior murio a medias,
+  // sus usuarios siguen ahi y este correo ya existe. Se borra el resto y se
+  // reintenta, para que una ejecucion rota no envenene a la siguiente.
+  if (error?.message?.includes("already been registered")) {
+    await borrarPorEmail(email);
+    ({ data, error } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    }));
+  }
+
   if (error) throw new Error(`No se pudo crear ${email}: ${error.message}`);
+  if (!data?.user) throw new Error(`Supabase no devolvio usuario para ${email}`);
 
   const cliente = createClient(URL, PUBLICABLE, {
     auth: { autoRefreshToken: false, persistSession: false },
@@ -66,6 +81,29 @@ export async function comoUsuario(
   return { id: data.user.id, cliente };
 }
 
+/**
+ * Borra un usuario por completo, incluidas las comunidades que posea.
+ *
+ * El orden importa: `comunidades.propietario_id` es ON DELETE RESTRICT a
+ * proposito —borrar una cuenta no debe llevarse por delante una academia
+ * entera— asi que mientras exista una comunidad suya, el usuario no se puede
+ * borrar. Aqui se quita primero la comunidad; en produccion se traspasa.
+ */
+async function borrarPorEmail(email: string) {
+  const { data } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  const usuario = data?.users?.find(
+    (u) => u.email?.toLowerCase() === email.toLowerCase()
+  );
+  if (!usuario) return;
+  await borrarUsuario(usuario.id);
+}
+
+async function borrarUsuario(id: string) {
+  await admin.from("comunidades").delete().eq("propietario_id", id);
+  const { error } = await admin.auth.admin.deleteUser(id);
+  if (error) throw new Error(`No se pudo borrar el usuario ${id}: ${error.message}`);
+}
+
 /** Cliente sin sesión. Para las pruebas de acceso público. */
 export function comoAnonimo(): SupabaseClient {
   return createClient(URL, PUBLICABLE, {
@@ -79,5 +117,5 @@ export function comoAnonimo(): SupabaseClient {
  * fallar a la siguiente por correo duplicado.
  */
 export async function limpiarUsuarios(ids: string[]) {
-  for (const id of ids) await admin.auth.admin.deleteUser(id);
+  for (const id of ids) await borrarUsuario(id);
 }
