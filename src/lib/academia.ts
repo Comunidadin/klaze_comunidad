@@ -13,6 +13,12 @@ export interface ResultadoAcademia {
   usuarioId: string;
   yaExistia: boolean;
   /**
+   * `true` si ese correo ya era de un **alumno** y el alta lo convirtió en
+   * creador. La pantalla lo avisa: esa persona deja de aterrizar en sus cursos
+   * y pasa a aterrizar en un panel de administración.
+   */
+  eraAlumno: boolean;
+  /**
    * Contraseña de un solo uso, o `null` si la cuenta ya existía —entonces esa
    * persona entra con la suya. No se guarda en ningún sitio: si se pierde, se
    * pide una nueva desde `/login`.
@@ -71,6 +77,7 @@ export async function crearAcademia(
       comunidadId: existente.id,
       usuarioId: existente.propietario_id,
       yaExistia: true,
+      eraAlumno: false,
       passwordTemporal: null,
     };
   }
@@ -100,6 +107,18 @@ export async function crearAcademia(
   }
 
   // El trigger `on_auth_user_created` ya creó el perfil; aquí solo el rol.
+  //
+  // Se mira el rol previo antes de pisarlo: si ese correo era de un alumno,
+  // convertirlo en creador le cambia la vida —deja de entrar a sus cursos y
+  // entra a un panel de administración— y quien da de alta merece enterarse.
+  // Pasó de verdad en la primera prueba de esta pantalla.
+  const { data: previo } = await admin
+    .from("perfiles")
+    .select("rol")
+    .eq("id", usuarioId)
+    .maybeSingle();
+  const eraAlumno = previo?.rol === "alumno";
+
   const { error: errRol } = await admin
     .from("perfiles")
     .update({ rol: "creador" })
@@ -123,6 +142,7 @@ export async function crearAcademia(
     comunidadId: com.id,
     usuarioId,
     yaExistia: false,
+    eraAlumno,
     passwordTemporal: password,
   };
 }

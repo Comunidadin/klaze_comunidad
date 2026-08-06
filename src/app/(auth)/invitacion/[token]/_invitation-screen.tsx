@@ -10,7 +10,8 @@ import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Logo } from "@/components/shared/logo";
+import { LogoPlataforma } from "@/components/shared/logo";
+import { MarcaAcademia } from "@/components/shared/marca-academia";
 
 /** Frase que resume a qué da acceso la invitación. */
 function copyInvitacion(
@@ -47,7 +48,7 @@ function MensajeInvitacion({
       className="text-center"
     >
       <div className="mb-8 flex justify-center">
-        <Logo href="/login" orientacion="vertical" />
+        <LogoPlataforma href="/login" orientacion="vertical" />
       </div>
       <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
         <Icono className="size-6" />
@@ -140,17 +141,13 @@ export function InvitationScreen({ token }: InvitationScreenProps) {
       style={{ "--community-accent": invitacion.comunidadColor } as React.CSSProperties}
     >
       <div className="mb-8 flex justify-center">
-        <Logo href="/login" orientacion="vertical" />
-      </div>
-
-      {invitacion.comunidadLogo && (
-        // eslint-disable-next-line @next/next/no-img-element -- URL arbitraria del creador, sin dominio configurado en next/image
-        <img
-          src={invitacion.comunidadLogo}
-          alt=""
-          className="mx-auto size-14 rounded-2xl object-cover"
+        <MarcaAcademia
+          nombre={invitacion.comunidadNombre}
+          logoUrl={invitacion.comunidadLogo}
+          colorAcento={invitacion.comunidadColor}
+          orientacion="vertical"
         />
-      )}
+      </div>
 
       <h1 className="mt-4 text-center font-display text-2xl font-bold tracking-tight text-foreground">
         Bienvenido a {invitacion.comunidadNombre}

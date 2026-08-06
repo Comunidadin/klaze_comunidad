@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { Logo } from "@/components/shared/logo";
+import { MarcaAcademia } from "@/components/shared/marca-academia";
 
 export interface SiteFooterProps {
   /** Slug de la comunidad activa — las rutas del área de miembros cuelgan de él. */
   comunidadSlug: string;
-  /** Nombre que aparece en la línea de copyright. */
+  /** Nombre de la academia: marca y línea de copyright. */
   nombreComunidad: string;
+  logoUrl?: string;
+  colorAcento?: string;
 }
 
 /** Año fijo: la demo no usa `Date.now()` en render (ver la regla de determinismo en CLAUDE.md). */
@@ -26,7 +28,12 @@ const ANIO = 2026;
  * que esas columnas se quitaron. Solo quedan enlaces a rutas de nivel de
  * comunidad reales.
  */
-export function SiteFooter({ comunidadSlug, nombreComunidad }: SiteFooterProps) {
+export function SiteFooter({
+  comunidadSlug,
+  nombreComunidad,
+  logoUrl,
+  colorAcento,
+}: SiteFooterProps) {
   const base = `/c/${comunidadSlug}`;
 
   const columnas = [
@@ -43,7 +50,14 @@ export function SiteFooter({ comunidadSlug, nombreComunidad }: SiteFooterProps) 
     <footer className="mt-16 border-t border-border pt-10 pb-4">
       <div className="flex flex-col gap-10 sm:flex-row sm:justify-between">
         <div>
-          <Logo href={`${base}/cursos`} orientacion="vertical" className="sm:items-start sm:text-left" />
+          <MarcaAcademia
+            nombre={nombreComunidad}
+            logoUrl={logoUrl}
+            colorAcento={colorAcento}
+            href={`${base}/cursos`}
+            orientacion="vertical"
+            className="sm:items-start sm:text-left"
+          />
         </div>
 
         <div className="grid grid-cols-1 gap-10 sm:gap-16">

@@ -16,6 +16,7 @@ import {
 import { useHydrated, useSession } from "@/lib/hooks/use-session";
 import { useAppStore } from "@/lib/store";
 import { AcademiaSuspendida } from "@/components/shared/academia-suspendida";
+import { MarcaAcademia } from "@/components/shared/marca-academia";
 import { homePorRol } from "@/lib/routes";
 import { AdminShell, type AdminNavItem } from "@/components/shells/admin-shell";
 import { FullScreenLoader } from "@/components/shared/full-screen-loader";
@@ -72,12 +73,32 @@ export default function CreadorLayout({ children }: { children: React.ReactNode 
   // El superadmin queda fuera: es quien reactiva. Si se le cerrara la puerta,
   // suspender su propia academia seria irreversible.
   if (comunidad?.estado === "suspendida" && user.rol !== "superadmin") {
-    return <AcademiaSuspendida nombre={comunidad.nombre} quien="creador" />;
+    return (
+      <AcademiaSuspendida
+        nombre={comunidad.nombre}
+        logoUrl={comunidad.logoUrl}
+        colorAcento={comunidad.colorAcento}
+        quien="creador"
+      />
+    );
   }
 
   return (
     <>
-      <AdminShell items={items} titulo="Panel de creador">
+      <AdminShell
+        items={items}
+        titulo="Panel de creador"
+        marca={(compacto) => (
+          <MarcaAcademia
+            nombre={comunidad?.nombre ?? "Tu academia"}
+            logoUrl={comunidad?.logoUrl}
+            colorAcento={comunidad?.colorAcento}
+            size="sm"
+            href="/admin"
+            soloMonograma={compacto}
+          />
+        )}
+      >
         {children}
       </AdminShell>
     </>

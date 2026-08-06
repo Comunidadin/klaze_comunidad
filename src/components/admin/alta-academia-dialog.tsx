@@ -120,6 +120,16 @@ export function AltaAcademiaDialog({
         return;
       }
 
+      // Convertir a un alumno en creador le cambia dónde aterriza al entrar:
+      // deja sus cursos y pasa a un panel de administración. Se avisa aparte
+      // porque es un efecto que nadie pide y nadie espera.
+      if (cuerpo.eraAlumno) {
+        toast.warning(
+          `Ojo: ${email.trim()} era alumno y ahora es creador. Al entrar irá a su panel, no a sus cursos.`,
+          { duration: 10000 }
+        );
+      }
+
       if (cuerpo.passwordTemporal) {
         setCredencial({ email: email.trim(), password: cuerpo.passwordTemporal });
       } else {

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Logo } from "@/components/shared/logo";
+import { LogoPlataforma } from "@/components/shared/logo";
 
 export interface AuthFormCardProps {
   /** Título principal (font-display), p. ej. "Bienvenido de nuevo". */
@@ -29,7 +29,7 @@ export function AuthFormCard({ titulo, subtitulo, children, footer }: AuthFormCa
       {/* El logo va aquí en todos los tamaños: la portada de la izquierda es
           solo video, sin marca encima (ver `AuthBrandPanel`). */}
       <div className="mb-8 flex justify-center">
-        <Logo href="/login" orientacion="vertical" />
+        <LogoPlataforma href="/login" orientacion="vertical" />
       </div>
 
       <h1 className="text-center font-display text-xl font-bold tracking-tight text-foreground">
