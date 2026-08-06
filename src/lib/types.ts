@@ -72,7 +72,7 @@ export interface Course {
    * comunidad social vive dentro de cada curso, no a nivel de comunidad).
    * `Community.secciones` se mantiene intacto para no romper `/admin/comunidad`
    * — el área de miembros ya no lo usa, solo este campo. Sembrado con
-   * `crearSeccionesDefault()` (ver `src/lib/mocks/espacios.ts`).
+   * `crearSeccionesDefault()` (ver `src/lib/espacios-default.ts`).
    */
   secciones: CommunitySection[];
 }

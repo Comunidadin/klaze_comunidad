@@ -1,75 +1,91 @@
 "use client";
 
-import { useMemo } from "react";
-import { resolverComunidad, useAppStore } from "@/lib/store";
-import { mockCommunities } from "@/lib/mocks/communities";
-import { mockPosts } from "@/lib/mocks/posts";
-import { cursosDeComunidad } from "@/lib/hooks/use-courses";
+import { useEffect, useMemo, useState } from "react";
+import { useAppStore } from "@/lib/store";
+import { crearClienteNavegador } from "@/lib/supabase/client";
+import { leerSecciones } from "@/lib/supabase/espacios";
 import type { CommunitySection, CommunitySpace } from "@/lib/types";
 
 export type EspacioConNoLeidos = CommunitySpace & { noLeidos: number };
-// `Omit` (no una intersección directa con `CommunitySection`) porque esa
-// interfaz ya declara `espacios: CommunitySpace[]` — intersecar en vez de
-// sobrescribir deja `espacios` tipado como `CommunitySpace[] & EspacioConNoLeidos[]`,
-// y TypeScript resuelve `.map()` sobre esa intersección usando la firma de
-// `CommunitySpace[]`, perdiendo `noLeidos` en el callback.
+
 export type SeccionConEspacios = Omit<CommunitySection, "espacios"> & {
   espacios: EspacioConNoLeidos[];
 };
 
 /**
- * Secciones/espacios resueltos, con el contador de "no leídos" de cada
- * espacio: posts creados después de `espaciosVistos[espacioId]` (o todos,
- * si nunca se visitó).
+ * Cuántas publicaciones recientes se miran para contar no leídos.
  *
- * Sin `cursoId`: resuelve `Community.secciones` (overrides de
- * `/admin/comunidad` aplicados) — comportamiento histórico, usado por
- * `PostModeracionRow` en ese panel. Con `cursoId` (Cambio 3: la comunidad
- * social vive dentro de cada curso): resuelve `Course.secciones` de ESE
- * curso — usado por `EspaciosSidebar`, `ContextoRail` y `Feed` en el área de
- * miembros.
- *
- * Selecciona los arrays crudos del store y deriva todo con `useMemo` —
- * nunca `.filter()`/`.map()` dentro del selector de zustand, que rompe el
- * invariante de `useSyncExternalStore` en React 19 (ver CLAUDE.md y
- * `use-invitations.ts`/`use-ahora.ts`, que se corrigieron por esto mismo).
+ * Se acota a propósito: la insignia solo necesita decir "hay cosas nuevas", y
+ * traer el histórico entero de un curso activo para pintar un número sería caro
+ * para lo que aporta. A quien tenga más de 200 sin leer, el número exacto ya no
+ * le dice nada.
  */
-export function useEspacios(comunidadId: string, cursoId?: string): { secciones: SeccionConEspacios[] } {
-  const comunidadesCreadas = useAppStore((s) => s.comunidadesCreadas);
-  const comunidadOverrides = useAppStore((s) => s.comunidadOverrides);
-  const armazon = useAppStore((s) => s.armazon);
-  const postsCreados = useAppStore((s) => s.postsCreados);
-  const postsEliminados = useAppStore((s) => s.postsEliminados);
+const MAX_RECIENTES = 200;
+
+interface Reciente {
+  espacioId: string;
+  creadoEl: string;
+}
+
+const SIN_DATOS: { secciones: CommunitySection[]; recientes: Reciente[] } = {
+  secciones: [],
+  recientes: [],
+};
+
+/**
+ * Es `async` aunque la rama sin curso no espere nada, para que el `.then()` que
+ * fija el estado no corra de forma síncrona dentro del efecto.
+ */
+async function leerDatos(
+  cursoId: string | undefined
+): Promise<{ secciones: CommunitySection[]; recientes: Reciente[] }> {
+  if (!cursoId) return SIN_DATOS;
+
+  const supabase = crearClienteNavegador();
+  const [secciones, { data }] = await Promise.all([
+    leerSecciones(supabase, cursoId),
+    supabase
+      .from("publicaciones")
+      .select("espacio_id, creado_el")
+      .eq("curso_id", cursoId)
+      .order("creado_el", { ascending: false })
+      .limit(MAX_RECIENTES),
+  ]);
+
+  const recientes = ((data ?? []) as { espacio_id: string; creado_el: string }[]).map(
+    (p) => ({ espacioId: p.espacio_id, creadoEl: p.creado_el })
+  );
+
+  return { secciones, recientes };
+}
+
+/**
+ * Espacios de un curso, con cuántas publicaciones sin leer tiene cada uno.
+ *
+ * "Visto" sigue viviendo en el navegador (`espaciosVistos` del store), y es
+ * deliberado: es una preferencia de lectura de ESTE dispositivo, no un dato de
+ * la academia. Guardarlo en la base obligaría a decidir qué pasa cuando alguien
+ * lee en el móvil y luego abre el portátil, y esa complejidad no compra nada.
+ */
+export function useEspacios(
+  comunidadId: string,
+  cursoId?: string
+): { secciones: SeccionConEspacios[] } {
   const espaciosVistos = useAppStore((s) => s.espaciosVistos);
+  const [datos, setDatos] = useState(SIN_DATOS);
+
+  useEffect(() => {
+    let vivo = true;
+    void leerDatos(cursoId).then((d) => {
+      if (vivo) setDatos(d);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [cursoId]);
 
   return useMemo(() => {
-    let seccionesBase: CommunitySection[] | null = null;
-
-    if (cursoId) {
-      const curso = cursosDeComunidad(comunidadId, armazon?.cursos ?? []).find((c) => c.id === cursoId);
-      seccionesBase = curso?.secciones ?? null;
-    } else {
-      const base =
-        comunidadesCreadas.find((c) => c.id === comunidadId) ??
-        mockCommunities.find((c) => c.id === comunidadId);
-      seccionesBase = base ? resolverComunidad(base, comunidadOverrides).secciones : null;
-    }
-
-    if (!seccionesBase) return { secciones: [] };
-    const seccionesResueltas = seccionesBase;
-
-    const idsValidos = new Set(seccionesResueltas.flatMap((s) => s.espacios.map((e) => e.id)));
-    const respaldoId = seccionesResueltas
-      .flatMap((s) => s.espacios)
-      .find((e) => e.slug === "general")?.id;
-
-    const posts = [...mockPosts, ...postsCreados].filter(
-      (p) =>
-        (cursoId ? p.cursoId === cursoId : p.comunidadId === comunidadId) &&
-        !postsEliminados.includes(p.id)
-    );
-
-    const secciones: SeccionConEspacios[] = seccionesResueltas
+    const secciones: SeccionConEspacios[] = datos.secciones
       .slice()
       .sort((a, b) => a.orden - b.orden)
       .map((seccion) => ({
@@ -79,27 +95,15 @@ export function useEspacios(comunidadId: string, cursoId?: string): { secciones:
           .sort((a, b) => a.orden - b.orden)
           .map((espacio) => {
             const vistoEl = espaciosVistos[espacio.id];
-            const noLeidos = posts.filter((post) => {
-              const espacioEfectivo = idsValidos.has(post.espacioId)
-                ? post.espacioId
-                : (respaldoId ?? post.espacioId);
-              if (espacioEfectivo !== espacio.id) return false;
+            const noLeidos = datos.recientes.filter((p) => {
+              if (p.espacioId !== espacio.id) return false;
               if (!vistoEl) return true;
-              return new Date(post.creadoEl).getTime() > new Date(vistoEl).getTime();
+              return new Date(p.creadoEl).getTime() > new Date(vistoEl).getTime();
             }).length;
             return { ...espacio, noLeidos };
           }),
       }));
 
     return { secciones };
-  }, [
-    comunidadId,
-    cursoId,
-    comunidadesCreadas,
-    comunidadOverrides,
-    armazon,
-    postsCreados,
-    postsEliminados,
-    espaciosVistos,
-  ]);
+  }, [datos, espaciosVistos]);
 }

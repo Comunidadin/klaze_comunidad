@@ -1,52 +1,65 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
 import { useAppStore } from "@/lib/store";
-import { mockEvents } from "@/lib/mocks/events";
+import { crearClienteNavegador } from "@/lib/supabase/client";
+import { leerEventos } from "@/lib/supabase/eventos";
+import { cursosDeComunidad } from "@/lib/hooks/use-courses";
 import type { CommunityEvent } from "@/lib/types";
 
+/** Referencia estable: un `[]` nuevo por render relanzaría el efecto en bucle. */
+const SIN_EVENTOS: CommunityEvent[] = [];
+
 /**
- * Aplica `eventosEditados` (creados/editados desde /admin/eventos) sobre los
- * eventos del seed de `comunidadId`: mismo patrón que `mergeCursos` en
- * `use-courses.ts` — un `id` que matchea un evento del mock es una edición
- * (lo reemplaza), uno sin match es un evento nuevo (se agrega). Exportada
- * por si en el futuro hace falta un merge crudo (p. ej. panel super-admin);
- * `useEvents` es hoy el único consumidor.
+ * Es `async` aunque la rama sin cursos no espere nada, para que el `.then()`
+ * que fija el estado no corra de forma síncrona dentro del efecto.
  */
-export function mergeEventos(
-  comunidadId: string,
-  eventosEditados: CommunityEvent[]
-): CommunityEvent[] {
-  const base = mockEvents.filter((e) => e.comunidadId === comunidadId);
-  const overridesMismaComunidad = eventosEditados.filter(
-    (e) => e.comunidadId === comunidadId
-  );
+async function leerTodos(claveCursos: string): Promise<CommunityEvent[]> {
+  const ids = claveCursos ? claveCursos.split(",") : [];
+  if (ids.length === 0) return SIN_EVENTOS;
 
-  const combinados = base.map(
-    (evento) => overridesMismaComunidad.find((o) => o.id === evento.id) ?? evento
-  );
-  const nuevos = overridesMismaComunidad.filter(
-    (o) => !base.some((b) => b.id === o.id)
-  );
+  const supabase = crearClienteNavegador();
+  const porCurso = await Promise.all(ids.map((id) => leerEventos(supabase, id)));
 
-  return [...combinados, ...nuevos];
+  return porCurso
+    .flat()
+    .sort((a, b) => new Date(a.fechaInicio).getTime() - new Date(b.fechaInicio).getTime());
 }
 
 /**
- * Eventos de `comunidadId` o, si se pasa `cursoId` (Cambio 3), solo los de
- * ESE curso — filtrado adicional por `CommunityEvent.cursoId`. Sin
- * `cursoId` conserva el comportamiento histórico (calendario completo de la
- * comunidad), que es lo que sigue usando `/admin/eventos`.
+ * Eventos de un curso o, sin `cursoId`, de toda la academia — que es lo que
+ * muestra `/admin/eventos`.
+ *
+ * Los eventos son pocos por naturaleza (unos cuantos al mes), así que se traen
+ * enteros: paginar aquí sería complejidad sin beneficio, al revés que en el
+ * feed.
  */
-export function useEvents(comunidadId: string, cursoId?: string): { eventos: CommunityEvent[] } {
-  const eventosEditados = useAppStore((s) => s.eventosEditados);
-  const eventosEliminados = useAppStore((s) => s.eventosEliminados);
+export function useEvents(
+  comunidadId: string,
+  cursoId?: string
+): { eventos: CommunityEvent[]; recargar: () => Promise<void> } {
+  const armazon = useAppStore((s) => s.armazon);
+  const [eventos, setEventos] = useState<CommunityEvent[]>(SIN_EVENTOS);
 
-  const eventos = mergeEventos(comunidadId, eventosEditados)
-    .filter((e) => !eventosEliminados.includes(e.id))
-    .filter((e) => !cursoId || e.cursoId === cursoId)
-    .sort(
-      (a, b) => new Date(a.fechaInicio).getTime() - new Date(b.fechaInicio).getTime()
-    );
+  const cursos = cursosDeComunidad(comunidadId, armazon?.cursos ?? []);
+  const cursoIds = !comunidadId ? [] : cursoId ? [cursoId] : cursos.map((c) => c.id);
+  // Clave estable: el array se recrea en cada render y depender de él
+  // relanzaría la carga sin parar.
+  const claveCursos = cursoIds.join(",");
 
-  return { eventos };
+  useEffect(() => {
+    let vivo = true;
+    void leerTodos(claveCursos).then((lista) => {
+      if (vivo) setEventos(lista);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [claveCursos]);
+
+  const recargar = useCallback(async () => {
+    setEventos(await leerTodos(claveCursos));
+  }, [claveCursos]);
+
+  return { eventos, recargar };
 }

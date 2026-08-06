@@ -1,5 +1,4 @@
 import type { Course, Lesson } from "@/lib/types";
-import { crearSeccionesDefault } from "@/lib/mocks/espacios";
 
 // IDs reales y públicos de Vimeo (staff picks de demo). Se reutilizan en
 // rotación para las lecciones de video — esto es solo contenido mock.
@@ -62,7 +61,7 @@ const curso1: Course = {
   precioReferencial: 149,
   nivelRequerido: null,
   publicado: true,
-  secciones: crearSeccionesDefault("curso-1"),
+  secciones: [],
   modulos: [
     {
       id: "c1-m1",
@@ -236,7 +235,7 @@ const curso2: Course = {
   precioReferencial: 79,
   nivelRequerido: null,
   publicado: true,
-  secciones: crearSeccionesDefault("curso-2"),
+  secciones: [],
   modulos: [
     {
       id: "c2-m1",
@@ -280,7 +279,7 @@ const curso3: Course = {
   precioReferencial: 349,
   nivelRequerido: 3,
   publicado: true,
-  secciones: crearSeccionesDefault("curso-3"),
+  secciones: [],
   modulos: [
     {
       id: "c3-m1",
@@ -312,7 +311,7 @@ const curso4: Course = {
   precioReferencial: 49,
   nivelRequerido: null,
   publicado: true,
-  secciones: crearSeccionesDefault("curso-4"),
+  secciones: [],
   modulos: [
     {
       id: "c4-m1",
