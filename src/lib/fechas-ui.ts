@@ -1,8 +1,7 @@
-// Tiempo relativo para UI en vivo (feed, comentarios). A diferencia de
-// `src/lib/mocks/fechas.ts` (que siembra datos de forma determinística
-// contra una fecha base fija), acá SÍ usamos `Date.now()` a propósito: es
-// texto de interfaz en tiempo real ("hace 2 h"), no un seed que deba ser
-// estable entre renders/tests.
+// Tiempo relativo para UI en vivo (feed, comentarios). Usa `Date.now()` a
+// propósito: es texto de interfaz en tiempo real ("hace 2 h") calculado sobre
+// fechas que vienen de la base, no un valor que deba ser estable entre
+// renders.
 
 const MINUTO_MS = 60_000;
 const HORA_MS = 60 * MINUTO_MS;

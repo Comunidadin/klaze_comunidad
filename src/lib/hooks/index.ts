@@ -27,9 +27,6 @@ export type { EspacioConNoLeidos, SeccionConEspacios } from "@/lib/hooks/use-esp
 export { useMembers } from "@/lib/hooks/use-members";
 export type { MemberConEstado } from "@/lib/hooks/use-members";
 
-export { useUsuarios } from "@/lib/hooks/use-users";
-export type { UseUsuariosResult } from "@/lib/hooks/use-users";
-
 export { useInvitations } from "@/lib/hooks/use-invitations";
 
 export { useInvitation } from "@/lib/hooks/use-invitation";

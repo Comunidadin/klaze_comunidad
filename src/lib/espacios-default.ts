@@ -4,9 +4,8 @@ import type { CommunitySection } from "@/lib/types";
  * Secciones y espacios con los que nace un curso.
  *
  * No es un dato semilla: lo usa código de producción cuando se crea un curso
- * real, y por eso vive aquí y no en `src/lib/mocks/`. Sembrar el curso con esta
- * estructura evita que su pestaña de comunidad arranque en blanco, que es la
- * forma más rápida de que nadie la use.
+ * real. Sembrar el curso con esta estructura evita que su pestaña de comunidad
+ * arranque en blanco, que es la forma más rápida de que nadie la use.
  *
  * **Los identificadores son UUID generados al vuelo**, no cadenas como
  * `esp-general`. Antes lo eran, y funcionaba mientras todo vivía en memoria;
