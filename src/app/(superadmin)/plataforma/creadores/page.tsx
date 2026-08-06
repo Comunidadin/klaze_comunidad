@@ -27,17 +27,16 @@ function CreadoresSkeleton() {
 }
 
 /**
- * `/plataforma/creadores`: directorio de todos los creadores de Comunidad del Intercambio —
- * cada fila muestra sus comunidades como badges (una comunidad por creador
- * en el mock actual, pero el diseño soporta varias). Sin edición: es un
- * directorio de solo lectura, la única acción de negocio (suspender) vive
- * en `/plataforma/comunidades`.
+ * `/plataforma/creadores`: directorio de todos los creadores — cada fila
+ * muestra sus academias como badges (una por creador hoy, pero el diseño
+ * soporta varias). Sin edición: es un directorio de solo lectura, y las dos
+ * acciones de negocio —dar de alta y suspender— viven en `/plataforma/comunidades`.
  */
 export default function PlataformaCreadoresPage() {
   const hydrated = useHydrated();
-  const { creadores } = usePlatform();
+  const { creadores, cargando } = usePlatform();
 
-  if (!hydrated) {
+  if (!hydrated || cargando) {
     return <CreadoresSkeleton />;
   }
 
@@ -48,8 +47,8 @@ export default function PlataformaCreadoresPage() {
           Creadores
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {creadores.length} {creadores.length === 1 ? "creador registrado" : "creadores registrados"}{" "}
-          en Comunidad del Intercambio.
+          {creadores.length}{" "}
+          {creadores.length === 1 ? "creador registrado" : "creadores registrados"}.
         </p>
       </div>
 
@@ -57,7 +56,7 @@ export default function PlataformaCreadoresPage() {
         <EmptyState
           icono={Users}
           titulo="Todavía no hay creadores"
-          descripcion="En cuanto alguien registre su comunidad, va a aparecer aquí."
+          descripcion="Aparecerán aquí en cuanto des de alta la primera academia."
         />
       ) : (
         <div className="overflow-hidden rounded-xl ring-1 ring-foreground/10">
@@ -66,38 +65,38 @@ export default function PlataformaCreadoresPage() {
               <TableRow>
                 <TableHead>Creador</TableHead>
                 <TableHead>Correo</TableHead>
-                <TableHead>Comunidades</TableHead>
+                <TableHead>Academias</TableHead>
                 <TableHead>Registro</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {creadores.map(({ usuario, comunidades }) => (
-                <TableRow key={usuario.id}>
+              {creadores.map((creador) => (
+                <TableRow key={creador.id}>
                   <TableCell>
                     <div className="flex items-center gap-2.5">
                       <Avatar size="sm">
-                        <AvatarImage src={usuario.avatarUrl} alt={usuario.nombre} />
-                        <AvatarFallback>{usuario.nombre[0]}</AvatarFallback>
+                        <AvatarImage src={creador.avatarUrl} alt={creador.nombre} />
+                        <AvatarFallback>{creador.nombre[0]}</AvatarFallback>
                       </Avatar>
-                      <span className="font-medium text-foreground">{usuario.nombre}</span>
+                      <span className="font-medium text-foreground">
+                        {creador.nombre}
+                      </span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{usuario.email}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {creador.email}
+                  </TableCell>
                   <TableCell>
-                    {comunidades.length === 0 ? (
-                      <span className="text-xs text-muted-foreground">Sin comunidad</span>
-                    ) : (
-                      <div className="flex flex-wrap gap-1.5">
-                        {comunidades.map((c) => (
-                          <Badge key={c.id} variant="secondary">
-                            {c.nombre}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
+                    <div className="flex flex-wrap gap-1.5">
+                      {creador.academias.map((a) => (
+                        <Badge key={a.id} variant="secondary">
+                          {a.nombre}
+                        </Badge>
+                      ))}
+                    </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {formatFechaLarga(usuario.creadoEl)}
+                    {formatFechaLarga(creador.creadoEl)}
                   </TableCell>
                 </TableRow>
               ))}

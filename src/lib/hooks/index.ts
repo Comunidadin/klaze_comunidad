@@ -49,7 +49,7 @@ export type { LessonCommentConAutor, UseLessonCommentsResult } from "@/lib/hooks
 
 export { usePlatform } from "@/lib/hooks/use-platform";
 export type {
-  ComunidadPlataforma,
+  AcademiaPlataforma,
   CreadorPlataforma,
   PlatformMetricas,
   UsePlatformResult,

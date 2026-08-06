@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import { Save, Sparkles } from "lucide-react";
 import { useHydrated } from "@/lib/hooks/use-session";
 import { usePlatform } from "@/lib/hooks/use-platform";
-import { useAppStore } from "@/lib/store";
+import { crearClienteNavegador } from "@/lib/supabase/client";
+import { guardarPlan } from "@/lib/supabase/plataforma";
 import { formatUSD } from "@/lib/format-moneda";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,15 +59,15 @@ function numeroValido(valor: string, minimo: 0 | 1): number | null {
   return Math.round(n);
 }
 
-function PlanCard({ plan }: { plan: Plan }) {
-  const guardarPlan = useAppStore((s) => s.guardarPlan);
+function PlanCard({ plan, onGuardado }: { plan: Plan; onGuardado: () => Promise<void> }) {
   const [campos, setCampos] = useState<CamposPlan>(camposDe(plan));
+  const [guardando, setGuardando] = useState(false);
 
   function actualizar<K extends keyof CamposPlan>(campo: K, valor: string) {
     setCampos((prev) => ({ ...prev, [campo]: valor }));
   }
 
-  function guardar() {
+  async function guardar() {
     const precioMes = numeroValido(campos.precioMes, 0);
     const comunidades = numeroValido(campos.comunidades, 1);
     const alumnos = numeroValido(campos.alumnos, 1);
@@ -82,9 +83,20 @@ function PlanCard({ plan }: { plan: Plan }) {
       precioMes,
       limites: { comunidades, alumnos, cursos },
     };
-    guardarPlan(actualizado);
-    setCampos(camposDe(actualizado));
-    toast.success(`Plan ${plan.nombre} actualizado.`);
+
+    setGuardando(true);
+    try {
+      await guardarPlan(crearClienteNavegador(), actualizado);
+      setCampos(camposDe(actualizado));
+      // Recarga desde la base en vez de fiarse de lo que acabamos de enviar:
+      // si la politica hubiera recortado algo, el formulario mentiria.
+      await onGuardado();
+      toast.success(`Plan ${plan.nombre} actualizado.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo guardar el plan");
+    } finally {
+      setGuardando(false);
+    }
   }
 
   return (
@@ -152,8 +164,8 @@ function PlanCard({ plan }: { plan: Plan }) {
           </div>
         </div>
 
-        <Button onClick={guardar} className="w-full">
-          <Save /> Guardar plan
+        <Button onClick={() => void guardar()} disabled={guardando} className="w-full">
+          <Save /> {guardando ? "Guardando…" : "Guardar plan"}
         </Button>
       </CardContent>
     </Card>
@@ -161,18 +173,19 @@ function PlanCard({ plan }: { plan: Plan }) {
 }
 
 /**
- * `/plataforma/planes`: catálogo editable de los 3 planes de Comunidad del Intercambio — precio
- * mensual y límites (comunidades/alumnos/cursos) por tarjeta, cada una con
- * su propio botón "Guardar" (`guardarPlan`, ver validación en
- * `numeroValido`). El nombre del plan es fijo a propósito: es la identidad
- * visual (`PlanBadge` en el resto de `/plataforma`), así que no se edita
- * desde acá.
+ * `/plataforma/planes`: catálogo editable de los 3 planes — precio mensual y
+ * límites (comunidades/alumnos/cursos) por tarjeta, cada una con su propio
+ * botón "Guardar" (ver validación en `numeroValido`). El nombre del plan es
+ * fijo a propósito: es la identidad visual (`PlanBadge` en el resto de
+ * `/plataforma`), así que no se edita desde acá.
+ *
+ * Los límites son informativos: nada los hace cumplir todavía.
  */
 export default function PlataformaPlanesPage() {
   const hydrated = useHydrated();
-  const { planes } = usePlatform();
+  const { planes, cargando, recargar } = usePlatform();
 
-  if (!hydrated) {
+  if (!hydrated || cargando) {
     return <PlanesSkeleton />;
   }
 
@@ -183,13 +196,13 @@ export default function PlataformaPlanesPage() {
           Planes
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Precio y límites de cada plan — los cambios aplican a las comunidades que lo usen.
+          Precio y límites de cada plan — los cambios aplican a las academias que lo usen.
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {planes.map((plan) => (
-          <PlanCard key={plan.id} plan={plan} />
+          <PlanCard key={plan.id} plan={plan} onGuardado={recargar} />
         ))}
       </div>
     </div>

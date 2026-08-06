@@ -20,6 +20,8 @@ export interface CreadorPlataforma {
   id: string;
   nombre: string;
   email: string;
+  avatarUrl: string;
+  creadoEl: string;
   academias: Community[];
 }
 
@@ -120,7 +122,7 @@ export async function leerPlataforma(
   const [comunidades, planes, perfiles] = await Promise.all([
     supabase.from("comunidades").select(CAMPOS).order("creado_el", { ascending: false }),
     supabase.from("planes").select("*").order("precio_mes", { ascending: true }),
-    supabase.from("perfiles").select("id, nombre, email, rol"),
+    supabase.from("perfiles").select("id, nombre, email, rol, avatar_url, creado_el"),
   ]);
 
   if (comunidades.error) {
@@ -159,6 +161,8 @@ export async function leerPlataforma(
       id: p.id,
       nombre: nombreVisible(p.nombre ?? "", p.email ?? ""),
       email: p.email ?? "",
+      avatarUrl: p.avatar_url ?? "",
+      creadoEl: p.creado_el,
       academias: academias
         .filter((a) => a.comunidad.ownerId === p.id)
         .map((a) => a.comunidad),
