@@ -12,6 +12,7 @@ import {
   MessagesSquare,
   Settings,
   Users,
+  Eye,
 } from "lucide-react";
 import { useHydrated, useSession } from "@/lib/hooks/use-session";
 import { useAppStore } from "@/lib/store";
@@ -42,6 +43,18 @@ const ITEM_PLATAFORMA: AdminNavItem = {
 };
 
 /**
+ * Ver la academia como la ve un alumno.
+ *
+ * No es un capricho: el creador decide portadas, orden y qué publica sin haber
+ * visto nunca el resultado. Solo aparece si hay academia en el armazón —sin
+ * slug el enlace no lleva a ninguna parte— y hace falta que el creador esté
+ * inscrito en la suya, que es lo que `crearAcademia` ahora garantiza.
+ */
+function itemAreaAlumno(slug: string): AdminNavItem {
+  return { titulo: "Ver como alumno", href: `/c/${slug}/cursos`, icono: Eye };
+}
+
+/**
  * Guard del grupo `(creador)`: solo `rol === "creador"` o `"superadmin"`
  * (el superadmin también puede entrar a inspeccionar el admin de una
  * comunidad). Cualquier otro rol se manda a su propio home.
@@ -52,8 +65,11 @@ export default function CreadorLayout({ children }: { children: React.ReactNode 
   const router = useRouter();
   const autorizado = user !== null && (user.rol === "creador" || user.rol === "superadmin");
   const comunidad = useAppStore((s) => s.armazon)?.comunidad;
-  const items =
-    user?.rol === "superadmin" ? [...ITEMS_BASE, ITEM_PLATAFORMA] : ITEMS_BASE;
+  const items = [
+    ...ITEMS_BASE,
+    ...(comunidad?.slug ? [itemAreaAlumno(comunidad.slug)] : []),
+    ...(user?.rol === "superadmin" ? [ITEM_PLATAFORMA] : []),
+  ];
 
   useEffect(() => {
     if (!hydrated) return;

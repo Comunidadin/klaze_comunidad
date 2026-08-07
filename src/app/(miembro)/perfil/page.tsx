@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, LogOut, Save } from "lucide-react";
+import { ArrowLeft, LogOut, Save, KeyRound } from "lucide-react";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { cargarArmazon } from "@/lib/supabase/consultas";
 import { actualizarPerfil } from "@/lib/supabase/perfil";
@@ -15,6 +15,7 @@ import { NIVEL_MAXIMO, puntosParaNivel } from "@/lib/levels";
 import { MarcaAcademia } from "@/components/shared/marca-academia";
 import { LogoPlataforma } from "@/components/shared/logo";
 import { SubirImagen } from "@/components/shared/subir-imagen";
+import { CampoClave } from "@/components/shared/campo-clave";
 import { LevelBadge } from "@/components/shared/level-badge";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -67,6 +68,37 @@ function PerfilContenido({ user }: { user: User }) {
   const [nombre, setNombre] = useState(user.nombre);
   const [bio, setBio] = useState(user.bio);
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
+  const [claveNueva, setClaveNueva] = useState("");
+  const [claveRepetida, setClaveRepetida] = useState("");
+  const [cambiandoClave, setCambiandoClave] = useState(false);
+
+  async function cambiarClave(e: FormEvent) {
+    e.preventDefault();
+
+    if (claveNueva.length < 8) {
+      toast.error("La contraseña necesita al menos 8 caracteres.");
+      return;
+    }
+    if (claveNueva !== claveRepetida) {
+      toast.error("Las dos contraseñas no coinciden.");
+      return;
+    }
+
+    setCambiandoClave(true);
+    const { error } = await crearClienteNavegador().auth.updateUser({
+      password: claveNueva,
+    });
+    setCambiandoClave(false);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    setClaveNueva("");
+    setClaveRepetida("");
+    toast.success("Contraseña cambiada. La próxima vez entra con la nueva.");
+  }
 
   async function handleGuardar(e: FormEvent) {
     e.preventDefault();
@@ -235,6 +267,45 @@ function PerfilContenido({ user }: { user: User }) {
           </div>
           <Button type="submit">
             <Save /> Guardar cambios
+          </Button>
+        </form>
+
+        {/* Contraseña — formulario aparte a propósito: si compartiera botón con
+            el nombre y la bio, guardar un cambio de bio pediría la contraseña. */}
+        <form
+          onSubmit={cambiarClave}
+          className="space-y-4 rounded-2xl bg-card p-5 ring-1 ring-foreground/10"
+        >
+          <div>
+            <p className="text-sm font-medium text-foreground">Contraseña</p>
+            <p className="text-xs text-muted-foreground">
+              Si entraste con una temporal, este es el sitio para cambiarla.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="clave-nueva">Contraseña nueva</Label>
+            <CampoClave
+              id="clave-nueva"
+              value={claveNueva}
+              onChange={setClaveNueva}
+              autoComplete="new-password"
+              placeholder="Mínimo 8 caracteres"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="clave-repetida">Repítela</Label>
+            <CampoClave
+              id="clave-repetida"
+              value={claveRepetida}
+              onChange={setClaveRepetida}
+              autoComplete="new-password"
+            />
+          </div>
+
+          <Button type="submit" disabled={cambiandoClave || !claveNueva}>
+            <KeyRound /> {cambiandoClave ? "Cambiando…" : "Cambiar contraseña"}
           </Button>
         </form>
 

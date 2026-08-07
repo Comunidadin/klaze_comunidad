@@ -85,30 +85,43 @@ export async function POST(request: NextRequest) {
   const origen = new URL(request.url).origin;
   const destino = `${origen}/invitacion/${token}`;
 
-  // `invite` crea la cuenta si no existe. Si ya existe falla, y entonces sirve
-  // `magiclink`, que no la crea. Las dos aterrizan en la misma pantalla con la
-  // sesión ya iniciada.
-  let enlace: string | null = null;
-  let ultimoError = "";
-  for (const tipo of ["invite", "magiclink"] as const) {
-    const { data, error } = await admin.auth.admin.generateLink({
-      type: tipo,
-      email,
-      options: { redirectTo: destino },
-    });
-    if (!error && data?.properties?.action_link) {
-      enlace = data.properties.action_link;
-      break;
-    }
-    ultimoError = error?.message ?? "sin enlace";
-  }
+  // Se crea la cuenta CON contraseña temporal en vez de generar un enlace
+  // mágico.
+  //
+  // `generateLink({ type: "invite" })` no solo genera: **crea la cuenta y manda
+  // el correo de Supabase**, con su plantilla y su remitente. El nuestro salía
+  // después, así que el invitado recibía dos correos y abría el que no era. Y
+  // los enlaces mágicos ya habían fallado tres veces en este proyecto: caducan,
+  // se invalidan al generar el siguiente, y no sobreviven a un cliente de
+  // correo que los pre-visita.
+  //
+  // Una contraseña temporal no caduca, no se invalida sola, y se puede dictar
+  // por teléfono si el correo no llega.
+  const { data: lista } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  const existente = lista?.users?.find(
+    (u) => u.email?.toLowerCase() === email.toLowerCase()
+  );
 
-  if (!enlace) {
-    return NextResponse.json(
-      { error: `No se pudo generar el enlace de acceso: ${ultimoError}` },
-      { status: 500 }
-    );
+  let passwordTemporal: string | null = null;
+
+  if (!existente) {
+    passwordTemporal = "Klaze-" + crypto.randomUUID().replace(/-/g, "").slice(0, 10);
+    const { error } = await admin.auth.admin.createUser({
+      email,
+      password: passwordTemporal,
+      email_confirm: true,
+    });
+    if (error) {
+      return NextResponse.json(
+        { error: `No se pudo crear la cuenta: ${error.message}` },
+        { status: 500 }
+      );
+    }
   }
+  // Si ya tenía cuenta NO se le cambia la contraseña: podría estar en otra
+  // academia y le dejaríamos fuera de ella sin avisar. Entra con la suya.
+
+  const enlace = destino;
 
   if (soloEnlace) {
     return NextResponse.json({ ok: true, enlace, enviado: false });
@@ -124,11 +137,23 @@ export async function POST(request: NextRequest) {
       from: remitente,
       to: [email],
       subject: `Tu acceso a ${comunidad.nombre}`,
-      html: `
+      html: passwordTemporal
+        ? `
         <p>Te han dado acceso a <strong>${comunidad.nombre}</strong>.</p>
-        <p><a href="${enlace}">Entrar a la academia</a></p>
+        <p>Entra en <a href="${origen}/login">${origen}/login</a> con:</p>
+        <p>
+          Correo: <strong>${email}</strong><br>
+          Contraseña: <strong style="font-family:monospace">${passwordTemporal}</strong>
+        </p>
         <p style="color:#666;font-size:13px">
-          El enlace caduca en 24 horas. Si ya caducó, pide uno nuevo a quien te invitó.
+          Puedes cambiarla cuando quieras desde tu perfil.
+        </p>`
+        : `
+        <p>Te han dado acceso a <strong>${comunidad.nombre}</strong>.</p>
+        <p>Ya tenías cuenta, así que entra en
+           <a href="${origen}/login">${origen}/login</a> con tu contraseña de siempre.</p>
+        <p style="color:#666;font-size:13px">
+          Si no la recuerdas, usa "¿Olvidaste tu contraseña?" en esa misma pantalla.
         </p>`,
     }),
   });
