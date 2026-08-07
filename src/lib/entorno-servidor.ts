@@ -3,32 +3,31 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 /**
  * Lee una variable de servidor, del sitio donde de verdad esté.
  *
- * Hay dos sitios y no uno, y confundirlos costó un rato:
+ * Hay dos sitios y no uno:
  *
  * - **`process.env`** tiene lo que existía al compilar, porque Next incrusta
  *   esos valores en el paquete. Por eso `SUPABASE_SECRET_KEY` y
- *   `RESEND_API_KEY` funcionaban en producción: están en `.env.local`, así
- *   que viajaron dentro del build.
- * - **El entorno del worker** tiene los secretos que se subieron con
- *   `wrangler secret put`. Esos NO estaban al compilar, así que en
- *   `process.env` no aparecen: en producción llegan vacíos y la app dice que
- *   no está configurada.
+ *   `RESEND_API_KEY` funcionaban en producción: están en `.env.local`, así que
+ *   viajaron dentro del build.
+ * - **El entorno del worker** tiene los secretos subidos con
+ *   `wrangler secret put`. Esos no existían al compilar —que es justo para lo
+ *   que sirven los secretos— así que en `process.env` no aparecen.
  *
- * `OPENAI_API_KEY` era del segundo tipo, y ese es exactamente el caso para el
- * que existen los secretos: que no haga falta tenerlos en la máquina de quien
- * compila.
+ * Es **asíncrona a propósito**. La versión síncrona de `getCloudflareContext()`
+ * lanza si el contexto todavía no está montado, y un `catch` alrededor lo
+ * convertía en "no está configurado" sin decir por qué. Con `async: true` el
+ * adaptador espera a tenerlo.
  *
- * Se mira primero el worker y después `process.env`, para que en local —donde
- * no hay worker— siga funcionando `.env.local`.
+ * Fuera de Cloudflare —`bun run dev`, las pruebas— no hay contexto y se cae a
+ * `process.env`, que ahí sí tiene lo de `.env.local`.
  */
-export function variableServidor(nombre: string): string | undefined {
+export async function variableServidor(nombre: string): Promise<string | undefined> {
   try {
-    const env = getCloudflareContext().env as Record<string, unknown>;
-    const valor = env?.[nombre];
+    const { env } = await getCloudflareContext({ async: true });
+    const valor = (env as Record<string, unknown>)?.[nombre];
     if (typeof valor === "string" && valor) return valor;
   } catch {
-    // Fuera de Cloudflare —`bun run dev`, las pruebas— no hay contexto y lanza.
-    // No es un error: significa que toca mirar en `process.env`.
+    // Sin worker no hay contexto. No es un error: toca mirar en `process.env`.
   }
   return process.env[nombre] || undefined;
 }

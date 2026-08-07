@@ -21,9 +21,9 @@ import { variableServidor } from "@/lib/entorno-servidor";
  */
 export async function POST(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const secreta = variableServidor("SUPABASE_SECRET_KEY");
-  const resendKey = variableServidor("RESEND_API_KEY");
-  const remitente = variableServidor("RESEND_FROM");
+  const secreta = await variableServidor("SUPABASE_SECRET_KEY");
+  const resendKey = await variableServidor("RESEND_API_KEY");
+  const remitente = await variableServidor("RESEND_FROM");
 
   if (!url || !secreta || !resendKey || !remitente) {
     return NextResponse.json(
