@@ -43,6 +43,14 @@ test("A2b. ninguna tabla se queda solo con politica de lectura", async () => {
   // SELECT y nada mas: nadie podia escribir en ellas, ni su propio dueno. Lo
   // encontro la primera prueba que intento guardar un curso, no la auditoria.
   // Esta comprobacion existe para que no vuelva a colarse.
+  //
+  // `uso_ia` es la unica excepcion, y es deliberada: ahi la AUSENCIA de
+  // politica de escritura ES la proteccion. Solo escribe el Route Handler con
+  // la clave secreta, que se salta RLS. Con una politica de escritura, un
+  // alumno pondria su contador de preguntas a cero y gastaria sin limite la
+  // clave de OpenAI del dueno de la plataforma.
+  const EXCEPCIONES = ["uso_ia"];
+
   const soloLectura = await sql`
     select t.tablename
     from pg_tables t
@@ -58,7 +66,10 @@ test("A2b. ninguna tabla se queda solo con politica de lectura", async () => {
       )
     order by 1
   `;
-  expect(soloLectura.map((r: { tablename: string }) => r.tablename)).toEqual([]);
+  const inesperadas = soloLectura
+    .map((r: { tablename: string }) => r.tablename)
+    .filter((t: string) => !EXCEPCIONES.includes(t));
+  expect(inesperadas).toEqual([]);
 });
 
 test("A3. toda funcion `security definer` fija su search_path", async () => {

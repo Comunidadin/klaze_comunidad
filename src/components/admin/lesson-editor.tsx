@@ -2,6 +2,7 @@
 
 import { Plus, Trash2 } from "lucide-react";
 import { EditorBloques } from "@/components/admin/editor-bloques";
+import { AsistenteDeClase } from "@/components/admin/asistente-de-clase";
 import { SubirImagen } from "@/components/shared/subir-imagen";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -95,6 +96,15 @@ export function LessonEditor({
       <EditorBloques
         bloques={leccion.bloques}
         onCambio={(bloques) => set("bloques", bloques)}
+      />
+
+      <Separator />
+
+      <AsistenteDeClase
+        habilitada={leccion.iaHabilitada}
+        contexto={leccion.iaContexto ?? ""}
+        onHabilitar={(v) => set("iaHabilitada", v)}
+        onContexto={(v) => set("iaContexto", v)}
       />
 
       <Separator />

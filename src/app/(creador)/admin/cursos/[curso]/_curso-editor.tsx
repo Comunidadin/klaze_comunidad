@@ -94,6 +94,7 @@ function nuevaLeccion(id: string): Lesson {
     // Nace vacia y con un video dentro: es la pieza que se pone en el 90% de
     // los casos, y una clase sin piezas no se puede ver.
     bloques: [{ id: crypto.randomUUID(), tipo: "video", vimeoId: "" }],
+    iaHabilitada: false,
     recursos: [],
   };
 }
