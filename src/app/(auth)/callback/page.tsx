@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { useHydrated, useSession } from "@/lib/hooks/use-session";
@@ -117,9 +118,9 @@ export default function CallbackPage() {
         </p>
         <p className="text-sm text-muted-foreground">
           El enlace puede haber caducado o haberse usado ya. Vuelve a{" "}
-          <a href="/login" className="text-primary underline underline-offset-4">
+          <Link href="/login" className="text-primary underline underline-offset-4">
             entrar
-          </a>
+          </Link>
           .
         </p>
       </div>

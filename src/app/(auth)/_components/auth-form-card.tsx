@@ -2,6 +2,8 @@
 
 import { motion } from "framer-motion";
 import { LogoPlataforma } from "@/components/shared/logo";
+import { MarcaAcademia } from "@/components/shared/marca-academia";
+import { useMarcaDeLaEntrada } from "./marca-auth-context";
 
 export interface AuthFormCardProps {
   /** Título principal (font-display), p. ej. "Bienvenido de nuevo". */
@@ -20,6 +22,8 @@ export interface AuthFormCardProps {
  * aparezca "de golpe".
  */
 export function AuthFormCard({ titulo, subtitulo, children, footer }: AuthFormCardProps) {
+  const marca = useMarcaDeLaEntrada();
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -27,9 +31,22 @@ export function AuthFormCard({ titulo, subtitulo, children, footer }: AuthFormCa
       transition={{ duration: 0.4, ease: "easeOut" }}
     >
       {/* El logo va aquí en todos los tamaños: la portada de la izquierda es
-          solo video, sin marca encima (ver `AuthBrandPanel`). */}
+          solo video, sin marca encima (ver `AuthBrandPanel`).
+
+          Si la URL dice a qué academia se entra, sale SU marca. Un alumno de
+          Mentoría V7.0 no tiene por qué saber que la herramienta se llama
+          Klaze. */}
       <div className="mb-8 flex justify-center">
-        <LogoPlataforma href="/login" orientacion="vertical" />
+        {marca.nombre ? (
+          <MarcaAcademia
+            nombre={marca.nombre}
+            logoUrl={marca.logoUrl}
+            colorAcento={marca.colorAcento}
+            orientacion="vertical"
+          />
+        ) : (
+          <LogoPlataforma href="/login" orientacion="vertical" />
+        )}
       </div>
 
       <h1 className="text-center font-display text-xl font-bold tracking-tight text-foreground">

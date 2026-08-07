@@ -145,6 +145,8 @@ function ConfiguracionForm({
   const [colorAcento, setColorAcento] = useState(community.colorAcento);
   const [nombreIa, setNombreIa] = useState(community.nombreIa ?? "");
   const [avatarIa, setAvatarIa] = useState(community.avatarIa ?? "");
+  const [videoAuth, setVideoAuth] = useState(community.marcaAuth?.videoUrl ?? "");
+  const [posterAuth, setPosterAuth] = useState(community.marcaAuth?.posterUrl ?? "");
 
   async function handleGuardar() {
     const nombreLimpio = nombre.trim();
@@ -160,6 +162,10 @@ function ConfiguracionForm({
         colorAcento,
         nombreIa,
         avatarIa,
+        marcaAuth: {
+          videoUrl: videoAuth.trim() || undefined,
+          posterUrl: posterAuth.trim() || undefined,
+        },
       });
       // Recargar el armazón para que el nombre y el color nuevos se vean en
       // toda la app, no solo en esta pantalla.
@@ -236,6 +242,45 @@ function ConfiguracionForm({
               etiqueta="Subir la cara del asistente"
               ayuda="Cuadrada, 256 × 256. Se ve pequeña y en círculo, así que centra la cara. Sin foto se usa un icono."
             />
+          </div>
+
+          <Separator />
+
+          <div className="space-y-3">
+            <div>
+              <Label>Portada de la pantalla de entrada</Label>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Lo que se ve a la izquierda cuando tus alumnos entran por{" "}
+                <span className="font-mono">/login/{community.slug}</span>.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="config-video">Vídeo (opcional)</Label>
+              <Input
+                id="config-video"
+                value={videoAuth}
+                onChange={(e) => setVideoAuth(e.target.value)}
+                placeholder="https://…/portada.mp4"
+              />
+              <p className="text-xs text-muted-foreground">
+                Enlace directo a un .mp4 o .webm. Se reproduce en bucle, sin
+                sonido y sin controles, así que que sea corto y ligero.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Imagen de respaldo</Label>
+              <SubirImagen
+                valor={posterAuth}
+                onCambio={setPosterAuth}
+                proporcion={9 / 16}
+                anchoSalida={1080}
+                destino={{ tipo: "academia", comunidadId: community.id, uso: "auth" }}
+                etiqueta="Subir la portada de la entrada"
+                ayuda="Vertical 9:16, 1080 × 1920. Se ve mientras carga el vídeo, si falla, y a quien haya pedido menos animación. Sin ninguna de las dos, el degradado de tu color."
+              />
+            </div>
           </div>
 
           <Separator />
