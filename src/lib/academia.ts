@@ -138,6 +138,19 @@ export async function crearAcademia(
     .single();
   if (errCom) throw new Error(`No se pudo crear la comunidad: ${errCom.message}`);
 
+  // Se inscribe al creador en su propia academia. Sin esto, "Ver como alumno"
+  // le enseña una academia vacía: el contenido solo llega a quien tiene
+  // inscripción (`privado.cubre_curso`), y ser el dueño no es una.
+  const { error: errInscripcion } = await admin.from("inscripciones").insert({
+    usuario_id: usuarioId,
+    comunidad_id: com.id,
+    estado: "activo",
+    todos_los_cursos: true,
+  });
+  if (errInscripcion) {
+    throw new Error(`No se pudo inscribir al creador: ${errInscripcion.message}`);
+  }
+
   return {
     comunidadId: com.id,
     usuarioId,

@@ -2,11 +2,13 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { KeyRound, MailCheck, Send } from "lucide-react";
 import { useSession } from "@/lib/hooks/use-session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CampoClave } from "@/components/shared/campo-clave";
 import { AuthFormCard } from "../_components/auth-form-card";
 
 type Modo = "enlace" | "clave";
@@ -55,6 +57,31 @@ export default function LoginPage() {
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Pide el enlace para poner una contraseña nueva.
+   *
+   * Dice lo mismo exista o no la cuenta: si respondiera "ese correo no está
+   * registrado", cualquiera podría averiguar quién tiene cuenta preguntando
+   * uno a uno.
+   */
+  async function recuperar() {
+    const correo = email.trim();
+    if (!correo) {
+      toast.error("Escribe tu correo arriba y vuelve a pulsar.");
+      return;
+    }
+
+    await fetch("/api/recuperar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: correo }),
+    }).catch(() => {});
+
+    toast.success(
+      `Si ${correo} tiene cuenta, le llega un correo para elegir contraseña nueva.`
+    );
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -120,14 +147,22 @@ export default function LoginPage() {
 
         {modo === "clave" && (
           <div className="flex flex-col gap-2">
-            <Label htmlFor="clave">Contraseña</Label>
-            <Input
+            <div className="flex items-baseline justify-between gap-2">
+              <Label htmlFor="clave">Contraseña</Label>
+              <button
+                type="button"
+                onClick={() => void recuperar()}
+                className="cursor-pointer text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+              >
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
+            <CampoClave
               id="clave"
-              type="password"
-              required
-              autoComplete="current-password"
               value={clave}
-              onChange={(e) => setClave(e.target.value)}
+              onChange={setClave}
+              autoComplete="current-password"
+              required
             />
           </div>
         )}
