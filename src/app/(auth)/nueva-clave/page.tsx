@@ -66,7 +66,7 @@ export default function NuevaClavePage() {
 
   if (listo === null) {
     return (
-      <AuthFormCard titulo="Un momento…" descripcion="Comprobando tu enlace.">
+      <AuthFormCard titulo="Un momento…" subtitulo="Comprobando tu enlace.">
         <span />
       </AuthFormCard>
     );
@@ -76,7 +76,7 @@ export default function NuevaClavePage() {
     return (
       <AuthFormCard
         titulo="Este enlace ya no vale"
-        descripcion="Puede haber caducado, o haberse usado ya."
+        subtitulo="Puede haber caducado, o haberse usado ya."
       >
         <Button asChild className="w-full">
           <Link href="/login">Pedir uno nuevo</Link>
@@ -88,7 +88,7 @@ export default function NuevaClavePage() {
   return (
     <AuthFormCard
       titulo="Elige tu contraseña"
-      descripcion="Con esta entrarás a partir de ahora."
+      subtitulo="Con esta entrarás a partir de ahora."
     >
       <form onSubmit={guardar} className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
