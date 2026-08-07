@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SubirImagen } from "@/components/shared/subir-imagen";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -195,17 +196,22 @@ export default function AdminCursosPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="nuevo-portada">URL de portada</Label>
-                  <Input
-                    id="nuevo-portada"
-                    value={portadaUrl}
-                    onChange={(e) => setPortadaUrl(e.target.value)}
-                    placeholder="https://…"
+                  <Label>Portada</Label>
+                  <SubirImagen
+                    valor={portadaUrl}
+                    onCambio={setPortadaUrl}
+                    proporcion={16 / 9}
+                    anchoSalida={1280}
+                    destino={{ tipo: "academia", comunidadId: community.id, uso: "portada" }}
+                    etiqueta="Subir la portada del curso"
                   />
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Sin portada, mostramos un fondo con la inicial del curso hasta que subas una imagen.
+                Portada en 16:9, 1280 × 720. En la ficha del curso se estira a una
+                franja ancha y lleva un degradado oscuro abajo para el título, así
+                que deja lo importante en el centro. Sin portada mostramos un fondo
+                con la inicial del curso.
               </p>
             </div>
 

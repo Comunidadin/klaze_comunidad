@@ -14,6 +14,7 @@ import { homePorRol } from "@/lib/routes";
 import { NIVEL_MAXIMO, puntosParaNivel } from "@/lib/levels";
 import { MarcaAcademia } from "@/components/shared/marca-academia";
 import { LogoPlataforma } from "@/components/shared/logo";
+import { SubirImagen } from "@/components/shared/subir-imagen";
 import { LevelBadge } from "@/components/shared/level-badge";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -65,6 +66,7 @@ function PerfilContenido({ user }: { user: User }) {
 
   const [nombre, setNombre] = useState(user.nombre);
   const [bio, setBio] = useState(user.bio);
+  const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
 
   async function handleGuardar(e: FormEvent) {
     e.preventDefault();
@@ -75,9 +77,13 @@ function PerfilContenido({ user }: { user: User }) {
     }
     try {
       const supabase = crearClienteNavegador();
-      await actualizarPerfil(supabase, { nombre: nombreLimpio, bio: bio.trim() });
-      // Recargar el armazón para que el nombre nuevo se vea en todas partes:
-      // el menú, sus publicaciones y su ficha de alumno.
+      await actualizarPerfil(supabase, {
+        nombre: nombreLimpio,
+        bio: bio.trim(),
+        avatarUrl,
+      });
+      // Recargar el armazón para que el nombre y la foto nuevos se vean en
+      // todas partes: el menú, sus publicaciones y su ficha de alumno.
       establecerArmazon(await cargarArmazon(supabase));
       toast.success("Tu perfil se actualizó correctamente.");
     } catch (err) {
@@ -141,7 +147,7 @@ function PerfilContenido({ user }: { user: User }) {
         {/* Identidad */}
         <div className="flex items-center gap-4 rounded-2xl bg-card p-5 ring-1 ring-foreground/10">
           <Avatar size="lg">
-            <AvatarImage src={user.avatarUrl} alt={user.nombre} />
+            <AvatarImage src={avatarUrl} alt={user.nombre} />
             <AvatarFallback>{user.nombre[0]}</AvatarFallback>
           </Avatar>
           <div className="min-w-0">
@@ -192,6 +198,22 @@ function PerfilContenido({ user }: { user: User }) {
           onSubmit={handleGuardar}
           className="space-y-4 rounded-2xl bg-card p-5 ring-1 ring-foreground/10"
         >
+          <div className="space-y-1.5">
+            <Label>Foto de perfil</Label>
+            <SubirImagen
+              valor={avatarUrl}
+              onCambio={setAvatarUrl}
+              proporcion={1}
+              anchoSalida={512}
+              destino={{ tipo: "avatar", usuarioId: user.id }}
+              etiqueta="Subir tu foto de perfil"
+              ayuda="Cuadrada, 512 × 512. Se recorta en círculo, así que centra la cara."
+            />
+            <p className="text-xs text-muted-foreground">
+              Se guarda al pulsar «Guardar cambios».
+            </p>
+          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="nombre">Nombre</Label>
             <Input

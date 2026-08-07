@@ -10,7 +10,7 @@ import type { Community } from "@/lib/types";
  */
 export async function actualizarPerfil(
   supabase: SupabaseClient,
-  cambios: { nombre: string; bio: string }
+  cambios: { nombre: string; bio: string; avatarUrl?: string }
 ): Promise<void> {
   const { data: sesion } = await supabase.auth.getUser();
   const id = sesion.user?.id;
@@ -18,7 +18,13 @@ export async function actualizarPerfil(
 
   const { error } = await supabase
     .from("perfiles")
-    .update({ nombre: cambios.nombre, bio: cambios.bio })
+    .update({
+      nombre: cambios.nombre,
+      bio: cambios.bio,
+      // Solo si viene: mandarlo siempre borraría el avatar de quien guarda
+      // el formulario sin haberlo tocado.
+      ...(cambios.avatarUrl !== undefined ? { avatar_url: cambios.avatarUrl } : {}),
+    })
     .eq("id", id);
 
   if (error) throw new Error(`No se pudo guardar el perfil: ${error.message}`);

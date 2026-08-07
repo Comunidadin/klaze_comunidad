@@ -24,7 +24,7 @@ import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { useAdminCourse } from "@/lib/hooks/use-admin-courses";
 import { useAppStore } from "@/lib/store";
 import { leccionesOrdenadas, moduloDeLeccion, modulosOrdenados } from "@/components/course/course-utils";
-import { CoursePortada } from "@/components/course/course-portada";
+import { SubirImagen } from "@/components/shared/subir-imagen";
 import { LessonEditor } from "@/components/admin/lesson-editor";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -403,16 +403,19 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 border-b border-border px-2.5 py-2">
-                    <div className="relative size-9 shrink-0 overflow-hidden rounded-md bg-muted ring-1 ring-foreground/10">
-                      <CoursePortada portadaUrl={modulo.portadaUrl ?? ""} titulo={modulo.titulo} />
-                    </div>
-                    <Input
-                      value={modulo.portadaUrl ?? ""}
-                      onChange={(e) => actualizarPortadaModulo(modulo.id, e.target.value)}
-                      placeholder="URL de portada del módulo (opcional)"
-                      aria-label={`URL de portada del módulo ${indiceModulo + 1}`}
-                      className="h-8 flex-1 text-xs"
+                  <div className="border-b border-border px-2.5 py-2">
+                    <SubirImagen
+                      valor={modulo.portadaUrl ?? ""}
+                      onCambio={(url) => actualizarPortadaModulo(modulo.id, url)}
+                      proporcion={2 / 3}
+                      anchoSalida={800}
+                      destino={{
+                        tipo: "academia",
+                        comunidadId: community.id,
+                        uso: "modulo",
+                      }}
+                      etiqueta={`Subir la portada del módulo ${indiceModulo + 1}`}
+                      ayuda="Vertical 2:3, 800 × 1200. El número y el título van encima con un degradado oscuro."
                     />
                   </div>
 
