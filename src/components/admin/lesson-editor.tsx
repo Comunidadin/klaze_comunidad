@@ -2,6 +2,7 @@
 
 import { FileText, Plus, Trash2, Video } from "lucide-react";
 import { VimeoField } from "@/components/admin/vimeo-field";
+import { SubirImagen } from "@/components/shared/subir-imagen";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,6 +21,8 @@ import type { Lesson } from "@/lib/types";
 export interface LessonEditorProps {
   leccion: Lesson;
   onChange: (leccion: Lesson) => void;
+  /** Hace falta para saber en qué carpeta guardar la miniatura. */
+  comunidadId: string;
   className?: string;
 }
 
@@ -32,7 +35,12 @@ export interface LessonEditorProps {
  * componente tenga que sincronizar nada manualmente (ver docstring de
  * `VimeoField`).
  */
-export function LessonEditor({ leccion, onChange, className }: LessonEditorProps) {
+export function LessonEditor({
+  leccion,
+  onChange,
+  comunidadId,
+  className,
+}: LessonEditorProps) {
   function set<K extends keyof Lesson>(campo: K, valor: Lesson[K]) {
     onChange({ ...leccion, [campo]: valor });
   }
@@ -64,6 +72,19 @@ export function LessonEditor({ leccion, onChange, className }: LessonEditorProps
           value={leccion.titulo}
           onChange={(e) => set("titulo", e.target.value)}
           placeholder="Ej. Cómo elegir un nicho rentable"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Miniatura</Label>
+        <SubirImagen
+          valor={leccion.portadaUrl}
+          onCambio={(url) => set("portadaUrl", url)}
+          proporcion={16 / 9}
+          anchoSalida={960}
+          destino={{ tipo: "academia", comunidadId, uso: "portada" }}
+          etiqueta="Subir la miniatura de la clase"
+          ayuda="16:9 · 960 × 540. Sin ella se usa la del módulo."
         />
       </div>
 

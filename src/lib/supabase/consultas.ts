@@ -67,7 +67,7 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
     `id, comunidad_id, slug, titulo, descripcion, portada_url,
      precio_referencial, nivel_requerido, publicado,
      modulos ( id, titulo, orden, portada_url,
-       lecciones ( id, titulo, orden, tipo, vimeo_id, duracion_min, contenido, recursos ) )`
+       lecciones ( id, titulo, orden, tipo, vimeo_id, duracion_min, contenido, recursos, portada_url ) )`
   );
 
   const perfil: User = {
@@ -131,6 +131,7 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
             id: l.id,
             titulo: l.titulo,
             orden: l.orden,
+            portadaUrl: l.portada_url ?? undefined,
             tipo: l.tipo as Course["modulos"][number]["lecciones"][number]["tipo"],
             vimeoId: l.vimeo_id,
             duracionMin: l.duracion_min,
