@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { variableServidor } from "@/lib/entorno-servidor";
 
 /**
  * Preguntas sobre una clase, respondidas por un modelo con el guion delante.
@@ -16,18 +17,20 @@ import { createClient } from "@supabase/supabase-js";
  * La clave secreta se usa solo para el contador, que el alumno no debe tocar.
  */
 
-/** Preguntas por persona y día. El techo de la factura. */
-const TOPE_DIARIO = Number(process.env.IA_TOPE_DIARIO ?? 20);
+/** Cuánto guion se manda como mucho. Un guion enorme multiplica el coste. */
 
 /** Cuánto guion se manda como mucho. Un guion enorme multiplica el coste. */
 const MAX_CONTEXTO = 24_000;
 
 export async function POST(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const secreta = process.env.SUPABASE_SECRET_KEY;
+  const secreta = variableServidor("SUPABASE_SECRET_KEY");
   const publicable = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  const openaiKey = process.env.OPENAI_API_KEY;
-  const modelo = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
+  const openaiKey = variableServidor("OPENAI_API_KEY");
+  const modelo = variableServidor("OPENAI_MODEL") ?? "gpt-4o-mini";
+  // Se lee por petición y no en el módulo: en el módulo se evaluaría al
+  // arrancar el worker, antes de que exista su entorno.
+  const topeDiario = Number(variableServidor("IA_TOPE_DIARIO") ?? 20);
 
   if (!url || !secreta || !publicable) {
     return NextResponse.json({ error: "Faltan variables de servidor" }, { status: 500 });
@@ -101,7 +104,7 @@ export async function POST(request: NextRequest) {
   // `IA_ACTIVA=false` es el interruptor global: corta el gasto en toda la
   // plataforma sin desplegar nada. Es lo que se toca si algo se dispara de
   // madrugada.
-  if (process.env.IA_ACTIVA === "false") {
+  if (variableServidor("IA_ACTIVA") === "false") {
     return NextResponse.json(
       { error: "El asistente está desactivado temporalmente." },
       { status: 503 }
@@ -129,10 +132,10 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
 
   const usadas = uso?.preguntas ?? 0;
-  if (usadas >= TOPE_DIARIO) {
+  if (usadas >= topeDiario) {
     return NextResponse.json(
       {
-        error: `Has llegado a tus ${TOPE_DIARIO} preguntas de hoy. Mañana se renueva.`,
+        error: `Has llegado a tus ${topeDiario} preguntas de hoy. Mañana se renueva.`,
         restantes: 0,
       },
       { status: 429 }
@@ -210,7 +213,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       respuesta: texto,
-      restantes: Math.max(0, TOPE_DIARIO - (usadas + 1)),
+      restantes: Math.max(0, topeDiario - (usadas + 1)),
     });
   } catch (e) {
     return NextResponse.json(

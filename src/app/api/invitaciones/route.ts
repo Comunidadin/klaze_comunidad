@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { variableServidor } from "@/lib/entorno-servidor";
 
 /**
  * Genera el enlace de acceso de una invitación y lo manda por correo.
@@ -16,9 +17,9 @@ import { createClient } from "@supabase/supabase-js";
  */
 export async function POST(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const secreta = process.env.SUPABASE_SECRET_KEY;
-  const resendKey = process.env.RESEND_API_KEY;
-  const remitente = process.env.RESEND_FROM;
+  const secreta = variableServidor("SUPABASE_SECRET_KEY");
+  const resendKey = variableServidor("RESEND_API_KEY");
+  const remitente = variableServidor("RESEND_FROM");
 
   if (!url || !secreta || !resendKey || !remitente) {
     return NextResponse.json(
