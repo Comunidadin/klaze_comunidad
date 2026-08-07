@@ -6,7 +6,11 @@ import { cn } from "@/lib/utils";
 import type { User } from "@/lib/types";
 
 export interface MemberCardProps {
-  usuario: User;
+  /**
+   * Solo lo que la tarjeta pinta. No pide un `User` entero para que nadie
+   * tenga que inventarse un correo o un rol para poder enseñar una foto.
+   */
+  usuario: Pick<User, "nombre" | "avatarUrl" | "bio" | "nivel">;
   onClick?: () => void;
   className?: string;
 }

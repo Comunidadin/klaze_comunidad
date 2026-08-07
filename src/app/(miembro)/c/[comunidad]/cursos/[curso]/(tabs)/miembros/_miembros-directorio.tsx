@@ -4,7 +4,10 @@ import { useMemo, useState } from "react";
 import { Search, Star, Users } from "lucide-react";
 import { useCommunity } from "@/lib/hooks/use-community";
 import { useCourses } from "@/lib/hooks/use-courses";
-import { useMembers } from "@/lib/hooks/use-members";
+import {
+  useDirectorioCurso,
+  type MiembroDirectorio,
+} from "@/lib/hooks/use-directorio-curso";
 import { MemberCard } from "@/components/community/member-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LevelBadge } from "@/components/shared/level-badge";
@@ -18,7 +21,6 @@ import {
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatFechaLarga } from "@/lib/format-fecha";
-import type { User } from "@/lib/types";
 
 export interface MiembrosDirectorioProps {
   comunidadSlug: string;
@@ -43,9 +45,9 @@ export function MiembrosDirectorio({ comunidadSlug, cursoSlug }: MiembrosDirecto
   const resultado = useCommunity(comunidadSlug);
   const { cursos } = useCourses(resultado?.community.id ?? "");
   const curso = cursos.find((c) => c.slug === cursoSlug);
-  const { miembros } = useMembers(resultado?.community.id ?? "", curso?.id ?? "");
+  const miembros = useDirectorioCurso(curso?.id ?? "");
   const [busqueda, setBusqueda] = useState("");
-  const [seleccionado, setSeleccionado] = useState<User | null>(null);
+  const [seleccionado, setSeleccionado] = useState<MiembroDirectorio | null>(null);
 
   const filtrados = useMemo(() => {
     const q = normalizar(busqueda.trim());
