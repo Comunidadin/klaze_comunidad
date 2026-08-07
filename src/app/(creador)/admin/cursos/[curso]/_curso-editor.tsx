@@ -463,15 +463,15 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
                     <SubirImagen
                       valor={modulo.portadaUrl ?? ""}
                       onCambio={(url) => actualizarPortadaModulo(modulo.id, url)}
-                      proporcion={2 / 3}
-                      anchoSalida={800}
+                      proporcion={16 / 9}
+                      anchoSalida={1280}
                       destino={{
                         tipo: "academia",
                         comunidadId: community.id,
                         uso: "modulo",
                       }}
                       etiqueta={`Subir la portada del módulo ${indiceModulo + 1}`}
-                      ayuda="Vertical 2:3 · 800 × 1200"
+                      ayuda="16:9 · 1280 × 720"
                     />
                   </div>
 
