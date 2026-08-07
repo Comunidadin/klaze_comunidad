@@ -27,18 +27,25 @@ import { FullScreenLoader } from "@/components/shared/full-screen-loader";
  * `.then()` que actualiza el estado nunca corre de forma síncrona dentro del
  * efecto, que dispararía renders en cascada.
  */
-async function resolverRetorno(): Promise<string | null> {
+interface Retorno {
+  error: string | null;
+  /** `recovery` cuando el enlace venía de "olvidé mi contraseña". */
+  tipo: string | null;
+}
+
+async function resolverRetorno(): Promise<Retorno> {
   const consulta = new URLSearchParams(window.location.search);
   const errorConsulta = consulta.get("error_description") ?? consulta.get("error");
-  if (errorConsulta) return errorConsulta;
+  if (errorConsulta) return { error: errorConsulta, tipo: null };
 
   const hash = window.location.hash;
-  if (!hash.includes("access_token")) return null;
+  if (!hash.includes("access_token")) return { error: null, tipo: null };
 
   const params = new URLSearchParams(hash.slice(1));
   const accessToken = params.get("access_token");
   const refreshToken = params.get("refresh_token");
-  if (!accessToken || !refreshToken) return null;
+  const tipo = params.get("type");
+  if (!accessToken || !refreshToken) return { error: null, tipo };
 
   const { error } = await crearClienteNavegador().auth.setSession({
     access_token: accessToken,
@@ -49,21 +56,23 @@ async function resolverRetorno(): Promise<string | null> {
   // historial en cuanto se ha usado.
   window.history.replaceState(null, "", window.location.pathname);
 
-  return error?.message ?? null;
+  return { error: error?.message ?? null, tipo };
 }
 
 export default function CallbackPage() {
   const [canjeado, setCanjeado] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tipo, setTipo] = useState<string | null>(null);
   const hydrated = useHydrated();
   const { user } = useSession();
   const router = useRouter();
 
   useEffect(() => {
     let vivo = true;
-    void resolverRetorno().then((mensaje) => {
+    void resolverRetorno().then((retorno) => {
       if (!vivo) return;
-      if (mensaje) setError(mensaje);
+      if (retorno.error) setError(retorno.error);
+      setTipo(retorno.tipo);
       setCanjeado(true);
     });
     return () => {
@@ -73,8 +82,18 @@ export default function CallbackPage() {
 
   useEffect(() => {
     if (!canjeado || !hydrated || error) return;
+
+    // Todo pasa por aquí y no por una ruta propia porque `/callback` ya está
+    // en las direcciones permitidas de Supabase. Una ruta nueva habría que
+    // añadirla allí, y hasta entonces Supabase la ignora y manda el enlace al
+    // Site URL — que es como acababa en `localhost` desde producción.
+    if (tipo === "recovery") {
+      router.replace("/nueva-clave");
+      return;
+    }
+
     router.replace(user ? homePorRol(user) : "/login");
-  }, [canjeado, hydrated, error, user, router]);
+  }, [canjeado, hydrated, error, tipo, user, router]);
 
   if (error) {
     return (
