@@ -153,7 +153,7 @@ export function ModuloDetalle({ comunidadSlug, cursoSlug, moduloId }: ModuloDeta
         <div className="space-y-1.5">
           <div className="flex items-baseline justify-between">
             <h2 className="font-display text-base font-semibold text-foreground">
-              Lecciones
+              Clases
             </h2>
             <span className="text-xs text-muted-foreground">
               {formatDuracion(totalMin)} en total
