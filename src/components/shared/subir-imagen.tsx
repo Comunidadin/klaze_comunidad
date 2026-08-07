@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Cropper, { type Area } from "react-easy-crop";
 import { toast } from "sonner";
-import { ImageUp, Trash2 } from "lucide-react";
+import { ImageUp, Link2, Trash2 } from "lucide-react";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import {
   subirImagen,
@@ -11,6 +11,7 @@ import {
   type DestinoImagen,
 } from "@/lib/supabase/almacenamiento";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import {
   Dialog,
@@ -21,6 +22,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+
+/** `true` si la URL no salió de nuestro almacén: alguien la pegó a mano. */
+function esEnlaceExterno(url: string | undefined): boolean {
+  return Boolean(url) && !url!.includes("/storage/v1/object/public/publico/");
+}
 
 /** Lo que el bucket acepta. Se comprueba aquí para dar un error legible. */
 const TIPOS = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
@@ -120,6 +126,12 @@ export function SubirImagen({
   const [zoom, setZoom] = useState(1);
   const [area, setArea] = useState<Area | null>(null);
   const [subiendo, setSubiendo] = useState(false);
+  // Pegar un enlace sigue siendo válido: mucha gente ya aloja sus imágenes en
+  // su propia web y obligarla a resubirlas sería quitarle algo que funcionaba.
+  // Va plegado porque es el camino menos común —pero abierto de entrada si el
+  // valor actual ES un enlace externo, o quedaría escondido detrás de un botón
+  // y parecería que se ha perdido.
+  const [enlaceAbierto, setEnlaceAbierto] = useState(() => esEnlaceExterno(valor));
 
   function elegir(archivo: File | undefined) {
     if (!archivo) return;
@@ -160,6 +172,7 @@ export function SubirImagen({
       // fallara la subida, se habría perdido la única imagen que había.
       const anterior = valor;
       onCambio(url);
+      setEnlaceAbierto(false);
       cerrar();
       void borrarImagen(crearClienteNavegador(), anterior);
 
@@ -223,6 +236,33 @@ export function SubirImagen({
       </div>
 
       {ayuda && <p className="text-xs text-muted-foreground">{ayuda}</p>}
+
+      {enlaceAbierto ? (
+        <div className="space-y-1.5">
+          <Input
+            value={valor ?? ""}
+            onChange={(e) => onCambio(e.target.value.trim())}
+            placeholder="https://tu-web.com/imagen.jpg"
+            aria-label={`${etiqueta}: pegar un enlace`}
+            className="h-8 text-xs"
+            autoFocus
+          />
+          <p className="text-xs text-muted-foreground">
+            Tiene que ser el enlace directo al archivo, terminado en .jpg o
+            .png. Los de Google Drive y Dropbox no sirven: llevan a una página,
+            no a la imagen. Un enlace no pasa por el recuadro de encuadre, así
+            que se recortará centrado.
+          </p>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setEnlaceAbierto(true)}
+          className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <Link2 className="size-3.5" /> O pegar un enlace
+        </button>
+      )}
 
       <Dialog open={!!origen} onOpenChange={(abierto) => !abierto && cerrar()}>
         <DialogContent className="sm:max-w-lg">
