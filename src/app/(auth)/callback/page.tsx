@@ -28,6 +28,21 @@ import { FullScreenLoader } from "@/components/shared/full-screen-loader";
  * `.then()` que actualiza el estado nunca corre de forma síncrona dentro del
  * efecto, que dispararía renders en cascada.
  */
+/**
+ * El fragmento de la URL, leído al cargar este archivo.
+ *
+ * Se captura aquí y no dentro de un efecto porque el cliente de Supabase
+ * **borra el fragmento** en cuanto alguien lo crea, y `useSession` lo crea en
+ * todos los layouts. Cuando el efecto de esta pantalla miraba, el
+ * `type=recovery` ya no estaba, y quien pedía recuperar su contraseña acababa
+ * dentro de la app sin haberla cambiado.
+ *
+ * Este módulo se evalúa antes de que se monte ningún componente, así que llega
+ * el primero.
+ */
+const FRAGMENTO_INICIAL =
+  typeof window === "undefined" ? "" : window.location.hash;
+
 interface Retorno {
   error: string | null;
   /** `recovery` cuando el enlace venía de "olvidé mi contraseña". */
@@ -40,18 +55,11 @@ async function resolverRetorno(): Promise<Retorno> {
   const consulta = new URLSearchParams(window.location.search);
   const errorConsulta = consulta.get("error_description") ?? consulta.get("error");
 
-  // El destino viaja en la QUERY y no en el fragmento a propósito.
-  //
-  // El fragmento (`#access_token=…&type=recovery`) lo consume el cliente de
-  // Supabase en cuanto alguien lo crea —y `useSession` lo crea en todos los
-  // layouts—, así que para cuando esta función miraba, el `type=recovery` ya
-  // no estaba. El enlace de recuperación acababa metiendo a la persona en la
-  // app en vez de dejarle elegir contraseña.
   const destino = consulta.get("destino");
 
   if (errorConsulta) return { error: errorConsulta, tipo: null, destino };
 
-  const hash = window.location.hash;
+  const hash = FRAGMENTO_INICIAL || window.location.hash;
   if (!hash.includes("access_token")) return { error: null, tipo: null, destino };
 
   const params = new URLSearchParams(hash.slice(1));
