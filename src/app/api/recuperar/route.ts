@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     // ignora y usa el Site URL — así es como el enlace acababa en `localhost`
     // abierto desde producción. `/callback` reconoce que el enlace era de
     // recuperación y lleva a `/nueva-clave`.
-    options: { redirectTo: `${origen}/callback` },
+    options: { redirectTo: `${origen}/callback?destino=nueva-clave` },
   });
 
   // Si la cuenta no existe, `generateLink` falla. Se responde igual que si
