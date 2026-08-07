@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
   const secreta = await variableServidor("SUPABASE_SECRET_KEY");
   const publicable = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const openaiKey = await variableServidor("OPENAI_API_KEY");
-  const modelo = await variableServidor("OPENAI_MODEL") ?? "gpt-4o-mini";
+  const modelo = await variableServidor("OPENAI_MODEL") ?? "gpt-5-nano";
   // Se lee por petición y no en el módulo: en el módulo se evaluaría al
   // arrancar el worker, antes de que exista su entorno.
   const topeDiario = Number(await variableServidor("IA_TOPE_DIARIO") ?? 20);
