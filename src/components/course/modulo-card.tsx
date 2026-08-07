@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { CheckCircle2, PlayCircle } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle2, Lock, PlayCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { CoursePortada } from "@/components/course/course-portada";
@@ -13,8 +14,14 @@ export interface ModuloCardProps {
   /** Posición 1-based dentro del curso — se muestra como numeral de capítulo. */
   numero: number;
   progreso: ProgresoModulo;
-  seleccionado: boolean;
-  onSeleccionar: () => void;
+  /** A dónde lleva. Se ignora si `bloqueado`. */
+  href: string;
+  /**
+   * El curso no está incluido en el acceso de quien mira. La tarjeta se ve
+   * —enseñar lo que hay detrás vende— pero no lleva a ningún sitio. RLS ya
+   * filtra el contenido; esto es para que la tarjeta tampoco invite.
+   */
+  bloqueado?: boolean;
 }
 
 /**
@@ -25,21 +32,19 @@ export interface ModuloCardProps {
  * `portadaUrl ?? ""` — el fallback de gradiente + inicial ya contempla ese
  * caso, así que no hace falta un componente aparte para el módulo.
  */
-export function ModuloCard({ modulo, numero, progreso, seleccionado, onSeleccionar }: ModuloCardProps) {
+export function ModuloCard({ modulo, numero, progreso, href, bloqueado }: ModuloCardProps) {
   const completo = progreso.total > 0 && progreso.pct >= 100;
   const conProgreso = progreso.pct > 0;
 
-  return (
-    <button
-      type="button"
-      onClick={onSeleccionar}
-      aria-pressed={seleccionado}
-      className={cn(
-        "group relative flex aspect-[2/3] w-full flex-col overflow-hidden rounded-2xl bg-card text-left ring-1 ring-foreground/10 transition-all duration-300",
-        "hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        seleccionado && "ring-2 ring-brand shadow-lg shadow-brand/15"
-      )}
-    >
+  const clases = cn(
+    "group relative flex aspect-[2/3] w-full flex-col overflow-hidden rounded-2xl bg-card text-left ring-1 ring-foreground/10 transition-all duration-300",
+    bloqueado
+      ? "cursor-default opacity-60"
+      : "hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+  );
+
+  const contenido = (
+    <>
       <CoursePortada
         portadaUrl={modulo.portadaUrl ?? ""}
         titulo={modulo.titulo}
@@ -60,6 +65,15 @@ export function ModuloCard({ modulo, numero, progreso, seleccionado, onSeleccion
         <Badge className="absolute top-2 right-2 z-10 gap-1 border-0 bg-brand text-brand-foreground">
           <CheckCircle2 className="size-3" /> Completo
         </Badge>
+      )}
+
+      {bloqueado && (
+        <span
+          className="absolute top-2 right-2 z-10 flex size-7 items-center justify-center rounded-full bg-black/60 text-white"
+          aria-hidden="true"
+        >
+          <Lock className="size-3.5" />
+        </span>
       )}
 
       <div className="relative mt-auto flex flex-col gap-1.5 p-3">
@@ -87,6 +101,20 @@ export function ModuloCard({ modulo, numero, progreso, seleccionado, onSeleccion
           </div>
         )}
       </div>
-    </button>
+    </>
+  );
+
+  if (bloqueado) {
+    return (
+      <div className={clases} aria-label={`${modulo.titulo} — necesitas acceso`}>
+        {contenido}
+      </div>
+    );
+  }
+
+  return (
+    <Link href={href} className={clases}>
+      {contenido}
+    </Link>
   );
 }

@@ -75,3 +75,33 @@ export function progresoDeModulo(
   const pct = total === 0 ? 0 : Math.round((completadas / total) * 100);
   return { completadas, total, pct };
 }
+
+/**
+ * La lección por la que hay que seguir dentro de un curso.
+ *
+ * Es la primera **sin ver** en el orden del temario, no la siguiente a la
+ * última vista: si alguien se saltó la lección 3 y vio la 4, lo que le falta
+ * sigue siendo la 3.
+ *
+ * Devuelve `undefined` si el curso no tiene lecciones, y la primera si están
+ * todas vistas — quien terminó y vuelve espera repasar desde el principio, no
+ * encontrarse un botón muerto.
+ */
+export function leccionParaSeguir(
+  curso: Course,
+  completadasIds: Set<string>
+): Lesson | undefined {
+  const lecciones = leccionesOrdenadas(curso);
+  if (lecciones.length === 0) return undefined;
+  return lecciones.find((l) => !completadasIds.has(l.id)) ?? lecciones[0];
+}
+
+/** Lo mismo, acotado a un módulo. */
+export function leccionParaSeguirDeModulo(
+  modulo: CourseModule,
+  completadasIds: Set<string>
+): Lesson | undefined {
+  const lecciones = [...modulo.lecciones].sort((a, b) => a.orden - b.orden);
+  if (lecciones.length === 0) return undefined;
+  return lecciones.find((l) => !completadasIds.has(l.id)) ?? lecciones[0];
+}
