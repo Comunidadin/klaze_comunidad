@@ -183,36 +183,32 @@ export default function AdminCursosPage() {
                   className="min-h-20"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="nuevo-precio">Precio referencial (USD)</Label>
-                  <Input
-                    id="nuevo-precio"
-                    type="number"
-                    min={0}
-                    value={precio}
-                    onChange={(e) => setPrecio(e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Portada</Label>
-                  <SubirImagen
-                    valor={portadaUrl}
-                    onCambio={setPortadaUrl}
-                    proporcion={16 / 9}
-                    anchoSalida={1280}
-                    destino={{ tipo: "academia", comunidadId: community.id, uso: "portada" }}
-                    etiqueta="Subir la portada del curso"
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="nuevo-precio">Precio referencial (USD)</Label>
+                <Input
+                  id="nuevo-precio"
+                  type="number"
+                  min={0}
+                  value={precio}
+                  onChange={(e) => setPrecio(e.target.value)}
+                  placeholder="0"
+                />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Portada en 16:9, 1280 × 720. En la ficha del curso se estira a una
-                franja ancha y lleva un degradado oscuro abajo para el título, así
-                que deja lo importante en el centro. Sin portada mostramos un fondo
-                con la inicial del curso.
-              </p>
+
+              {/* A ancho completo: el recuadro de encuadre se abre aquí dentro
+                  y en media columna no cabe. */}
+              <div className="space-y-1.5">
+                <Label>Portada</Label>
+                <SubirImagen
+                  valor={portadaUrl}
+                  onCambio={setPortadaUrl}
+                  proporcion={16 / 9}
+                  anchoSalida={1280}
+                  destino={{ tipo: "academia", comunidadId: community.id, uso: "portada" }}
+                  etiqueta="Subir la portada del curso"
+                  ayuda="16:9, 1280 × 720. En la ficha del curso se estira a una franja ancha y lleva un degradado oscuro abajo para el título, así que deja lo importante en el centro. Sin portada mostramos un fondo con la inicial del curso."
+                />
+              </div>
             </div>
 
             <DialogFooter>

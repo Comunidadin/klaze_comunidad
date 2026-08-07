@@ -13,14 +13,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 /** `true` si la URL no salió de nuestro almacén: alguien la pegó a mano. */
@@ -184,7 +176,7 @@ export function SubirImagen({
   }
 
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn("relative space-y-2", className)}>
       <div className="flex items-center gap-3">
         <div
           className="relative shrink-0 overflow-hidden rounded-lg bg-muted ring-1 ring-foreground/10"
@@ -220,11 +212,15 @@ export function SubirImagen({
           )}
         </div>
 
+        {/* Oculto a la vista pero PRESENTE en el layout: con `display:none`,
+            `.click()` no dispara de forma fiable dentro de una ventana modal,
+            que es justo donde vive el formulario de curso nuevo. */}
         <input
           ref={inputRef}
           type="file"
           accept={TIPOS.join(",")}
-          className="hidden"
+          className="absolute size-px overflow-hidden opacity-0"
+          tabIndex={-1}
           aria-label={etiqueta}
           onChange={(e) => {
             elegir(e.target.files?.[0]);
@@ -264,51 +260,57 @@ export function SubirImagen({
         </button>
       )}
 
-      <Dialog open={!!origen} onOpenChange={(abierto) => !abierto && cerrar()}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Encuadra la imagen</DialogTitle>
-            <DialogDescription>
+      {origen && (
+        /* El encuadre se abre AQUÍ, no en una ventana. La versión anterior era
+           un `Dialog`, y el formulario de curso nuevo ya es uno: dos modales
+           anidados se pelean por el foco y el de dentro quedaba muerto. Abrir
+           en el sitio funciona igual dentro de una ventana que fuera. */
+        <div className="space-y-3 rounded-xl border border-border bg-card p-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">Encuadra la imagen</p>
+            <p className="text-xs text-muted-foreground">
               Arrastra para mover y usa la barra para acercar. Lo que quede
               dentro del recuadro es lo que se verá.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="relative h-72 w-full overflow-hidden rounded-lg bg-black">
-            {origen && (
-              <Cropper
-                image={origen}
-                crop={posicion}
-                zoom={zoom}
-                aspect={proporcion}
-                onCropChange={setPosicion}
-                onZoomChange={setZoom}
-                onCropComplete={(_, pixeles) => setArea(pixeles)}
-              />
-            )}
+            </p>
           </div>
 
-          <div className="px-1">
-            <Slider
-              value={[zoom]}
-              min={1}
-              max={4}
-              step={0.05}
-              onValueChange={([v]) => setZoom(v)}
-              aria-label="Acercar"
+          <div className="relative h-64 w-full overflow-hidden rounded-lg bg-black">
+            <Cropper
+              image={origen}
+              crop={posicion}
+              zoom={zoom}
+              aspect={proporcion}
+              onCropChange={setPosicion}
+              onZoomChange={setZoom}
+              onCropComplete={(_, pixeles) => setArea(pixeles)}
             />
           </div>
 
-          <DialogFooter>
-            <Button variant="ghost" onClick={cerrar} disabled={subiendo}>
+          <Slider
+            value={[zoom]}
+            min={1}
+            max={4}
+            step={0.05}
+            onValueChange={([v]) => setZoom(v)}
+            aria-label="Acercar"
+          />
+
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={cerrar} disabled={subiendo}>
               Cancelar
             </Button>
-            <Button onClick={() => void confirmar()} disabled={subiendo || !area}>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void confirmar()}
+              disabled={subiendo || !area}
+            >
               {subiendo ? "Subiendo…" : "Usar esta imagen"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
