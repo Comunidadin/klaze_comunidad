@@ -88,6 +88,19 @@ herramientas de Node, y todas fallarán igual de lejos de la causa.
 
 Los otros siete proyectos de `[Claude Code V2]` tienen la misma bomba puesta.
 
+## Desplegar es SIEMPRE `bun run cf:deploy`
+
+Nunca `opennextjs-cloudflare deploy` a secas. Ese comando sube lo que ya haya
+compilado en `.open-next/`, sin comprobar si corresponde al código actual: con
+un paquete de una compilación anterior, vuelve a publicar el de antes y no se
+queja.
+
+Pasó una vez y la app publicada se quedó una versión atrás mientras todo decía
+"Deployed". La única pista era el tamaño del paquete, idéntico al byte que el
+del despliegue anterior.
+
+`bun run cf:deploy` compila y despliega, en ese orden.
+
 ## Errores previstos
 
 | Situación | Señal | Qué hacer |

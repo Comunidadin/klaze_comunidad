@@ -12,7 +12,8 @@
     "crear-academia": "bun --env-file=.env.local scripts/crear-academia.ts",
     "enlace-acceso": "bun --env-file=.env.local scripts/enlace-acceso.ts",
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
+    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "deploy": "bun run cf:deploy"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
