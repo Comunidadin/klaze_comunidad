@@ -66,7 +66,7 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
   const { data: cursosFilas } = await supabase.from("cursos").select(
     `id, comunidad_id, slug, titulo, descripcion, portada_url,
      precio_referencial, nivel_requerido, publicado,
-     modulos ( id, titulo, orden, portada_url,
+     modulos ( id, titulo, orden, portada_url, publicado,
        lecciones ( id, titulo, orden, tipo, vimeo_id, duracion_min, contenido, recursos, portada_url ) )`
   );
 
@@ -124,6 +124,7 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
         titulo: m.titulo,
         orden: m.orden,
         portadaUrl: m.portada_url ?? undefined,
+        publicado: m.publicado ?? true,
         lecciones: (m.lecciones ?? [])
           .slice()
           .sort((a, b) => a.orden - b.orden)

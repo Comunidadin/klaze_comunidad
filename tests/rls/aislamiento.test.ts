@@ -50,3 +50,43 @@ test("5. no ve las lecciones de un curso que no cubre su acceso", async () => {
   const { data } = await e.alumnoA.cliente.from("lecciones").select("titulo");
   expect((data ?? []).map((l) => l.titulo)).not.toContain("leccion-secreta");
 });
+
+test("un curso en borrador no sale de la base para el alumno", async () => {
+  // Se prueba en la BASE y no en la pantalla: la app tambien lo filtra, pero
+  // eso ocurre despues de que la respuesta viaje. Sin esta politica, quien
+  // mirase la peticion veria titulos e identificadores de Vimeo de lo que aun
+  // no se ha publicado.
+  const { data: creado } = await admin
+    .from("modulos")
+    .insert({ curso_id: e.cursoAPublicado, titulo: "En preparacion", orden: 99, publicado: false })
+    .select("id")
+    .single();
+
+  const { data: delAlumno } = await e.alumnoA.cliente
+    .from("modulos")
+    .select("id")
+    .eq("id", creado!.id);
+  expect(delAlumno ?? []).toEqual([]);
+
+  // El dueno si lo ve: es quien lo esta preparando.
+  const { data: delDueno } = await e.duenoA.cliente
+    .from("modulos")
+    .select("id")
+    .eq("id", creado!.id);
+  expect(delDueno ?? []).toHaveLength(1);
+
+  await admin.from("modulos").delete().eq("id", creado!.id);
+});
+
+test("publicarlo lo hace visible al instante", async () => {
+  const { data: creado } = await admin
+    .from("modulos")
+    .insert({ curso_id: e.cursoAPublicado, titulo: "Listo", orden: 98, publicado: true })
+    .select("id")
+    .single();
+
+  const { data } = await e.alumnoA.cliente.from("modulos").select("id").eq("id", creado!.id);
+  expect(data ?? []).toHaveLength(1);
+
+  await admin.from("modulos").delete().eq("id", creado!.id);
+});

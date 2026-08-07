@@ -179,7 +179,16 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
     const id = crypto.randomUUID();
     actualizarCurso((c) => ({
       ...c,
-      modulos: reindexar([...c.modulos, { id, titulo: "Nuevo curso", orden: 0, lecciones: [] }]),
+      modulos: reindexar([...c.modulos, { id, titulo: "Nuevo curso", orden: 0, lecciones: [], publicado: false }]),
+    }));
+  }
+
+  function togglePublicadoModulo(moduloId: string) {
+    actualizarCurso((c) => ({
+      ...c,
+      modulos: c.modulos.map((m) =>
+        m.id === moduloId ? { ...m, publicado: !m.publicado } : m
+      ),
     }));
   }
 
@@ -393,7 +402,34 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
                       aria-label={`Título del módulo ${indiceModulo + 1}`}
                       className="h-8 border-transparent bg-transparent px-1.5 font-display text-sm font-semibold shadow-none hover:border-input focus-visible:border-ring"
                     />
-                    <div className="flex shrink-0 items-center gap-0.5">
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <span className="hidden shrink-0 text-xs whitespace-nowrap text-muted-foreground sm:inline">
+                        {modulo.lecciones.length}{" "}
+                        {modulo.lecciones.length === 1 ? "clase" : "clases"}
+                      </span>
+
+                      {/* El estado a la vista y a un clic, sin abrir nada: es
+                          lo que permite tener media vitrina publicada y el
+                          resto en borrador mientras se prepara. */}
+                      <button
+                        type="button"
+                        onClick={() => togglePublicadoModulo(modulo.id)}
+                        className={cn(
+                          "shrink-0 cursor-pointer rounded-full px-2 py-0.5 text-xs font-medium transition-colors",
+                          modulo.publicado
+                            ? "bg-brand/15 text-brand hover:bg-brand/25"
+                            : "bg-muted text-muted-foreground hover:bg-accent"
+                        )}
+                        aria-pressed={modulo.publicado}
+                        aria-label={
+                          modulo.publicado
+                            ? `Pasar ${modulo.titulo} a borrador`
+                            : `Publicar ${modulo.titulo}`
+                        }
+                      >
+                        {modulo.publicado ? "Publicado" : "Borrador"}
+                      </button>
+
                       <Button
                         variant="ghost"
                         size="icon-sm"

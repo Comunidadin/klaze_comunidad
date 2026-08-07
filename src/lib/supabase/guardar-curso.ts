@@ -45,6 +45,7 @@ export async function guardarCurso(
         titulo: m.titulo,
         orden: m.orden,
         portada_url: m.portadaUrl ?? null,
+        publicado: m.publicado ?? true,
       }))
     );
     if (error) throw new Error(`No se pudieron guardar los módulos: ${error.message}`);

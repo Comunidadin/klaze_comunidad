@@ -81,6 +81,11 @@ export interface CourseModule {
   id: string;
   titulo: string;
   orden: number;
+  /**
+   * En borrador no lo ve ningún miembro, aunque su vitrina esté publicada.
+   * Lo filtra `cursosVisiblesParaMiembro`, punto único de verdad.
+   */
+  publicado: boolean;
   lecciones: Lesson[];
   /** Portada vertical (~2:3) del módulo — Unsplash en mocks, URL libre desde el editor. Sin ella, fallback de gradiente con inicial (ver CoursePortada). */
   portadaUrl?: string;
