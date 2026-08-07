@@ -9,15 +9,9 @@ import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { SiteFooter } from "@/components/shared/site-footer";
-import { FilaCursos } from "@/components/course/fila-cursos";
-import { ModuloCard } from "@/components/course/modulo-card";
+import { CourseCard } from "@/components/course/course-card";
 import { CoursePortada } from "@/components/course/course-portada";
-import {
-  modulosOrdenados,
-  progresoDeModulo,
-  leccionParaSeguir,
-  moduloDeLeccion,
-} from "@/components/course/course-utils";
+import { leccionParaSeguir, moduloDeLeccion } from "@/components/course/course-utils";
 
 /**
  * Referencia estable para el caso "sin progreso". Devolver `[]` dentro del
@@ -86,8 +80,8 @@ export function CursosGrid({ comunidadSlug }: CursosGridProps) {
     return (
       <EmptyState
         icono={GraduationCap}
-        titulo="Todavía no hay vitrinas"
-        descripcion="Cuando el creador de esta academia publique una vitrina, va a aparecer aquí."
+        titulo="Todavía no hay módulos"
+        descripcion="Cuando el creador de esta academia publique un módulo, va a aparecer aquí."
       />
     );
   }
@@ -95,42 +89,6 @@ export function CursosGrid({ comunidadSlug }: CursosGridProps) {
   function nombreNivel(curso: CourseConAcceso): string | undefined {
     if (curso.acceso !== "candado-nivel" || !curso.nivelRequerido) return undefined;
     return community.nombresNiveles[curso.nivelRequerido - 1];
-  }
-
-  /** Una fila por curso. `bloqueado` atenúa sus tarjetas y les quita el enlace. */
-  function filaDe(curso: CourseConAcceso, bloqueado: boolean) {
-    const modulos = modulosOrdenados(curso);
-
-    const subtitulo = bloqueado
-      ? nombreNivel(curso)
-        ? `Se desbloquea al llegar a ${nombreNivel(curso)}`
-        : "No incluido en tu acceso"
-      : undefined;
-
-    return (
-      <FilaCursos key={curso.id} titulo={curso.titulo} subtitulo={subtitulo}>
-        {modulos.length === 0 ? (
-          <p className="py-6 text-sm text-muted-foreground">
-            Contenido en camino.
-          </p>
-        ) : (
-          modulos.map((modulo, i) => (
-            <div
-              key={modulo.id}
-              className="w-36 shrink-0 snap-start sm:w-44 lg:w-48"
-            >
-              <ModuloCard
-                modulo={modulo}
-                numero={i + 1}
-                progreso={progresoDeModulo(modulo, completadasIds)}
-                href={`/c/${comunidadSlug}/cursos/${curso.slug}/modulo/${modulo.id}`}
-                bloqueado={bloqueado}
-              />
-            </div>
-          ))
-        )}
-      </FilaCursos>
-    );
   }
 
   return (
@@ -167,14 +125,30 @@ export function CursosGrid({ comunidadSlug }: CursosGridProps) {
         </div>
       )}
 
-      <div className="space-y-8">{conAcceso.map((c) => filaDe(c, false))}</div>
+      {/* Cuadrícula, no filas que se deslizan: en una cuadrícula se ven diez
+          módulos de golpe y en una fila caben cuatro. Con el catálogo que tiene
+          esta academia, recorrerlo de lado era el cuello de botella. */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {conAcceso.map((curso) => (
+          <CourseCard key={curso.id} curso={curso} comunidadSlug={comunidadSlug} />
+        ))}
+      </div>
 
       {bloqueados.length > 0 && (
-        <div className="space-y-8 border-t border-border pt-8">
+        <div className="space-y-5 border-t border-border pt-8">
           <p className="text-sm text-muted-foreground">
             Más de {community.nombre}, todavía fuera de tu acceso.
           </p>
-          {bloqueados.map((c) => filaDe(c, true))}
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {bloqueados.map((curso) => (
+              <CourseCard
+                key={curso.id}
+                curso={curso}
+                comunidadSlug={comunidadSlug}
+                nombreNivelRequerido={nombreNivel(curso)}
+              />
+            ))}
+          </div>
         </div>
       )}
 

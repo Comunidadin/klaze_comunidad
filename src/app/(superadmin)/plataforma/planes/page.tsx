@@ -153,7 +153,7 @@ function PlanCard({ plan, onGuardado }: { plan: Plan; onGuardado: () => Promise<
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor={`${plan.id}-cursos`}>Vitrinas</Label>
+            <Label htmlFor={`${plan.id}-cursos`}>Módulos</Label>
             <Input
               id={`${plan.id}-cursos`}
               type="number"

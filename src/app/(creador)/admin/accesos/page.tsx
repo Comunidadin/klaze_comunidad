@@ -244,7 +244,7 @@ export default function AccesosPage() {
             Accesos
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Da acceso a tus alumnos por correo — a un curso puntual o a toda la comunidad.
+            Da acceso a tus alumnos por correo — a un submódulo puntual o a toda la comunidad.
           </p>
         </div>
 
@@ -287,12 +287,12 @@ export default function AccesosPage() {
                   onCheckedChange={(v) => toggleTodaLaComunidad(v === true)}
                 />
                 <span className="font-medium text-foreground">Toda la comunidad</span>
-                <span className="text-muted-foreground">— acceso a todos los cursos, presentes y futuros</span>
+                <span className="text-muted-foreground">— acceso a todos los submódulos, presentes y futuros</span>
               </label>
 
               {cursos.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
-                  Todavía no publicas cursos individuales — por ahora solo puedes invitar a
+                  Todavía no publicas submódulos individuales — por ahora solo puedes invitar a
                   &quot;Toda la comunidad&quot;.
                 </p>
               ) : (
@@ -342,7 +342,7 @@ export default function AccesosPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Correo</TableHead>
-                    <TableHead>Vitrinas</TableHead>
+                    <TableHead>Módulos</TableHead>
                     <TableHead>Fecha</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Link</TableHead>

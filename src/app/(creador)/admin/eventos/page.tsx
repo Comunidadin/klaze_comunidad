@@ -164,7 +164,7 @@ function EventoAdminCard({
 /**
  * `/admin/eventos`: CRUD del calendario en vivo de la comunidad, ahora
  * repartido por curso (Cambio 3: cada evento lleva un `cursoId` obligatorio,
- * elegido con el selector "Vitrina" del formulario) —
+ * elegido con el selector "Módulo" del formulario) —
  * `guardarEvento`/`eliminarEvento` (T14) se reflejan de inmediato en la
  * pestaña Calendario de `/c/[comunidad]/cursos/[curso]`, que consume el
  * mismo `useEvents`.
@@ -209,9 +209,9 @@ export default function EventosPage() {
     return (
       <EmptyState
         icono={CalendarDays}
-        titulo="Crea una vitrina primero"
-        descripcion="Cada evento pertenece a una vitrina — crea al menos uno para poder programar sesiones en vivo."
-        accion={{ label: "Ir a Vitrinas", href: "/admin/cursos" }}
+        titulo="Crea un módulo primero"
+        descripcion="Cada evento pertenece a un módulo — crea al menos uno para poder programar sesiones en vivo."
+        accion={{ label: "Ir a Módulos", href: "/admin/cursos" }}
       />
     );
   }
@@ -371,13 +371,13 @@ export default function EventosPage() {
 
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="evt-vitrina">Vitrina</Label>
+              <Label htmlFor="evt-módulo">Módulo</Label>
               <Select
                 value={form.cursoId}
                 onValueChange={(v) => setForm((f) => ({ ...f, cursoId: v }))}
               >
                 <SelectTrigger id="evt-curso" className="w-full">
-                  <SelectValue placeholder="Elige una vitrina" />
+                  <SelectValue placeholder="Elige un módulo" />
                 </SelectTrigger>
                 <SelectContent>
                   {cursos.map((curso) => (

@@ -160,9 +160,9 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
     return (
       <EmptyState
         icono={SearchX}
-        titulo="Vitrina no encontrada"
-        descripcion="Esta vitrina no existe o no pertenece a tu comunidad."
-        accion={{ label: "Volver a vitrinas", href: "/admin/cursos" }}
+        titulo="Módulo no encontrado"
+        descripcion="Este módulo no existe o no pertenece a tu comunidad."
+        accion={{ label: "Volver a módulos", href: "/admin/cursos" }}
       />
     );
   }
@@ -179,7 +179,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
     const id = crypto.randomUUID();
     actualizarCurso((c) => ({
       ...c,
-      modulos: reindexar([...c.modulos, { id, titulo: "Nuevo curso", orden: 0, lecciones: [], publicado: false }]),
+      modulos: reindexar([...c.modulos, { id, titulo: "Nuevo submódulo", orden: 0, lecciones: [], publicado: false }]),
     }));
   }
 
@@ -329,7 +329,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
             onClick={volver}
             className="mb-1 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
           >
-            <ChevronLeft className="size-3.5" /> Volver a vitrinas
+            <ChevronLeft className="size-3.5" /> Volver a módulos
           </button>
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="truncate font-display text-xl font-bold text-foreground sm:text-2xl">
@@ -348,7 +348,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
             <Label htmlFor="curso-publicado" className="text-xs text-muted-foreground">
               {curso.publicado ? "Publicado" : "Borrador"}
             </Label>
-            <Switch id="curso-publicado" checked={curso.publicado} onCheckedChange={togglePublicado} />
+            <Switch id="submódulo-publicado" checked={curso.publicado} onCheckedChange={togglePublicado} />
           </div>
           <Button onClick={guardar} disabled={!dirty}>
             <Save /> Guardar cambios
@@ -356,18 +356,18 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
         </div>
       </div>
 
-      {/* Portada de la vitrina. No estaba: solo se podía poner al crearlo, así que
+      {/* Portada del módulo. No estaba: solo se podía poner al crearlo, así que
           equivocarse era definitivo. Es además la imagen que el alumno ve
           primero, en la ficha del curso. */}
       <div className="mb-6 rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
-        <Label className="mb-2 block">Portada de la vitrina</Label>
+        <Label className="mb-2 block">Portada del módulo</Label>
         <SubirImagen
           valor={curso.portadaUrl}
           onCambio={actualizarPortadaCurso}
           proporcion={16 / 9}
           anchoSalida={1280}
           destino={{ tipo: "academia", comunidadId: community.id, uso: "portada" }}
-          etiqueta="Subir la portada de la vitrina"
+          etiqueta="Subir la portada del módulo"
           ayuda="16:9, 1280 × 720. Se estira a una franja ancha con un degradado oscuro abajo para el título, así que deja lo importante en el centro."
         />
       </div>
@@ -377,7 +377,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-sm font-semibold text-foreground">
-              Estructura de la vitrina
+              Estructura del módulo
             </h2>
             <Button variant="outline" size="sm" onClick={agregarModulo}>
               <Plus /> Curso
@@ -387,9 +387,9 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
           {curso.modulos.length === 0 ? (
             <EmptyState
               icono={Layers}
-              titulo="Sin cursos todavía"
-              descripcion="Agrega el primer curso para empezar a estructurar la vitrina."
-              accion={{ label: "Agregar curso", onClick: agregarModulo }}
+              titulo="Sin submódulos todavía"
+              descripcion="Agrega el primer submódulo para empezar a estructurar el módulo."
+              accion={{ label: "Agregar submódulo", onClick: agregarModulo }}
             />
           ) : (
             <div className="space-y-3">
@@ -409,7 +409,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
                       </span>
 
                       {/* El estado a la vista y a un clic, sin abrir nada: es
-                          lo que permite tener media vitrina publicada y el
+                          lo que permite tener media módulo publicado y el
                           resto en borrador mientras se prepara. */}
                       <button
                         type="button"
@@ -435,7 +435,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
                         size="icon-sm"
                         disabled={indiceModulo === 0}
                         onClick={() => moverModulo(modulo.id, "arriba")}
-                        aria-label="Mover curso arriba"
+                        aria-label="Mover submódulo arriba"
                       >
                         <ChevronUp />
                       </Button>
@@ -444,7 +444,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
                         size="icon-sm"
                         disabled={indiceModulo === curso.modulos.length - 1}
                         onClick={() => moverModulo(modulo.id, "abajo")}
-                        aria-label="Mover curso abajo"
+                        aria-label="Mover submódulo abajo"
                       >
                         <ChevronDown />
                       </Button>
@@ -452,7 +452,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
                         variant="ghost"
                         size="icon-sm"
                         onClick={() => solicitarEliminarModulo(modulo)}
-                        aria-label="Eliminar curso"
+                        aria-label="Eliminar submódulo"
                       >
                         <Trash2 />
                       </Button>

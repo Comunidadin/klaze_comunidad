@@ -198,7 +198,7 @@ export function Feed({ comunidadSlug, cursoSlug, espacioSlug }: FeedProps) {
               <EmptyState
                 icono={MessagesSquare}
                 titulo={espacio ? `Aún no hay publicaciones en ${espacio.nombre}` : "Aún no hay publicaciones"}
-                descripcion="Sé el primero en compartir algo con el resto de la vitrina."
+                descripcion="Sé el primero en compartir algo con el resto del módulo."
                 accion={
                   puedePublicarAqui
                     ? { label: "Crear publicación", onClick: () => setComposerAbierto(true) }

@@ -25,7 +25,7 @@ const ITEMS_BASE: AdminNavItem[] = [
   { titulo: "Panel", href: "/admin", icono: LayoutDashboard },
   { titulo: "Alumnos", href: "/admin/alumnos", icono: Users },
   { titulo: "Accesos", href: "/admin/accesos", icono: KeyRound },
-  { titulo: "Vitrinas", href: "/admin/cursos", icono: BookOpen },
+  { titulo: "Módulos", href: "/admin/cursos", icono: BookOpen },
   { titulo: "Comunidad", href: "/admin/comunidad", icono: MessagesSquare },
   { titulo: "Eventos", href: "/admin/eventos", icono: CalendarDays },
   { titulo: "Reportes", href: "/admin/reportes", icono: BarChart3 },

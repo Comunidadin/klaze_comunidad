@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { CheckCircle2, Clock, Lock, PlayCircle } from "lucide-react";
+import { CheckCircle2, Clock, Layers, Lock, PlayCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { estadisticasCurso, formatDuracion } from "@/components/course/course-utils";
@@ -58,6 +58,7 @@ const GROSOR_TRAZO = 2.5;
 export function CourseCard({ curso, comunidadSlug, nombreNivelRequerido }: CourseCardProps) {
   const { ref, width, height, radius } = useMedidaTarjeta<HTMLDivElement>();
   const { numLecciones, totalMin } = estadisticasCurso(curso);
+  const numSubmodulos = curso.modulos.length;
 
   const bloqueado = curso.acceso !== "si";
   const conProgreso = !bloqueado && curso.progresoPct > 0;
@@ -153,6 +154,10 @@ export function CourseCard({ curso, comunidadSlug, nombreNivelRequerido }: Cours
           {curso.titulo}
         </h3>
         <div className="mt-auto flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1">
+            <Layers className="size-3.5" />
+            {numSubmodulos} {numSubmodulos === 1 ? "submódulo" : "submódulos"}
+          </span>
           <span className="inline-flex items-center gap-1">
             <PlayCircle className="size-3.5" />
             {numLecciones} {numLecciones === 1 ? "clase" : "clases"}
