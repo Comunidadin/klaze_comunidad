@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { variableServidor } from "@/lib/entorno-servidor";
 import { crearAcademia } from "@/lib/academia";
 
 /**
@@ -14,7 +15,7 @@ import { crearAcademia } from "@/lib/academia";
  */
 export async function POST(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const secreta = process.env.SUPABASE_SECRET_KEY;
+  const secreta = variableServidor("SUPABASE_SECRET_KEY");
 
   if (!url || !secreta) {
     return NextResponse.json(
