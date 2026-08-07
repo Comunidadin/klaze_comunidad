@@ -203,9 +203,9 @@ export function LeccionDetalle({ comunidadSlug, cursoSlug, leccionId }: LeccionD
     return (
       <EmptyState
         icono={SearchX}
-        titulo="Vitrina no encontrada"
-        descripcion="La vitrina al que pertenece esta clase no existe o fue eliminado."
-        accion={{ label: "Volver a vitrinas", href: `/c/${comunidadSlug}/cursos` }}
+        titulo="Módulo no encontrado"
+        descripcion="El módulo al que pertenece esta clase no existe o fue eliminado."
+        accion={{ label: "Volver a módulos", href: `/c/${comunidadSlug}/cursos` }}
         className="mx-auto max-w-lg"
       />
     );
@@ -221,14 +221,14 @@ export function LeccionDetalle({ comunidadSlug, cursoSlug, leccionId }: LeccionD
       <EmptyState
         icono={Lock}
         titulo={
-          curso.acceso === "candado-nivel" ? "Esta vitrina está bloqueado" : "No tienes acceso a esta vitrina"
+          curso.acceso === "candado-nivel" ? "Este módulo está bloqueado" : "No tienes acceso a este módulo"
         }
         descripcion={
           curso.acceso === "candado-nivel"
             ? `Se desbloquea en nivel ${curso.nivelRequerido}${nombreNivel ? ` — ${nombreNivel}` : ""}. Sigue participando en la comunidad para subir de nivel.`
             : `Habla con el equipo de ${community.nombre} para obtener acceso. Valor referencial: $${curso.precioReferencial}.`
         }
-        accion={{ label: "Volver a vitrinas", href: `/c/${comunidadSlug}/cursos` }}
+        accion={{ label: "Volver a módulos", href: `/c/${comunidadSlug}/cursos` }}
         className="mx-auto max-w-lg"
       />
     );
@@ -239,7 +239,7 @@ export function LeccionDetalle({ comunidadSlug, cursoSlug, leccionId }: LeccionD
       <EmptyState
         icono={SearchX}
         titulo="Clase no encontrada"
-        descripcion="La clase que buscas no existe o fue eliminada de esta vitrina."
+        descripcion="La clase que buscas no existe o fue eliminada de este módulo."
         accion={{ label: "Volver al curso", href: `/c/${comunidadSlug}/cursos/${curso.slug}` }}
         className="mx-auto max-w-lg"
       />
@@ -295,7 +295,7 @@ export function LeccionDetalle({ comunidadSlug, cursoSlug, leccionId }: LeccionD
             </SheetTrigger>
             <SheetContent className="w-full gap-0 p-0 sm:max-w-sm">
               <SheetHeader className="shrink-0 border-b border-border">
-                <SheetTitle>Contenido de la vitrina</SheetTitle>
+                <SheetTitle>Contenido del módulo</SheetTitle>
               </SheetHeader>
               {sidebar}
             </SheetContent>

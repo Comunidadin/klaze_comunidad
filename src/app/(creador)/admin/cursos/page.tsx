@@ -126,7 +126,7 @@ export default function AdminCursosPage() {
       establecerArmazon(await cargarArmazon(supabase));
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : "No se pudo crear la vitrina"
+        e instanceof Error ? e.message : "No se pudo crear el módulo"
       );
       return;
     }
@@ -141,22 +141,22 @@ export default function AdminCursosPage() {
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
-            Vitrinas
+            Módulos
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {cursos.length} {cursos.length === 1 ? "vitrina" : "vitrinas"} en {community.nombre}.
+            {cursos.length} {cursos.length === 1 ? "módulo" : "módulos"} en {community.nombre}.
           </p>
         </div>
 
         <Dialog open={dialogAbierto} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
             <Button>
-              <Plus /> Nueva vitrina
+              <Plus /> Nuevo módulo
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Nueva vitrina</DialogTitle>
+              <DialogTitle>Nuevo módulo</DialogTitle>
               <DialogDescription>
                 Se crea como borrador — publícalo cuando esté listo desde el editor.
               </DialogDescription>
@@ -179,7 +179,7 @@ export default function AdminCursosPage() {
                   id="nuevo-descripcion"
                   value={descripcion}
                   onChange={(e) => setDescripcion(e.target.value)}
-                  placeholder="De qué trata la vitrina…"
+                  placeholder="De qué trata el módulo…"
                   className="min-h-20"
                 />
               </div>
@@ -205,8 +205,8 @@ export default function AdminCursosPage() {
                   proporcion={16 / 9}
                   anchoSalida={1280}
                   destino={{ tipo: "academia", comunidadId: community.id, uso: "portada" }}
-                  etiqueta="Subir la portada de la vitrina"
-                  ayuda="16:9, 1280 × 720. En la ficha de la vitrina se estira a una franja ancha y lleva un degradado oscuro abajo para el título, así que deja lo importante en el centro. Sin portada mostramos un fondo con la inicial de la vitrina."
+                  etiqueta="Subir la portada del módulo"
+                  ayuda="16:9, 1280 × 720. En la ficha del módulo se estira a una franja ancha y lleva un degradado oscuro abajo para el título, así que deja lo importante en el centro. Sin portada mostramos un fondo con la inicial del módulo."
                 />
               </div>
             </div>
@@ -216,7 +216,7 @@ export default function AdminCursosPage() {
                 Cancelar
               </Button>
               <Button onClick={crearCurso} disabled={!titulo.trim()}>
-                Crear curso
+                Crear submódulo
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -226,9 +226,9 @@ export default function AdminCursosPage() {
       {cursos.length === 0 ? (
         <EmptyState
           icono={BookOpen}
-          titulo="Todavía no tienes vitrinas"
-          descripcion="Crea tu primera vitrina para empezar a estructurar cursos y clases."
-          accion={{ label: "Nueva vitrina", onClick: () => setDialogAbierto(true) }}
+          titulo="Todavía no tienes módulos"
+          descripcion="Crea tu primer módulo para empezar a estructurar submódulos y clases."
+          accion={{ label: "Nuevo módulo", onClick: () => setDialogAbierto(true) }}
         />
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">

@@ -608,8 +608,8 @@ function EspaciosPorCurso({
     return (
       <EmptyState
         icono={MessagesSquare}
-        titulo="Todavía no tienes vitrinas"
-        descripcion="Los espacios de comunidad viven dentro de cada vitrina. Crea uno primero."
+        titulo="Todavía no tienes módulos"
+        descripcion="Los espacios de comunidad viven dentro de cada módulo. Crea uno primero."
       />
     );
   }
@@ -617,7 +617,7 @@ function EspaciosPorCurso({
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <span className="text-sm text-muted-foreground">Vitrina:</span>
+        <span className="text-sm text-muted-foreground">Módulo:</span>
         <Select value={elegido} onValueChange={setCursoId}>
           <SelectTrigger className="w-[260px]" aria-label="Curso">
             <SelectValue />

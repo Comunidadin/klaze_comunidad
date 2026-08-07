@@ -268,16 +268,16 @@ export default function ReportesPage() {
         {dataAvancePorCurso.length === 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle>% de avance por vitrina</CardTitle>
+              <CardTitle>% de avance por módulo</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Publica al menos un curso para ver aquí el avance promedio de tus alumnos.
+                Publica al menos un submódulo para ver aquí el avance promedio de tus alumnos.
               </p>
             </CardContent>
           </Card>
         ) : (
-          <BarChart data={dataAvancePorCurso} titulo="% de avance por vitrina" sufijo="%" />
+          <BarChart data={dataAvancePorCurso} titulo="% de avance por módulo" sufijo="%" />
         )}
       </div>
 
@@ -326,7 +326,7 @@ export default function ReportesPage() {
           <CardContent>
             {topLecciones.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Publica al menos un curso con lecciones para ver este ranking.
+                Publica al menos un submódulo con lecciones para ver este ranking.
               </p>
             ) : (
               <ul className="space-y-1">

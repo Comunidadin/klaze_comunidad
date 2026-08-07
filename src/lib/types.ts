@@ -82,7 +82,7 @@ export interface CourseModule {
   titulo: string;
   orden: number;
   /**
-   * En borrador no lo ve ningún miembro, aunque su vitrina esté publicada.
+   * En borrador no lo ve ningún miembro, aunque su módulo esté publicada.
    * Lo filtra `cursosVisiblesParaMiembro`, punto único de verdad.
    */
   publicado: boolean;

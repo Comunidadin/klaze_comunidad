@@ -23,11 +23,9 @@ import {
   leccionesOrdenadas,
   modulosOrdenados,
   primeraLeccionPendiente,
-  progresoDeModulo,
 } from "@/components/course/course-utils";
 import { CoursePortada } from "@/components/course/course-portada";
-import { ModuloCard } from "@/components/course/modulo-card";
-import { FilaCursos } from "@/components/course/fila-cursos";
+import { ListaSubmodulos } from "@/components/course/lista-submodulos";
 import type { Lesson } from "@/lib/types";
 
 export interface CursoDetalleProps {
@@ -66,7 +64,7 @@ export function CursoDetalle({ comunidadSlug, cursoSlug }: CursoDetalleProps) {
   const numCompletadas = lecciones.filter((l) => leccionesCompletadasIds.has(l.id)).length;
   const primeraPendiente = primeraLeccionPendiente(curso, leccionesCompletadasIds) ?? undefined;
 
-  let ctaLabel = "Comenzar vitrina";
+  let ctaLabel = "Comenzar módulo";
   let ctaIcon = Play;
   let ctaLeccion: Lesson | undefined = lecciones[0];
 
@@ -129,22 +127,11 @@ export function CursoDetalle({ comunidadSlug, cursoSlug }: CursoDetalleProps) {
         </div>
       </div>
 
-      {/* Módulos: fila deslizante, y cada tarjeta lleva a su propia pantalla.
-          Antes desplegaban sus lecciones aquí abajo; con la portada de la
-          academia ya en filas, mantener dos comportamientos distintos para la
-          misma tarjeta confundía más de lo que ahorraba. */}
-      <FilaCursos titulo="Cursos">
-        {modulos.map((modulo, indice) => (
-          <div key={modulo.id} className="w-36 shrink-0 snap-start sm:w-44 lg:w-48">
-            <ModuloCard
-              modulo={modulo}
-              numero={indice + 1}
-              progreso={progresoDeModulo(modulo, leccionesCompletadasIds)}
-              href={`/c/${comunidadSlug}/cursos/${curso.slug}/modulo/${modulo.id}`}
-            />
-          </div>
-        ))}
-      </FilaCursos>
+      <ListaSubmodulos
+        submodulos={modulos}
+        completadasIds={leccionesCompletadasIds}
+        hrefDe={(m) => `/c/${comunidadSlug}/cursos/${curso.slug}/modulo/${m.id}`}
+      />
 
     </div>
   );

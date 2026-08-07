@@ -25,8 +25,8 @@ Esto se lee una vez y ahorra mucha confusión:
 
 | En el código y la base | En la interfaz |
 |---|---|
-| `curso` / `Course` | **vitrina** |
-| `modulo` / `CourseModule` | **curso** |
+| `curso` / `Course` | **módulo** |
+| `modulo` / `CourseModule` | **submódulo** |
 | `leccion` / `Lesson` | **clase** |
 
 El vocabulario de la interfaz es el que usa el dueño de la plataforma, que
@@ -39,9 +39,13 @@ vitrinas, y `/c/{slug}/cursos/{curso}/modulo/{id}` es una clase dentro de un
 curso. Un enlace que diga `/admin/vitrinas` da 404 — pasó al hacer el
 renombrado.
 
-Al escribir copy nueva, usa las palabras de la derecha. Y ojo con el género:
-*curso* es masculino y *vitrina* femenina, así que "el curso" se convierte en
-"la vitrina", no en "el vitrina".
+Al escribir copy nueva, usa las palabras de la derecha.
+
+Este vocabulario cambió dos veces (`vitrina/curso/clase` fue un intento previo).
+Si vuelve a cambiar, renombra **solo dentro de cadenas y texto JSX**, y cuenta
+con tres trampas que ya mordieron: líneas que llevan `className` y texto en la
+misma línea, texto suelto en su propia línea entre `<h1>` y `</h1>`, y cadenas
+que parecen copy pero son **claves de objeto** o **rutas**.
 
 ## Regla dura: supabase → hooks → páginas
 

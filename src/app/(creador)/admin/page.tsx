@@ -102,7 +102,7 @@ export default function AdminDashboardPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard titulo="Alumnos activos" valor={alumnosActivos} icono={UserCheck} />
-        <StatCard titulo="Vitrinas publicados" valor={cursosPublicados} icono={BookOpen} />
+        <StatCard titulo="Módulos publicados" valor={cursosPublicados} icono={BookOpen} />
         <StatCard titulo="Posts esta semana" valor={postsEstaSemana} icono={MessagesSquare} />
         <StatCard
           titulo="Invitaciones pendientes"
@@ -130,7 +130,7 @@ export default function AdminDashboardPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Correo</TableHead>
-                    <TableHead>Vitrinas</TableHead>
+                    <TableHead>Módulos</TableHead>
                     <TableHead>Fecha</TableHead>
                     <TableHead>Estado</TableHead>
                   </TableRow>

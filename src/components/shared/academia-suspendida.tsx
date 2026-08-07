@@ -65,7 +65,7 @@ export function AcademiaSuspendida({
       </h1>
       <p className="max-w-sm text-sm text-pretty text-muted-foreground">
         {quien === "creador"
-          ? "El acceso está pausado. Escribe a quien administra la plataforma para reactivarla: nada se ha borrado, y tus vitrinas y tus alumnos siguen donde estaban."
+          ? "El acceso está pausado. Escribe a quien administra la plataforma para reactivarla: nada se ha borrado, y tus módulos y tus alumnos siguen donde estaban."
           : "El acceso está pausado temporalmente. Escribe a quien te dio acceso; tu progreso y tus puntos siguen intactos."}
       </p>
       <Button variant="outline" onClick={() => void handleLogout()} className="mt-2">
