@@ -244,10 +244,8 @@ export function SubirImagen({
             autoFocus
           />
           <p className="text-xs text-muted-foreground">
-            Tiene que ser el enlace directo al archivo, terminado en .jpg o
-            .png. Los de Google Drive y Dropbox no sirven: llevan a una página,
-            no a la imagen. Un enlace no pasa por el recuadro de encuadre, así
-            que se recortará centrado.
+            Enlace directo al archivo (.jpg o .png). Los de Drive y Dropbox no
+            sirven. No pasa por el encuadre: se recorta centrado.
           </p>
         </div>
       ) : (
