@@ -159,7 +159,7 @@ function PlanCard({ plan, onGuardado }: { plan: Plan; onGuardado: () => Promise<
               type="number"
               min={1}
               value={campos.cursos}
-              onChange={(e) => actualizar("vitrinas", e.target.value)}
+              onChange={(e) => actualizar("cursos", e.target.value)}
             />
           </div>
         </div>
