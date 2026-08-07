@@ -36,7 +36,7 @@ export interface CursoDetalleProps {
 }
 
 /**
- * Pestaña "Lecciones": hero con progreso global y CTA "continuar donde
+ * Pestaña "Clases": hero con progreso global y CTA "continuar donde
  * quedaste", grid de portadas de módulo (estilo Netflix/Hotmart Club) con
  * progreso por módulo. Clic en una tarjeta selecciona ese módulo y muestra
  * su lista de lecciones debajo, con scroll suave hasta el panel.
@@ -66,7 +66,7 @@ export function CursoDetalle({ comunidadSlug, cursoSlug }: CursoDetalleProps) {
   const numCompletadas = lecciones.filter((l) => leccionesCompletadasIds.has(l.id)).length;
   const primeraPendiente = primeraLeccionPendiente(curso, leccionesCompletadasIds) ?? undefined;
 
-  let ctaLabel = "Comenzar curso";
+  let ctaLabel = "Comenzar vitrina";
   let ctaIcon = Play;
   let ctaLeccion: Lesson | undefined = lecciones[0];
 
@@ -133,7 +133,7 @@ export function CursoDetalle({ comunidadSlug, cursoSlug }: CursoDetalleProps) {
           Antes desplegaban sus lecciones aquí abajo; con la portada de la
           academia ya en filas, mantener dos comportamientos distintos para la
           misma tarjeta confundía más de lo que ahorraba. */}
-      <FilaCursos titulo="Módulos">
+      <FilaCursos titulo="Cursos">
         {modulos.map((modulo, indice) => (
           <div key={modulo.id} className="w-36 shrink-0 snap-start sm:w-44 lg:w-48">
             <ModuloCard

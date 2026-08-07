@@ -126,7 +126,7 @@ export default function AdminCursosPage() {
       establecerArmazon(await cargarArmazon(supabase));
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : "No se pudo crear el curso"
+        e instanceof Error ? e.message : "No se pudo crear la vitrina"
       );
       return;
     }
@@ -144,7 +144,7 @@ export default function AdminCursosPage() {
             Cursos
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {cursos.length} {cursos.length === 1 ? "curso" : "cursos"} en {community.nombre}.
+            {cursos.length} {cursos.length === 1 ? "vitrina" : "vitrinas"} en {community.nombre}.
           </p>
         </div>
 
@@ -156,7 +156,7 @@ export default function AdminCursosPage() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Nuevo curso</DialogTitle>
+              <DialogTitle>Nueva vitrina</DialogTitle>
               <DialogDescription>
                 Se crea como borrador — publícalo cuando esté listo desde el editor.
               </DialogDescription>
@@ -179,7 +179,7 @@ export default function AdminCursosPage() {
                   id="nuevo-descripcion"
                   value={descripcion}
                   onChange={(e) => setDescripcion(e.target.value)}
-                  placeholder="De qué trata el curso…"
+                  placeholder="De qué trata la vitrina…"
                   className="min-h-20"
                 />
               </div>
@@ -205,8 +205,8 @@ export default function AdminCursosPage() {
                   proporcion={16 / 9}
                   anchoSalida={1280}
                   destino={{ tipo: "academia", comunidadId: community.id, uso: "portada" }}
-                  etiqueta="Subir la portada del curso"
-                  ayuda="16:9, 1280 × 720. En la ficha del curso se estira a una franja ancha y lleva un degradado oscuro abajo para el título, así que deja lo importante en el centro. Sin portada mostramos un fondo con la inicial del curso."
+                  etiqueta="Subir la portada de la vitrina"
+                  ayuda="16:9, 1280 × 720. En la ficha de la vitrina se estira a una franja ancha y lleva un degradado oscuro abajo para el título, así que deja lo importante en el centro. Sin portada mostramos un fondo con la inicial de la vitrina."
                 />
               </div>
             </div>
@@ -226,9 +226,9 @@ export default function AdminCursosPage() {
       {cursos.length === 0 ? (
         <EmptyState
           icono={BookOpen}
-          titulo="Todavía no tienes cursos"
-          descripcion="Crea tu primer curso para empezar a estructurar módulos y lecciones."
-          accion={{ label: "Nuevo curso", onClick: () => setDialogAbierto(true) }}
+          titulo="Todavía no tienes vitrinas"
+          descripcion="Crea tu primera vitrina para empezar a estructurar cursos y clases."
+          accion={{ label: "Nueva vitrina", onClick: () => setDialogAbierto(true) }}
         />
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">

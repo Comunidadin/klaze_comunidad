@@ -40,7 +40,7 @@ export function SiteFooter({
     {
       titulo: "Mapa del sitio",
       enlaces: [
-        { label: "Mis cursos", href: `${base}/cursos` },
+        { label: "Mis vitrinas", href: `${base}/cursos` },
         { label: "Mi perfil", href: "/perfil" },
       ],
     },

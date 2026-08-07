@@ -45,7 +45,7 @@ export function formatDuracion(totalMin: number): string {
 /**
  * Primera lección no completada, en orden de módulo/lección. `null` si el
  * curso no tiene lecciones o si todas están completadas (ver
- * `todasCompletadas` para distinguir ese caso del de "sin lecciones").
+ * `todasCompletadas` para distinguir ese caso del de "sin clases").
  */
 export function primeraLeccionPendiente(
   curso: Course,

@@ -16,7 +16,7 @@ export interface VimeoPlayerProps {
 /**
  * Iframe embed responsivo (16:9) del player de Vimeo. Firma mínima a
  * propósito: la reutiliza el preview del editor admin de cursos (Task 13),
- * así que no agrega nada específico de "lección" (progreso, completada,
+ * así que no agrega nada específico de "clase" (progreso, completada,
  * etc.) más allá del video en sí. Muestra un skeleton mientras el iframe
  * termina de cargar.
  */
@@ -44,7 +44,7 @@ export function VimeoPlayer({ vimeoId, title, className }: VimeoPlayerProps) {
       <iframe
         key={vimeoId}
         src={vimeoEmbedUrl(vimeoId)}
-        title={title ?? "Reproductor de video de la lección"}
+        title={title ?? "Reproductor de video de la clase"}
         onLoad={() => setCargado(true)}
         className={cn(
           "absolute inset-0 size-full transition-opacity duration-300",

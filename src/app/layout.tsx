@@ -18,8 +18,8 @@ const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-displ
  * pestaña del navegador.
  */
 export const metadata: Metadata = {
-  title: "Klaze — Cursos y comunidad para tu empresa",
-  description: "Plataforma de cursos en video y comunidad, una por empresa.",
+  title: "Klaze — Vitrinas y comunidad para tu empresa",
+  description: "Plataforma de vitrinas en video y comunidad, una por empresa.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

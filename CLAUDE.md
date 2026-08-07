@@ -19,6 +19,30 @@ bun run lint     # ESLint — debe quedar limpio antes de cada commit de feature
 
 No hay tests automatizados en este proyecto (decisión del spec original); la verificación es `build` + `lint` + smoke visual/E2E manual (Playwright ad hoc cuando aplica).
 
+## El código y la interfaz usan palabras distintas
+
+Esto se lee una vez y ahorra mucha confusión:
+
+| En el código y la base | En la interfaz |
+|---|---|
+| `curso` / `Course` | **vitrina** |
+| `modulo` / `CourseModule` | **curso** |
+| `leccion` / `Lesson` | **clase** |
+
+El vocabulario de la interfaz es el que usa el dueño de la plataforma, que
+viene de Hotmart Club. El del código es el que ya tenían las tablas, las
+políticas, las rutas y las 127 pruebas: renombrarlo habría sido una migración
+enorme a cambio de nada que se vea.
+
+**Las rutas siguen el código, no la interfaz**: `/admin/cursos` es la lista de
+vitrinas, y `/c/{slug}/cursos/{curso}/modulo/{id}` es una clase dentro de un
+curso. Un enlace que diga `/admin/vitrinas` da 404 — pasó al hacer el
+renombrado.
+
+Al escribir copy nueva, usa las palabras de la derecha. Y ojo con el género:
+*curso* es masculino y *vitrina* femenina, así que "el curso" se convierte en
+"la vitrina", no en "el vitrina".
+
 ## Regla dura: supabase → hooks → páginas
 
 ```

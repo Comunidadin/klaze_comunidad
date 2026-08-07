@@ -57,7 +57,7 @@ export function AdminCourseCard({ curso }: AdminCourseCardProps) {
           <div className="mt-auto flex items-center gap-3 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <PlayCircle className="size-3.5" />
-              {numLecciones} {numLecciones === 1 ? "lección" : "lecciones"}
+              {numLecciones} {numLecciones === 1 ? "clase" : "clases"}
             </span>
             <span className="inline-flex items-center gap-1">
               <Users2 className="size-3.5" />
