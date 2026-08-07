@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SubirImagen } from "@/components/shared/subir-imagen";
 import { Separator } from "@/components/ui/separator";
 import type { Community } from "@/lib/types";
 
@@ -191,16 +192,16 @@ function ConfiguracionForm({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="config-logo">URL del logo</Label>
-            <Input
-              id="config-logo"
-              value={logoUrl}
-              onChange={(e) => setLogoUrl(e.target.value)}
-              placeholder="https://…"
+            <Label>Logo</Label>
+            <SubirImagen
+              valor={logoUrl}
+              onCambio={setLogoUrl}
+              proporcion={1}
+              anchoSalida={512}
+              destino={{ tipo: "academia", comunidadId: community.id, uso: "logo" }}
+              etiqueta="Subir el logo de la academia"
+              ayuda="Cuadrado, 512 × 512. PNG con fondo transparente si puedes: se ve pequeño, así que un logo con texto fino no se leerá. Sin logo mostramos la inicial de tu academia."
             />
-            <p className="text-xs text-muted-foreground">
-              Sin logo o con un link roto, mostramos la inicial de tu comunidad como respaldo.
-            </p>
           </div>
 
           <Separator />
