@@ -20,6 +20,15 @@ import { AuthBrandPanel } from "./_components/auth-brand-panel";
  * inmediato) deja ver un flash del login a un usuario que en realidad ya
  * tiene sesión activa, apenas antes de que la hidratación lo redirija.
  *
+ * Dos rutas quedan excluidas de este guard, y por la misma razón: en las dos
+ * llega una sesión ANTES de que la persona haya terminado lo que venía a hacer.
+ *
+ * `/nueva-clave` es donde aterriza el enlace de "olvidé mi contraseña", y ese
+ * enlace deja la sesión abierta al llegar. Sin esta excepción, el guard veía
+ * un usuario con sesión y lo mandaba a la app —así que quien pedía recuperar
+ * su contraseña acababa dentro sin haberla cambiado, que es exactamente lo que
+ * no quería.
+ *
  * `/invitacion/[token]` (Task 6) queda excluida de este guard —tanto del
  * loader por hidratación como del redirect— a propósito: un usuario ya
  * logueado debe poder abrir su propio link de invitación (p. ej. el
@@ -34,14 +43,16 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   const { user } = useSession();
   const router = useRouter();
   const pathname = usePathname();
-  const esInvitacion = pathname?.startsWith("/invitacion") ?? false;
+  const exenta =
+    (pathname?.startsWith("/invitacion") ?? false) ||
+    (pathname?.startsWith("/nueva-clave") ?? false);
 
   useEffect(() => {
-    if (!hydrated || !user || esInvitacion) return;
+    if (!hydrated || !user || exenta) return;
     router.replace(homePorRol(user));
-  }, [hydrated, user, router, esInvitacion]);
+  }, [hydrated, user, router, exenta]);
 
-  if (!esInvitacion && (!hydrated || user)) {
+  if (!exenta && (!hydrated || user)) {
     return <FullScreenLoader />;
   }
 
