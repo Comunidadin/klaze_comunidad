@@ -42,7 +42,7 @@ import {
 } from "@/components/ui/sheet";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Confetti } from "@/components/shared/confetti";
-import { VimeoPlayer } from "@/components/course/vimeo-player";
+import { BloquesDeClase } from "@/components/course/bloques-clase";
 import { LessonSidebar } from "@/components/course/lesson-sidebar";
 import { leccionesOrdenadas, moduloDeLeccion } from "@/components/course/course-utils";
 import { cn } from "@/lib/utils";
@@ -53,36 +53,15 @@ export interface LeccionDetalleProps {
   leccionId: string;
 }
 
+export interface LeccionDetalleProps {
+  comunidadSlug: string;
+  cursoSlug: string;
+  leccionId: string;
+}
+
 /** Renderiza `contenido` (texto plano con `\n\n` entre bloques) con tipografía
  * legible sin depender de `@tailwindcss/typography`: detecta listas
  * numeradas ("1. ...") por bloque y el resto lo trata como párrafo. */
-function ContenidoTexto({ contenido }: { contenido: string }) {
-  const bloques = contenido.split("\n\n");
-
-  return (
-    <div className="space-y-4 text-[15px] leading-relaxed text-pretty text-foreground/90">
-      {bloques.map((bloque, i) => {
-        const lineas = bloque.split("\n").filter((l) => l.trim().length > 0);
-        const esLista = lineas.length > 0 && lineas.every((l) => /^\d+\.\s/.test(l.trim()));
-
-        if (esLista) {
-          return (
-            <ol
-              key={i}
-              className="list-decimal space-y-2 pl-5 marker:font-semibold marker:text-primary"
-            >
-              {lineas.map((l, j) => (
-                <li key={j}>{l.trim().replace(/^\d+\.\s*/, "")}</li>
-              ))}
-            </ol>
-          );
-        }
-
-        return <p key={i}>{bloque}</p>;
-      })}
-    </div>
-  );
-}
 
 function SeccionComentarios({ leccionId }: { leccionId: string }) {
   const { user } = useSession();
@@ -302,17 +281,14 @@ export function LeccionDetalle({ comunidadSlug, cursoSlug, leccionId }: LeccionD
           </Sheet>
         </div>
 
-        {/* Player o contenido de texto */}
-        {leccion.tipo === "video" && leccion.vimeoId ? (
-          <VimeoPlayer vimeoId={leccion.vimeoId} title={leccion.titulo} />
-        ) : (
-          <div className="rounded-2xl bg-card p-5 ring-1 ring-foreground/10 sm:p-8">
-            <ContenidoTexto contenido={leccion.contenido} />
+        {/* Las piezas, en el orden en que las puso el creador: un vídeo, una
+            explicación debajo, un formulario al final. */}
+        {leccion.bloques.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+            Esta clase todavía no tiene contenido.
           </div>
-        )}
-
-        {leccion.tipo === "video" && leccion.contenido && (
-          <p className="text-sm text-pretty text-muted-foreground">{leccion.contenido}</p>
+        ) : (
+          <BloquesDeClase bloques={leccion.bloques} />
         )}
 
         {/* Completar + navegación */}

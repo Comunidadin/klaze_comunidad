@@ -11,6 +11,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { moduloDeLeccion, modulosOrdenados } from "@/components/course/course-utils";
+import { tipoDeClase } from "@/lib/types";
 import type { CourseConAcceso } from "@/lib/hooks/use-courses";
 
 export interface LessonSidebarProps {
@@ -66,7 +67,7 @@ export function LessonSidebar({
                   {modulo.lecciones.map((leccion) => {
                     const activa = leccion.id === leccionActualId;
                     const completada = leccionesCompletadasIds.has(leccion.id);
-                    const TipoIcon = leccion.tipo === "video" ? Video : FileText;
+                    const TipoIcon = tipoDeClase(leccion.bloques) === "video" ? Video : FileText;
                     return (
                       <li key={leccion.id}>
                         <Link

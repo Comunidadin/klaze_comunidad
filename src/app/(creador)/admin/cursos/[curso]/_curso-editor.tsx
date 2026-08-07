@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { Course, CourseModule, Lesson } from "@/lib/types";
+import { tipoDeClase } from "@/lib/types";
 
 export interface CursoEditorProps {
   cursoId: string;
@@ -89,10 +90,10 @@ function nuevaLeccion(id: string): Lesson {
     id,
     titulo: "Nueva clase",
     orden: 0,
-    tipo: "video",
-    vimeoId: null,
     duracionMin: 5,
-    contenido: "",
+    // Nace vacia y con un video dentro: es la pieza que se pone en el 90% de
+    // los casos, y una clase sin piezas no se puede ver.
+    bloques: [{ id: crypto.randomUUID(), tipo: "video", vimeoId: "" }],
     recursos: [],
   };
 }
@@ -478,7 +479,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
                   <div className="space-y-1 p-2">
                     {modulo.lecciones.map((leccion, indiceLeccion) => {
                       const seleccionada = leccion.id === leccionSeleccionada?.id;
-                      const TipoIcon = leccion.tipo === "video" ? Video : FileText;
+                      const TipoIcon = tipoDeClase(leccion.bloques) === "video" ? Video : FileText;
                       return (
                         <div
                           key={leccion.id}

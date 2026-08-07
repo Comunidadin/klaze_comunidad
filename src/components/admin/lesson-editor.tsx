@@ -1,19 +1,11 @@
 "use client";
 
-import { FileText, Plus, Trash2, Video } from "lucide-react";
-import { VimeoField } from "@/components/admin/vimeo-field";
+import { Plus, Trash2 } from "lucide-react";
+import { EditorBloques } from "@/components/admin/editor-bloques";
 import { SubirImagen } from "@/components/shared/subir-imagen";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import type { Lesson } from "@/lib/types";
@@ -88,55 +80,22 @@ export function LessonEditor({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="leccion-tipo">Tipo</Label>
-          <Select value={leccion.tipo} onValueChange={(v) => set("tipo", v as Lesson["tipo"])}>
-            <SelectTrigger id="leccion-tipo" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="video">
-                <Video /> Video
-              </SelectItem>
-              <SelectItem value="texto">
-                <FileText /> Texto
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="leccion-duracion">Duración (min)</Label>
-          <Input
-            id="leccion-duracion"
-            type="number"
-            min={0}
-            value={leccion.duracionMin}
-            onChange={(e) => set("duracionMin", Math.max(0, Number(e.target.value) || 0))}
-          />
-        </div>
-      </div>
-
-      {leccion.tipo === "video" && (
-        <VimeoField vimeoId={leccion.vimeoId} onChange={(vimeoId) => set("vimeoId", vimeoId)} />
-      )}
-
       <div className="space-y-1.5">
-        <Label htmlFor="leccion-contenido">
-          {leccion.tipo === "video" ? "Descripción (opcional)" : "Contenido de la clase"}
-        </Label>
-        <Textarea
-          id="leccion-contenido"
-          value={leccion.contenido}
-          onChange={(e) => set("contenido", e.target.value)}
-          placeholder={
-            leccion.tipo === "video"
-              ? "Un resumen corto de lo que cubre el video…"
-              : "Escribe el contenido completo de la clase…"
-          }
-          className="min-h-32"
+        <Label htmlFor="leccion-duracion">Duración (min)</Label>
+        <Input
+          id="leccion-duracion"
+          type="number"
+          min={0}
+          value={leccion.duracionMin}
+          onChange={(e) => set("duracionMin", Math.max(0, Number(e.target.value) || 0))}
+          className="max-w-32"
         />
       </div>
+
+      <EditorBloques
+        bloques={leccion.bloques}
+        onCambio={(bloques) => set("bloques", bloques)}
+      />
 
       <Separator />
 

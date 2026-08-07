@@ -16,7 +16,7 @@ beforeAll(async () => {
     .single();
   const { data: lec } = await admin
     .from("lecciones")
-    .insert({ modulo_id: mod!.id, titulo: "L", orden: 1, tipo: "texto" })
+    .insert({ modulo_id: mod!.id, titulo: "L", orden: 1 })
     .select("id")
     .single();
   leccionId = lec!.id;

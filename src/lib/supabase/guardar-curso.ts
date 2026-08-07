@@ -68,11 +68,9 @@ export async function guardarCurso(
         modulo_id: modulo.id,
         titulo: l.titulo,
         orden: l.orden,
-        tipo: l.tipo,
         portada_url: l.portadaUrl?.trim() || null,
-        vimeo_id: l.vimeoId,
         duracion_min: l.duracionMin,
-        contenido: l.contenido,
+        bloques: l.bloques ?? [],
         recursos: l.recursos,
       }))
     );
