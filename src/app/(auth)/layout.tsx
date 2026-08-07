@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useHydrated, useSession } from "@/lib/hooks/use-session";
 import { useMarcaAuth } from "@/lib/hooks/use-marca-auth";
+import { MarcaAuthContext } from "./_components/marca-auth-context";
 import { homePorRol } from "@/lib/routes";
 import { FullScreenLoader } from "@/components/shared/full-screen-loader";
 import { AuthBrandPanel } from "./_components/auth-brand-panel";
@@ -75,14 +76,27 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
  * `return` tempranos del guard de arriba.
  */
 function AuthSplit({ children }: { children: React.ReactNode }) {
-  const marca = useMarcaAuth();
+  const pathname = usePathname();
+
+  // La academia sale de la URL: `/login/mentoria-v7` → "mentoria-v7". El
+  // `/login` pelado no pertenece a ninguna, y entonces la pantalla es de Klaze.
+  const partes = (pathname ?? "").split("/").filter(Boolean);
+  const slug = partes[0] === "login" ? partes[1] : undefined;
+  const marca = useMarcaAuth(slug);
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
-      <AuthBrandPanel videoUrl={marca.videoUrl} posterUrl={marca.posterUrl} />
-      <div className="light flex items-center justify-center bg-background px-6 py-12 text-foreground sm:px-10">
-        <div className="w-full max-w-sm">{children}</div>
+    // Por contexto y no por props: `AuthFormCard` lo monta cada página hija,
+    // así que pasarlo a mano obligaría a que las cinco supieran de esto.
+    <MarcaAuthContext.Provider value={marca}>
+      <div className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
+        <AuthBrandPanel
+          videoUrl={marca.portada.videoUrl}
+          posterUrl={marca.portada.posterUrl}
+        />
+        <div className="light flex items-center justify-center bg-background px-6 py-12 text-foreground sm:px-10">
+          <div className="w-full max-w-sm">{children}</div>
+        </div>
       </div>
-    </div>
+    </MarcaAuthContext.Provider>
   );
 }
