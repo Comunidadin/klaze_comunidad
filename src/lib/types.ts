@@ -108,6 +108,16 @@ export interface Lesson {
    */
   bloques: BloqueClase[];
   recursos: { nombre: string; url: string }[];
+  /** Si esta clase tiene asistente. Lo enciende el creador, clase a clase. */
+  iaHabilitada: boolean;
+  /**
+   * El guion que el asistente usa para responder. No entrena nada: viaja con
+   * cada pregunta.
+   *
+   * OJO: viaja dentro de la lección, así que llega al navegador de cualquiera
+   * con acceso a la clase.
+   */
+  iaContexto?: string;
 }
 
 export type BloqueClase =

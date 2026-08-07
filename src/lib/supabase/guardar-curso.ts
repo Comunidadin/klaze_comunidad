@@ -71,6 +71,8 @@ export async function guardarCurso(
         portada_url: l.portadaUrl?.trim() || null,
         duracion_min: l.duracionMin,
         bloques: l.bloques ?? [],
+        ia_habilitada: l.iaHabilitada ?? false,
+        ia_contexto: l.iaContexto?.trim() || null,
         recursos: l.recursos,
       }))
     );
