@@ -141,7 +141,7 @@ export default function AdminCursosPage() {
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
-            Cursos
+            Vitrinas
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {cursos.length} {cursos.length === 1 ? "vitrina" : "vitrinas"} en {community.nombre}.
@@ -151,7 +151,7 @@ export default function AdminCursosPage() {
         <Dialog open={dialogAbierto} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
             <Button>
-              <Plus /> Nuevo curso
+              <Plus /> Nueva vitrina
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
