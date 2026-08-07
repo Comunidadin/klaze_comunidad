@@ -85,7 +85,7 @@ export function CursoTabsShell({ comunidadSlug, cursoSlug, children }: CursoTabs
           href={`/c/${comunidadSlug}/cursos`}
           className="mb-2 inline-block text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
         >
-          ← Cursos
+          ← Módulos
         </Link>
         <div className="flex items-center gap-3">
           <div className="relative size-10 shrink-0 overflow-hidden rounded-lg">
