@@ -523,6 +523,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
               <LessonEditor
                 key={leccionSeleccionada.id}
                 leccion={leccionSeleccionada}
+                comunidadId={community.id}
                 onChange={(l) => actualizarLeccion(moduloDeSeleccionada.id, l)}
               />
             </div>

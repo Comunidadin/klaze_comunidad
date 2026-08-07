@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { CheckCircle2, ChevronLeft, Circle, Clock, Play, SearchX } from "lucide-react";
+import { CheckCircle2, ChevronLeft, Clock, Play, SearchX } from "lucide-react";
 import { useCommunity } from "@/lib/hooks/use-community";
 import { useCourses } from "@/lib/hooks/use-courses";
 import { useHydrated } from "@/lib/hooks/use-session";
@@ -160,39 +160,62 @@ export function ModuloDetalle({ comunidadSlug, cursoSlug, moduloId }: ModuloDeta
             </span>
           </div>
 
-          <ul className="divide-y divide-border overflow-hidden rounded-2xl ring-1 ring-foreground/10">
+          {/* Tarjetas y no lista: dentro de un módulo, la miniatura es lo que
+              distingue una clase de otra de un vistazo. 16:9 porque son
+              vídeos —el 2:3 vertical es de los módulos— y sin portada propia
+              cae en la del módulo antes que en el degradado. */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {modulo.lecciones.map((leccion, i) => {
               const vista = completadasIds.has(leccion.id);
               return (
-                <li key={leccion.id}>
-                  <Link
-                    href={`/c/${comunidadSlug}/cursos/${cursoSlug}/leccion/${leccion.id}`}
-                    className="flex items-center gap-3 bg-card px-4 py-3 transition-colors hover:bg-accent"
-                  >
-                    {vista ? (
-                      <CheckCircle2 className="size-4 shrink-0 text-brand" />
-                    ) : (
-                      <Circle className="size-4 shrink-0 text-muted-foreground/50" />
-                    )}
-                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                <Link
+                  key={leccion.id}
+                  href={`/c/${comunidadSlug}/cursos/${cursoSlug}/leccion/${leccion.id}`}
+                  className="group overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/10 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <div className="relative aspect-video overflow-hidden">
+                    <CoursePortada
+                      portadaUrl={leccion.portadaUrl ?? modulo.portadaUrl ?? ""}
+                      titulo={leccion.titulo}
+                      className="transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
+
+                    <span className="absolute top-2 left-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white">
                       {String(i + 1).padStart(2, "0")}
                     </span>
-                    <span
+
+                    {vista ? (
+                      <span className="absolute top-2 right-2 flex size-6 items-center justify-center rounded-full bg-brand text-brand-foreground">
+                        <CheckCircle2 className="size-3.5" />
+                      </span>
+                    ) : (
+                      <span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+                        <span className="flex size-11 items-center justify-center rounded-full bg-white/90 text-black">
+                          <Play className="size-5 fill-current" />
+                        </span>
+                      </span>
+                    )}
+
+                    <span className="absolute right-2 bottom-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[11px] tabular-nums text-white">
+                      {leccion.duracionMin} min
+                    </span>
+                  </div>
+
+                  <div className="p-3">
+                    <h3
                       className={cn(
-                        "min-w-0 flex-1 truncate text-sm",
+                        "line-clamp-2 text-sm leading-snug",
                         vista ? "text-muted-foreground" : "font-medium text-foreground"
                       )}
                     >
                       {leccion.titulo}
-                    </span>
-                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                      {leccion.duracionMin} min
-                    </span>
-                  </Link>
-                </li>
+                    </h3>
+                  </div>
+                </Link>
               );
             })}
-          </ul>
+          </div>
         </div>
       )}
     </div>

@@ -90,6 +90,12 @@ export interface Lesson {
   id: string;
   titulo: string;
   orden: number;
+  /**
+   * Miniatura de la clase (16:9). Sin ella se usa la del módulo, y sin esa el
+   * degradado con inicial — así ninguna pantalla queda con un hueco y subirla
+   * nunca es obligatorio.
+   */
+  portadaUrl?: string;
   tipo: "video" | "texto";
   vimeoId: string | null; // solo tipo video
   duracionMin: number;
