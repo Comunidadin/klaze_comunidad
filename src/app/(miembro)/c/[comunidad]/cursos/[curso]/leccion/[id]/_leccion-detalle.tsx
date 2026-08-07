@@ -90,7 +90,7 @@ function SeccionComentarios({ leccionId }: { leccionId: string }) {
 
       <div className="space-y-4">
         {comentarios.length === 0 && (
-          <p className="text-sm text-muted-foreground">Sé el primero en comentar esta lección.</p>
+          <p className="text-sm text-muted-foreground">Sé el primero en comentar esta clase.</p>
         )}
         {comentarios.map((c) => (
           <div key={c.id} className="flex gap-3">
@@ -219,7 +219,7 @@ export function LeccionDetalle({ comunidadSlug, cursoSlug, leccionId }: LeccionD
         icono={SearchX}
         titulo="Clase no encontrada"
         descripcion="La clase que buscas no existe o fue eliminada de este módulo."
-        accion={{ label: "Volver al curso", href: `/c/${comunidadSlug}/cursos/${curso.slug}` }}
+        accion={{ label: "Volver al módulo", href: `/c/${comunidadSlug}/cursos/${curso.slug}` }}
         className="mx-auto max-w-lg"
       />
     );
@@ -246,14 +246,20 @@ export function LeccionDetalle({ comunidadSlug, cursoSlug, leccionId }: LeccionD
   return (
     <div className="lg:grid lg:grid-cols-[1fr_20rem] lg:items-start lg:gap-8">
       <div className="min-w-0 space-y-6">
-        {/* Encabezado: volver al curso, título, meta, temario móvil */}
+        {/* Encabezado: volver AL SUBMÓDULO, título, meta, temario móvil.
+            Volvía al módulo entero, que es un nivel de más: quien sale de una
+            clase espera la lista de la que venía, no la portada del módulo. */}
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <Link
-              href={`/c/${comunidadSlug}/cursos/${curso.slug}`}
+              href={
+                moduloActual
+                  ? `/c/${comunidadSlug}/cursos/${curso.slug}/modulo/${moduloActual.id}`
+                  : `/c/${comunidadSlug}/cursos/${curso.slug}`
+              }
               className="mb-1 inline-block text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
             >
-              ← {curso.titulo}
+              ← {moduloActual?.titulo ?? curso.titulo}
             </Link>
             <h1 className="text-balance font-display text-xl font-bold text-foreground sm:text-2xl">
               {leccion.titulo}

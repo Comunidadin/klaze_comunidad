@@ -120,7 +120,7 @@ export function CursoDetalle({ comunidadSlug, cursoSlug }: CursoDetalleProps) {
                 />
               </div>
               <span className="text-xs font-medium tabular-nums text-white/85">
-                {numCompletadas}/{lecciones.length} lecciones · {curso.progresoPct}%
+                {numCompletadas}/{lecciones.length} clases · {curso.progresoPct}%
               </span>
             </div>
           </div>
