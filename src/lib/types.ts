@@ -43,6 +43,8 @@ export interface Community {
   nombresNiveles: string[]; // 9 nombres personalizables
   /** Cómo se llama el asistente de esta academia. Sin él, "Asistente". */
   nombreIa?: string;
+  /** Su cara en el chat. Sin ella, un icono. */
+  avatarIa?: string;
   secciones: CommunitySection[]; // navegación de espacios del feed, agrupada
   creadoEl: string;
   /**
