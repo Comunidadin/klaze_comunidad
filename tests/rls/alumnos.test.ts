@@ -14,7 +14,7 @@ beforeAll(async () => {
     .single();
   await admin
     .from("lecciones")
-    .insert({ modulo_id: mod!.id, titulo: "L", orden: 1, tipo: "texto" });
+    .insert({ modulo_id: mod!.id, titulo: "L", orden: 1 });
 });
 
 afterAll(async () => {

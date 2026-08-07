@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Community, Course, User, UserRole } from "@/lib/types";
+import type { Community, Course, Lesson, User, UserRole } from "@/lib/types";
 import { nivelPorPuntos } from "@/lib/levels";
 
 export interface Armazon {
@@ -67,7 +67,7 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
     `id, comunidad_id, slug, titulo, descripcion, portada_url,
      precio_referencial, nivel_requerido, publicado,
      modulos ( id, titulo, orden, portada_url, publicado,
-       lecciones ( id, titulo, orden, tipo, vimeo_id, duracion_min, contenido, recursos, portada_url ) )`
+       lecciones ( id, titulo, orden, duracion_min, recursos, portada_url, bloques ) )`
   );
 
   const perfil: User = {
@@ -133,10 +133,8 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
             titulo: l.titulo,
             orden: l.orden,
             portadaUrl: l.portada_url ?? undefined,
-            tipo: l.tipo as Course["modulos"][number]["lecciones"][number]["tipo"],
-            vimeoId: l.vimeo_id,
             duracionMin: l.duracion_min,
-            contenido: l.contenido,
+            bloques: (l.bloques ?? []) as Lesson["bloques"],
             recursos: l.recursos ?? [],
           })),
       })),

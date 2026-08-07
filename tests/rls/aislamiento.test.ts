@@ -44,7 +44,7 @@ test("5. no ve las lecciones de un curso que no cubre su acceso", async () => {
     .insert({ curso_id: e.cursoASinAcceso, titulo: "m", orden: 1 })
     .select("id").single();
   await admin.from("lecciones").insert({
-    modulo_id: mod!.id, titulo: "leccion-secreta", orden: 1, tipo: "texto",
+    modulo_id: mod!.id, titulo: "leccion-secreta", orden: 1,
   });
 
   const { data } = await e.alumnoA.cliente.from("lecciones").select("titulo");

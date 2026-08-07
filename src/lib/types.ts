@@ -101,11 +101,29 @@ export interface Lesson {
    * nunca es obligatorio.
    */
   portadaUrl?: string;
-  tipo: "video" | "texto";
-  vimeoId: string | null; // solo tipo video
   duracionMin: number;
-  contenido: string; // descripción o cuerpo de texto
+  /**
+   * Las piezas de la clase, en orden. Una clase ya no *es* de un tipo: puede
+   * llevar un vídeo, debajo una explicación y al final un formulario.
+   */
+  bloques: BloqueClase[];
   recursos: { nombre: string; url: string }[];
+}
+
+export type BloqueClase =
+  | { id: string; tipo: "video"; vimeoId: string }
+  /**
+   * `doc` es el documento del editor, NO html. Guardar html significaría
+   * volcarlo luego en la página, y ahí cualquier cosa que un creador pegue
+   * —o que le inyecten si le roban la cuenta— se ejecutaría en el navegador de
+   * sus alumnos con la sesión abierta.
+   */
+  | { id: string; tipo: "texto"; doc: unknown }
+  | { id: string; tipo: "embed"; url: string; alto?: number };
+
+/** El tipo de una clase se deduce de su primera pieza — para el icono. */
+export function tipoDeClase(bloques: BloqueClase[]): "video" | "texto" | "embed" {
+  return bloques[0]?.tipo ?? "texto";
 }
 
 export interface Enrollment {

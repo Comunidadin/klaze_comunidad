@@ -16,9 +16,8 @@ beforeAll(async () => {
     modulo_id: mod!.id,
     titulo: "Leccion 1",
     orden: 1,
-    tipo: "video",
-    vimeo_id: "123456789",
     duracion_min: 12,
+    bloques: [{ id: crypto.randomUUID(), tipo: "video", vimeoId: "123456789" }],
   });
 });
 
@@ -42,7 +41,10 @@ test("los cursos llegan con sus modulos y lecciones anidados", async () => {
 
   expect(curso?.modulos.length).toBe(1);
   expect(curso?.modulos[0].lecciones[0].titulo).toBe("Leccion 1");
-  expect(curso?.modulos[0].lecciones[0].vimeoId).toBe("123456789");
+  expect(curso?.modulos[0].lecciones[0].bloques[0]).toMatchObject({
+    tipo: "video",
+    vimeoId: "123456789",
+  });
 });
 
 test("el dueno recibe tambien sus borradores", async () => {
