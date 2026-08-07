@@ -52,7 +52,12 @@ export async function POST(request: NextRequest) {
   const { data, error } = await admin.auth.admin.generateLink({
     type: "recovery",
     email,
-    options: { redirectTo: `${origen}/nueva-clave` },
+    // A `/callback` y no a `/nueva-clave`: solo `/callback` está en las
+    // direcciones permitidas de Supabase. Con una que no lo está, Supabase la
+    // ignora y usa el Site URL — así es como el enlace acababa en `localhost`
+    // abierto desde producción. `/callback` reconoce que el enlace era de
+    // recuperación y lleva a `/nueva-clave`.
+    options: { redirectTo: `${origen}/callback` },
   });
 
   // Si la cuenta no existe, `generateLink` falla. Se responde igual que si
