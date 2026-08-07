@@ -342,7 +342,7 @@ export default function AccesosPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Correo</TableHead>
-                    <TableHead>Cursos</TableHead>
+                    <TableHead>Vitrinas</TableHead>
                     <TableHead>Fecha</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Link</TableHead>

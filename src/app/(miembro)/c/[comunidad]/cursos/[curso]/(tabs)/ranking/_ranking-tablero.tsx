@@ -129,7 +129,7 @@ export function RankingTablero({ comunidadSlug, cursoSlug }: RankingTableroProps
         <EmptyState
           icono={Trophy}
           titulo="Todavía no hay puntos que mostrar"
-          descripcion="En cuanto los miembros empiecen a recibir likes en sus posts de este curso, el ranking se va a llenar acá."
+          descripcion="En cuanto los miembros empiecen a recibir likes en sus posts de esta vitrina, el ranking se va a llenar acá."
         />
       ) : (
         <>

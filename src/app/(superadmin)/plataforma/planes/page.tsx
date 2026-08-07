@@ -153,13 +153,13 @@ function PlanCard({ plan, onGuardado }: { plan: Plan; onGuardado: () => Promise<
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor={`${plan.id}-cursos`}>Cursos</Label>
+            <Label htmlFor={`${plan.id}-cursos`}>Vitrinas</Label>
             <Input
               id={`${plan.id}-cursos`}
               type="number"
               min={1}
               value={campos.cursos}
-              onChange={(e) => actualizar("cursos", e.target.value)}
+              onChange={(e) => actualizar("vitrinas", e.target.value)}
             />
           </div>
         </div>

@@ -87,7 +87,7 @@ function reindexar<T extends { orden: number }>(items: T[]): T[] {
 function nuevaLeccion(id: string): Lesson {
   return {
     id,
-    titulo: "Nueva lección",
+    titulo: "Nueva clase",
     orden: 0,
     tipo: "video",
     vimeoId: null,
@@ -119,7 +119,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
   // Retiene el último módulo no nulo mientras el diálogo de confirmación
   // termina su animación de cierre (mismo patrón que /admin/alumnos): si el
   // título/descripción leyeran `moduloAEliminar` directamente, parpadearían
-  // a "0 lecciones" en el frame en que se limpia el estado.
+  // a "0 clases" en el frame en que se limpia el estado.
   const [moduloMostrado, setModuloMostrado] = useState<CourseModule | null>(null);
   if (moduloAEliminar && moduloAEliminar !== moduloMostrado) {
     setModuloMostrado(moduloAEliminar);
@@ -160,9 +160,9 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
     return (
       <EmptyState
         icono={SearchX}
-        titulo="Curso no encontrado"
-        descripcion="Este curso no existe o no pertenece a tu comunidad."
-        accion={{ label: "Volver a cursos", href: "/admin/cursos" }}
+        titulo="Vitrina no encontrada"
+        descripcion="Esta vitrina no existe o no pertenece a tu comunidad."
+        accion={{ label: "Volver a vitrinas", href: "/admin/cursos" }}
       />
     );
   }
@@ -179,7 +179,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
     const id = crypto.randomUUID();
     actualizarCurso((c) => ({
       ...c,
-      modulos: reindexar([...c.modulos, { id, titulo: "Nuevo módulo", orden: 0, lecciones: [] }]),
+      modulos: reindexar([...c.modulos, { id, titulo: "Nuevo curso", orden: 0, lecciones: [] }]),
     }));
   }
 
@@ -358,7 +358,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
           proporcion={16 / 9}
           anchoSalida={1280}
           destino={{ tipo: "academia", comunidadId: community.id, uso: "portada" }}
-          etiqueta="Subir la portada del curso"
+          etiqueta="Subir la portada de la vitrina"
           ayuda="16:9, 1280 × 720. Se estira a una franja ancha con un degradado oscuro abajo para el título, así que deja lo importante en el centro."
         />
       </div>
@@ -378,9 +378,9 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
           {curso.modulos.length === 0 ? (
             <EmptyState
               icono={Layers}
-              titulo="Sin módulos todavía"
-              descripcion="Agrega el primer módulo para empezar a estructurar el curso."
-              accion={{ label: "Agregar módulo", onClick: agregarModulo }}
+              titulo="Sin cursos todavía"
+              descripcion="Agrega el primer curso para empezar a estructurar la vitrina."
+              accion={{ label: "Agregar curso", onClick: agregarModulo }}
             />
           ) : (
             <div className="space-y-3">
@@ -399,7 +399,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
                         size="icon-sm"
                         disabled={indiceModulo === 0}
                         onClick={() => moverModulo(modulo.id, "arriba")}
-                        aria-label="Mover módulo arriba"
+                        aria-label="Mover curso arriba"
                       >
                         <ChevronUp />
                       </Button>
@@ -408,7 +408,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
                         size="icon-sm"
                         disabled={indiceModulo === curso.modulos.length - 1}
                         onClick={() => moverModulo(modulo.id, "abajo")}
-                        aria-label="Mover módulo abajo"
+                        aria-label="Mover curso abajo"
                       >
                         <ChevronDown />
                       </Button>
@@ -416,7 +416,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
                         variant="ghost"
                         size="icon-sm"
                         onClick={() => solicitarEliminarModulo(modulo)}
-                        aria-label="Eliminar módulo"
+                        aria-label="Eliminar curso"
                       >
                         <Trash2 />
                       </Button>
@@ -475,7 +475,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
                               size="icon-xs"
                               disabled={indiceLeccion === 0}
                               onClick={() => moverLeccion(modulo.id, leccion.id, "arriba")}
-                              aria-label="Mover lección arriba"
+                              aria-label="Mover clase arriba"
                             >
                               <ChevronUp />
                             </Button>
@@ -484,7 +484,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
                               size="icon-xs"
                               disabled={indiceLeccion === modulo.lecciones.length - 1}
                               onClick={() => moverLeccion(modulo.id, leccion.id, "abajo")}
-                              aria-label="Mover lección abajo"
+                              aria-label="Mover clase abajo"
                             >
                               <ChevronDown />
                             </Button>
@@ -492,7 +492,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
                               variant="ghost"
                               size="icon-xs"
                               onClick={() => eliminarLeccion(modulo.id, leccion.id)}
-                              aria-label="Eliminar lección"
+                              aria-label="Eliminar clase"
                             >
                               <Trash2 />
                             </Button>
@@ -530,8 +530,8 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
           ) : (
             <EmptyState
               icono={BookOpen}
-              titulo="Selecciona una lección"
-              descripcion="Elige una lección del temario a la izquierda, o crea la primera desde un módulo."
+              titulo="Selecciona una clase"
+              descripcion="Elige una clase del temario a la izquierda, o crea la primera desde un curso."
             />
           )}
         </div>
@@ -543,7 +543,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
             <DialogTitle>¿Eliminar &quot;{moduloMostrado?.titulo}&quot;?</DialogTitle>
             <DialogDescription>
               Este módulo tiene {moduloMostrado?.lecciones.length}{" "}
-              {moduloMostrado?.lecciones.length === 1 ? "lección" : "lecciones"} — se eliminarán
+              {moduloMostrado?.lecciones.length === 1 ? "clase" : "clases"} — se eliminarán
               junto con el módulo. Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>

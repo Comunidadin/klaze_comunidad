@@ -80,7 +80,7 @@ export function VimeoField({ vimeoId, onChange, className }: VimeoFieldProps) {
           <Badge className="border-transparent bg-brand/15 text-brand">
             ✓ Video vinculado
           </Badge>
-          <VimeoPlayer vimeoId={idExtraido} title="Preview de la lección" />
+          <VimeoPlayer vimeoId={idExtraido} title="Preview de la clase" />
         </div>
       )}
     </div>

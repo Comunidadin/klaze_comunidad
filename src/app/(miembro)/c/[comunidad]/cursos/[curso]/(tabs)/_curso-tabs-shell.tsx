@@ -16,7 +16,7 @@ export interface CursoTabsShellProps {
 }
 
 const TABS = [
-  { label: "Lecciones", segmento: "" },
+  { label: "Clases", segmento: "" },
   { label: "Comunidad", segmento: "comunidad" },
   { label: "Calendario", segmento: "calendario" },
   { label: "Miembros", segmento: "miembros" },
@@ -25,9 +25,9 @@ const TABS = [
 
 /**
  * Cabecera + pestañas compartidas de un curso (Cambio 3: la comunidad social
- * pasa a vivir dentro de cada curso): "← Cursos" + portada pequeña/título +
+ * pasa a vivir dentro de cada curso): "← Vitrinas" + portada pequeña/título +
  * las 5 pestañas (Lecciones/Comunidad/Calendario/Miembros/Ranking). Gatea
- * "curso no encontrado" / "sin acceso" UNA SOLA VEZ acá — reutiliza
+ * "vitrina no encontrada" / "sin acceso" UNA SOLA VEZ acá — reutiliza
  * `useCourses` (mismo criterio de `CourseConAcceso.acceso` que ya aplican
  * `CursoDetalle`/`LeccionDetalle`) — así ninguna de las 5 pestañas necesita
  * repetir ese chequeo. El reproductor de lección (`/leccion/[id]`) vive
@@ -49,9 +49,9 @@ export function CursoTabsShell({ comunidadSlug, cursoSlug, children }: CursoTabs
     return (
       <EmptyState
         icono={SearchX}
-        titulo="Curso no encontrado"
-        descripcion="El curso que buscas no existe o fue eliminado."
-        accion={{ label: "Volver a cursos", href: `/c/${comunidadSlug}/cursos` }}
+        titulo="Vitrina no encontrada"
+        descripcion="La vitrina que buscas no existe o fue eliminado."
+        accion={{ label: "Volver a vitrinas", href: `/c/${comunidadSlug}/cursos` }}
         className="mx-auto max-w-lg"
       />
     );
@@ -66,13 +66,13 @@ export function CursoTabsShell({ comunidadSlug, cursoSlug, children }: CursoTabs
     return (
       <EmptyState
         icono={Lock}
-        titulo={curso.acceso === "candado-nivel" ? "Este curso está bloqueado" : "No tienes acceso a este curso"}
+        titulo={curso.acceso === "candado-nivel" ? "Esta vitrina está bloqueado" : "No tienes acceso a esta vitrina"}
         descripcion={
           curso.acceso === "candado-nivel"
             ? `Se desbloquea en nivel ${curso.nivelRequerido}${nombreNivel ? ` — ${nombreNivel}` : ""}. Sigue participando en la comunidad para subir de nivel.`
             : `Habla con el equipo de ${community.nombre} para obtener acceso. Valor referencial: $${curso.precioReferencial}.`
         }
-        accion={{ label: "Volver a cursos", href: `/c/${comunidadSlug}/cursos` }}
+        accion={{ label: "Volver a vitrinas", href: `/c/${comunidadSlug}/cursos` }}
         className="mx-auto max-w-lg"
       />
     );

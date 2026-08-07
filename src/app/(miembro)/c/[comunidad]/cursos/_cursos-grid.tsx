@@ -86,8 +86,8 @@ export function CursosGrid({ comunidadSlug }: CursosGridProps) {
     return (
       <EmptyState
         icono={GraduationCap}
-        titulo="Todavía no hay cursos"
-        descripcion="Cuando el creador de esta academia publique un curso, va a aparecer aquí."
+        titulo="Todavía no hay vitrinas"
+        descripcion="Cuando el creador de esta academia publique una vitrina, va a aparecer aquí."
       />
     );
   }

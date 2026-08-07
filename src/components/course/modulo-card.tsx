@@ -82,7 +82,7 @@ export function ModuloCard({ modulo, numero, progreso, href, bloqueado }: Modulo
         </h3>
         <span className="inline-flex items-center gap-1 text-[11px] text-white/70">
           <PlayCircle className="size-3 shrink-0" />
-          {modulo.lecciones.length} {modulo.lecciones.length === 1 ? "lección" : "lecciones"}
+          {modulo.lecciones.length} {modulo.lecciones.length === 1 ? "clase" : "clases"}
         </span>
 
         {conProgreso && (

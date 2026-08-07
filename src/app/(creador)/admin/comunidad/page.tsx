@@ -608,8 +608,8 @@ function EspaciosPorCurso({
     return (
       <EmptyState
         icono={MessagesSquare}
-        titulo="Todavía no tienes cursos"
-        descripcion="Los espacios de comunidad viven dentro de cada curso. Crea uno primero."
+        titulo="Todavía no tienes vitrinas"
+        descripcion="Los espacios de comunidad viven dentro de cada vitrina. Crea uno primero."
       />
     );
   }

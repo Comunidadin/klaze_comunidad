@@ -49,7 +49,7 @@ export interface ConfettiProps {
 }
 
 /**
- * Celebración de "curso completado al 100%": ~40 partículas CSS que
+ * Celebración de "vitrina completado al 100%": ~40 partículas CSS que
  * explotan desde el centro y se desvanecen. Se autodestruye (retorna
  * `null`) al terminar su propia animación, además de avisar al padre vía
  * `onDone` para que también limpie su estado.

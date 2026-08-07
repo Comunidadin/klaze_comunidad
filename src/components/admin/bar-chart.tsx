@@ -13,7 +13,7 @@ export interface BarChartProps {
   data: BarChartDatum[];
   /** Si se pasa, envuelve el gráfico en un `Card` con este título. */
   titulo?: string;
-  /** Sufijo del tooltip nativo, ej. "%" o " lecciones". */
+  /** Sufijo del tooltip nativo, ej. "%" o " clases". */
   sufijo?: string;
   className?: string;
 }
@@ -27,7 +27,7 @@ const ALTURA_MIN_PCT = 3;
  * de 0% al valor final al montar (`framer-motion`), escalada contra el
  * máximo del set de datos. El tooltip es el atributo `title` nativo del
  * navegador — sin JS de hover custom. Reutilizado por `/admin/reportes`
- * ("Lecciones completadas por semana" y "% de avance por curso").
+ * ("Clases completadas por semana" y "% de avance por vitrina").
  */
 export function BarChart({ data, titulo, sufijo = "", className }: BarChartProps) {
   const maximo = Math.max(1, ...data.map((d) => d.valor));

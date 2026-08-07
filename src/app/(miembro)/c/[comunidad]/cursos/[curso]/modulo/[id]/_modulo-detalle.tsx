@@ -82,9 +82,9 @@ export function ModuloDetalle({ comunidadSlug, cursoSlug, moduloId }: ModuloDeta
     return (
       <EmptyState
         icono={SearchX}
-        titulo="No encontramos este módulo"
+        titulo="No encontramos este curso"
         descripcion="Puede que se haya movido, o que no esté incluido en tu acceso."
-        accion={{ label: "Volver a los cursos", href: volver }}
+        accion={{ label: "Volver a las vitrinas", href: volver }}
       />
     );
   }
@@ -121,7 +121,7 @@ export function ModuloDetalle({ comunidadSlug, cursoSlug, moduloId }: ModuloDeta
             {siguiente && (
               <Button asChild size="lg">
                 <Link href={`/c/${comunidadSlug}/cursos/${cursoSlug}/leccion/${siguiente.id}`}>
-                  <Play /> {empezado ? "Continuar" : "Empezar módulo"}
+                  <Play /> {empezado ? "Continuar" : "Empezar curso"}
                 </Link>
               </Button>
             )}
@@ -146,8 +146,8 @@ export function ModuloDetalle({ comunidadSlug, cursoSlug, moduloId }: ModuloDeta
       {modulo.lecciones.length === 0 ? (
         <EmptyState
           icono={Clock}
-          titulo="Todavía no hay lecciones"
-          descripcion="Este módulo aún se está preparando. Vuelve pronto."
+          titulo="Todavía no hay clases"
+          descripcion="Este curso aún se está preparando. Vuelve pronto."
         />
       ) : (
         <div className="space-y-1.5">

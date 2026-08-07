@@ -47,7 +47,7 @@ function ReportesSkeleton() {
 }
 
 // ---------------------------------------------------------------------------
-// Semanas ISO (lunes a domingo) para "Lecciones completadas por semana"
+// Semanas ISO (lunes a domingo) para "Clases completadas por semana"
 // ---------------------------------------------------------------------------
 
 const FORMATO_DIA_MES = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short" });
@@ -263,12 +263,12 @@ export default function ReportesPage() {
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <BarChart data={dataSemanas} titulo="Lecciones completadas por semana" />
+        <BarChart data={dataSemanas} titulo="Clases completadas por semana" />
 
         {dataAvancePorCurso.length === 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle>% de avance por curso</CardTitle>
+              <CardTitle>% de avance por vitrina</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
@@ -277,7 +277,7 @@ export default function ReportesPage() {
             </CardContent>
           </Card>
         ) : (
-          <BarChart data={dataAvancePorCurso} titulo="% de avance por curso" sufijo="%" />
+          <BarChart data={dataAvancePorCurso} titulo="% de avance por vitrina" sufijo="%" />
         )}
       </div>
 
@@ -321,7 +321,7 @@ export default function ReportesPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Top 5 lecciones más vistas</CardTitle>
+            <CardTitle>Top 5 clases más vistas</CardTitle>
           </CardHeader>
           <CardContent>
             {topLecciones.length === 0 ? (

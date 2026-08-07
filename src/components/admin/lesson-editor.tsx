@@ -66,7 +66,7 @@ export function LessonEditor({
   return (
     <div className={cn("space-y-5", className)}>
       <div className="space-y-1.5">
-        <Label htmlFor="leccion-titulo">Título de la lección</Label>
+        <Label htmlFor="leccion-titulo">Título de la clase</Label>
         <Input
           id="leccion-titulo"
           value={leccion.titulo}
@@ -84,7 +84,7 @@ export function LessonEditor({
           anchoSalida={960}
           destino={{ tipo: "academia", comunidadId, uso: "portada" }}
           etiqueta="Subir la miniatura de la clase"
-          ayuda="16:9 · 960 × 540. Sin ella se usa la del módulo."
+          ayuda="16:9 · 960 × 540. Sin ella se usa la del curso."
         />
       </div>
 
@@ -123,7 +123,7 @@ export function LessonEditor({
 
       <div className="space-y-1.5">
         <Label htmlFor="leccion-contenido">
-          {leccion.tipo === "video" ? "Descripción (opcional)" : "Contenido de la lección"}
+          {leccion.tipo === "video" ? "Descripción (opcional)" : "Contenido de la clase"}
         </Label>
         <Textarea
           id="leccion-contenido"
@@ -132,7 +132,7 @@ export function LessonEditor({
           placeholder={
             leccion.tipo === "video"
               ? "Un resumen corto de lo que cubre el video…"
-              : "Escribe el contenido completo de la lección…"
+              : "Escribe el contenido completo de la clase…"
           }
           className="min-h-32"
         />

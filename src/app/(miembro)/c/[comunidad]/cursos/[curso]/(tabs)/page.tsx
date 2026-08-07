@@ -1,7 +1,7 @@
 import { CursoDetalle } from "./_curso-detalle";
 
 /**
- * Pestaña "Lecciones" (por defecto) de un curso — Server Component: solo
+ * Pestaña "Clases" (por defecto) de un curso — Server Component: solo
  * desenvuelve `params` (async en Next 16) y delega la data/hidratación a
  * `CursoDetalle` (client).
  */

@@ -20,7 +20,7 @@ export interface CoursePortadaProps {
  *
  * Usa `<img>` en vez de `next/image` a propósito: a diferencia de las
  * portadas mock (siempre Unsplash, declarado en `next.config.ts`), esta URL
- * la escribe el creador a mano en el diálogo "Nuevo curso" y puede ser
+ * la escribe el creador a mano en el diálogo "Nueva vitrina" y puede ser
  * cualquier dominio — `next/image` lanza un error en runtime para hosts no
  * declarados en `remotePatterns`, así que un dominio no configurado
  * tumbaría la tarjeta/hero entero en vez de mostrar el fallback.
