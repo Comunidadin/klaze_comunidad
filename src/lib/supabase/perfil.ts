@@ -31,7 +31,7 @@ export async function actualizarPerfil(
 }
 
 export type CambiosComunidad = Partial<
-  Pick<Community, "nombre" | "logoUrl" | "colorAcento" | "nombresNiveles" | "marcaAuth">
+  Pick<Community, "nombre" | "logoUrl" | "colorAcento" | "nombresNiveles" | "marcaAuth" | "nombreIa">
 >;
 
 /**
@@ -54,6 +54,7 @@ export async function guardarComunidad(
   if (cambios.colorAcento !== undefined) fila.color_acento = cambios.colorAcento;
   if (cambios.nombresNiveles !== undefined) fila.nombres_niveles = cambios.nombresNiveles;
   if (cambios.marcaAuth !== undefined) fila.marca_auth = cambios.marcaAuth;
+  if (cambios.nombreIa !== undefined) fila.nombre_ia = cambios.nombreIa.trim() || null;
 
   if (Object.keys(fila).length === 0) return;
 

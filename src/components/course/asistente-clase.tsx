@@ -14,6 +14,12 @@ interface Mensaje {
 
 export interface AsistenteClaseProps {
   leccionId: string;
+  /**
+   * Cómo se llama el asistente de ESTA academia. Va por prop y no fijo en el
+   * código: "BecarIA" es la marca de una empresa concreta, y escribirla aquí
+   * se la pondría a todas las demás.
+   */
+  nombre: string;
   className?: string;
 }
 
@@ -27,8 +33,7 @@ export interface AsistenteClaseProps {
  * de preguntas lo lleva el servidor: si lo llevara este componente, bastaría
  * con recargar para reiniciarlo.
  */
-export function AsistenteClase({ leccionId, className }: AsistenteClaseProps) {
-  const [abierto, setAbierto] = useState(false);
+export function AsistenteClase({ leccionId, nombre, className }: AsistenteClaseProps) {
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [pregunta, setPregunta] = useState("");
   const [pensando, setPensando] = useState(false);
@@ -88,23 +93,14 @@ export function AsistenteClase({ leccionId, className }: AsistenteClaseProps) {
     }
   }
 
-  if (!abierto) {
-    return (
-      <Button
-        variant="outline"
-        onClick={() => setAbierto(true)}
-        className={cn("w-full", className)}
-      >
-        <Sparkles /> Pregunta sobre esta clase
-      </Button>
-    );
-  }
-
   return (
     <section className={cn("rounded-2xl bg-card ring-1 ring-foreground/10", className)}>
       <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
-        <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-          <Sparkles className="size-4" /> Asistente de la clase
+        <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+          <span className="flex size-7 items-center justify-center rounded-full bg-primary/15 text-primary">
+            <Sparkles className="size-4" />
+          </span>
+          {nombre}
         </p>
         {restantes !== null && (
           <span className="text-xs text-muted-foreground">
@@ -116,8 +112,8 @@ export function AsistenteClase({ leccionId, className }: AsistenteClaseProps) {
       <div className="max-h-96 space-y-3 overflow-y-auto p-4">
         {mensajes.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            Pregunta lo que quieras sobre esta clase. Solo responde con lo que se
-            explica aquí — si preguntas otra cosa, te lo dirá.
+            Hola. Pregúntame lo que quieras sobre esta clase. Solo respondo con
+            lo que se explica aquí — si preguntas otra cosa, te lo diré.
           </p>
         )}
 
@@ -161,7 +157,7 @@ export function AsistenteClase({ leccionId, className }: AsistenteClaseProps) {
             }
           }}
           rows={1}
-          placeholder="¿Qué quieres saber?"
+          placeholder={`Pregunta a ${nombre}…`}
           aria-label="Tu pregunta sobre la clase"
           className="min-h-9 py-2 text-sm"
           disabled={pensando}

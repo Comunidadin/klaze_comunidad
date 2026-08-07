@@ -299,7 +299,12 @@ export function LeccionDetalle({ comunidadSlug, cursoSlug, leccionId }: LeccionD
         )}
 
         {/* Solo si el creador lo encendió para ESTA clase. */}
-        {leccion.iaHabilitada && <AsistenteClase leccionId={leccion.id} />}
+        {leccion.iaHabilitada && (
+          <AsistenteClase
+            leccionId={leccion.id}
+            nombre={resultado.community.nombreIa?.trim() || "Asistente"}
+          />
+        )}
 
         {/* Completar + navegación */}
         <div className="flex flex-col gap-4 rounded-2xl bg-card p-4 ring-1 ring-foreground/10 sm:flex-row sm:items-center sm:justify-between">

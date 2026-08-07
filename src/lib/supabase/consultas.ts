@@ -56,7 +56,7 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
   const { data: comunidades } = await supabase
     .from("comunidades")
     .select(
-      "id, slug, nombre, descripcion, logo_url, color_acento, propietario_id, plan_id, estado, nombres_niveles, marca_auth, creado_el"
+      "id, slug, nombre, descripcion, logo_url, color_acento, propietario_id, plan_id, estado, nombres_niveles, marca_auth, nombre_ia, creado_el"
     )
     .limit(1);
   const c = comunidades?.[0] ?? null;
@@ -95,6 +95,7 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
         plan: c.plan_id as Community["plan"],
         estado: c.estado as Community["estado"],
         nombresNiveles: c.nombres_niveles,
+        nombreIa: c.nombre_ia ?? undefined,
         // Los espacios del feed llegan en la rebanada 3, con el resto de la
         // vida social. Vacío aquí no es un olvido.
         secciones: [],
