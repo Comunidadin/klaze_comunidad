@@ -143,6 +143,7 @@ function ConfiguracionForm({
   const [nombre, setNombre] = useState(community.nombre);
   const [logoUrl, setLogoUrl] = useState(community.logoUrl);
   const [colorAcento, setColorAcento] = useState(community.colorAcento);
+  const [nombreIa, setNombreIa] = useState(community.nombreIa ?? "");
 
   async function handleGuardar() {
     const nombreLimpio = nombre.trim();
@@ -156,6 +157,7 @@ function ConfiguracionForm({
         nombre: nombreLimpio,
         logoUrl: logoUrl.trim(),
         colorAcento,
+        nombreIa,
       });
       // Recargar el armazón para que el nombre y el color nuevos se vean en
       // toda la app, no solo en esta pantalla.
@@ -202,6 +204,23 @@ function ConfiguracionForm({
               etiqueta="Subir el logo de la academia"
               ayuda="Cuadrado, 512 × 512. PNG con fondo transparente si puedes: se ve pequeño, así que un logo con texto fino no se leerá. Sin logo mostramos la inicial de tu academia."
             />
+          </div>
+
+          <Separator />
+
+          <div className="space-y-1.5">
+            <Label htmlFor="config-ia">Nombre del asistente</Label>
+            <Input
+              id="config-ia"
+              value={nombreIa}
+              onChange={(e) => setNombreIa(e.target.value)}
+              placeholder="Asistente"
+              maxLength={30}
+            />
+            <p className="text-xs text-muted-foreground">
+              Cómo se presenta la IA a tus alumnos en las clases donde la
+              enciendas. Sin nombre propio se llama «Asistente».
+            </p>
           </div>
 
           <Separator />

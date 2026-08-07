@@ -41,6 +41,8 @@ export interface Community {
   plan: "starter" | "pro" | "scale";
   estado: "activa" | "suspendida";
   nombresNiveles: string[]; // 9 nombres personalizables
+  /** Cómo se llama el asistente de esta academia. Sin él, "Asistente". */
+  nombreIa?: string;
   secciones: CommunitySection[]; // navegación de espacios del feed, agrupada
   creadoEl: string;
   /**
