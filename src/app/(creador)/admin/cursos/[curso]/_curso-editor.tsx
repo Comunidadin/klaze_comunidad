@@ -190,6 +190,10 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
     }));
   }
 
+  function actualizarPortadaCurso(portadaUrl: string) {
+    actualizarCurso((c) => ({ ...c, portadaUrl: portadaUrl.trim() }));
+  }
+
   function actualizarPortadaModulo(moduloId: string, portadaUrl: string) {
     actualizarCurso((c) => ({
       ...c,
@@ -343,6 +347,22 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
         </div>
       </div>
 
+      {/* Portada del curso. No estaba: solo se podía poner al crearlo, así que
+          equivocarse era definitivo. Es además la imagen que el alumno ve
+          primero, en la ficha del curso. */}
+      <div className="mb-6 rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
+        <Label className="mb-2 block">Portada del curso</Label>
+        <SubirImagen
+          valor={curso.portadaUrl}
+          onCambio={actualizarPortadaCurso}
+          proporcion={16 / 9}
+          anchoSalida={1280}
+          destino={{ tipo: "academia", comunidadId: community.id, uso: "portada" }}
+          etiqueta="Subir la portada del curso"
+          ayuda="16:9, 1280 × 720. Se estira a una franja ancha con un degradado oscuro abajo para el título, así que deja lo importante en el centro."
+        />
+      </div>
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_28rem]">
         {/* Columna izquierda: estructura */}
         <div className="space-y-4">
@@ -415,7 +435,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
                         uso: "modulo",
                       }}
                       etiqueta={`Subir la portada del módulo ${indiceModulo + 1}`}
-                      ayuda="Vertical 2:3, 800 × 1200. El número y el título van encima con un degradado oscuro."
+                      ayuda="Vertical 2:3 · 800 × 1200"
                     />
                   </div>
 
