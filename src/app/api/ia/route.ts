@@ -24,13 +24,13 @@ const MAX_CONTEXTO = 24_000;
 
 export async function POST(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const secreta = variableServidor("SUPABASE_SECRET_KEY");
+  const secreta = await variableServidor("SUPABASE_SECRET_KEY");
   const publicable = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  const openaiKey = variableServidor("OPENAI_API_KEY");
-  const modelo = variableServidor("OPENAI_MODEL") ?? "gpt-4o-mini";
+  const openaiKey = await variableServidor("OPENAI_API_KEY");
+  const modelo = await variableServidor("OPENAI_MODEL") ?? "gpt-4o-mini";
   // Se lee por petición y no en el módulo: en el módulo se evaluaría al
   // arrancar el worker, antes de que exista su entorno.
-  const topeDiario = Number(variableServidor("IA_TOPE_DIARIO") ?? 20);
+  const topeDiario = Number(await variableServidor("IA_TOPE_DIARIO") ?? 20);
 
   if (!url || !secreta || !publicable) {
     return NextResponse.json({ error: "Faltan variables de servidor" }, { status: 500 });
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
   // `IA_ACTIVA=false` es el interruptor global: corta el gasto en toda la
   // plataforma sin desplegar nada. Es lo que se toca si algo se dispara de
   // madrugada.
-  if (variableServidor("IA_ACTIVA") === "false") {
+  if (await variableServidor("IA_ACTIVA") === "false") {
     return NextResponse.json(
       { error: "El asistente está desactivado temporalmente." },
       { status: 503 }
@@ -112,6 +112,8 @@ export async function POST(request: NextRequest) {
   }
 
   if (!openaiKey) {
+    // Pasa si el secreto se subió vacío, que es más fácil de lo que parece:
+    // `wrangler secret put` acepta un valor en blanco sin quejarse.
     return NextResponse.json(
       { error: "El asistente no está configurado en este servidor." },
       { status: 503 }

@@ -15,7 +15,7 @@ import { crearAcademia } from "@/lib/academia";
  */
 export async function POST(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const secreta = variableServidor("SUPABASE_SECRET_KEY");
+  const secreta = await variableServidor("SUPABASE_SECRET_KEY");
 
   if (!url || !secreta) {
     return NextResponse.json(
