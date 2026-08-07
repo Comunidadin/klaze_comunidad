@@ -303,6 +303,7 @@ export function LeccionDetalle({ comunidadSlug, cursoSlug, leccionId }: LeccionD
           <AsistenteClase
             leccionId={leccion.id}
             nombre={resultado.community.nombreIa?.trim() || "Asistente"}
+            avatar={resultado.community.avatarIa}
           />
         )}
 

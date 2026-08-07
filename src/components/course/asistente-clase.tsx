@@ -12,6 +12,47 @@ interface Mensaje {
   texto: string;
 }
 
+/**
+ * La cara del asistente: su foto si la academia subió una, y si no el icono.
+ *
+ * Va en un componente propio porque aparece en la cabecera y en cada respuesta,
+ * y las dos tienen que caer al mismo respaldo si la imagen no carga.
+ */
+function CaraAsistente({
+  avatar,
+  tam,
+  className,
+}: {
+  avatar?: string;
+  tam: 6 | 7;
+  className?: string;
+}) {
+  const medida = tam === 7 ? "size-7" : "size-6";
+
+  if (avatar?.trim()) {
+    return (
+      /* eslint-disable-next-line @next/next/no-img-element -- imagen del creador, dominio arbitrario */
+      <img
+        src={avatar}
+        alt=""
+        className={cn(medida, "shrink-0 rounded-full object-cover", className)}
+      />
+    );
+  }
+
+  return (
+    <span
+      className={cn(
+        medida,
+        "flex shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary",
+        className
+      )}
+    >
+      <Sparkles className={tam === 7 ? "size-4" : "size-3.5"} />
+    </span>
+  );
+}
+
 export interface AsistenteClaseProps {
   leccionId: string;
   /**
@@ -20,6 +61,8 @@ export interface AsistenteClaseProps {
    * se la pondría a todas las demás.
    */
   nombre: string;
+  /** Su cara. Sin ella, el icono de siempre. */
+  avatar?: string;
   className?: string;
 }
 
@@ -33,7 +76,12 @@ export interface AsistenteClaseProps {
  * de preguntas lo lleva el servidor: si lo llevara este componente, bastaría
  * con recargar para reiniciarlo.
  */
-export function AsistenteClase({ leccionId, nombre, className }: AsistenteClaseProps) {
+export function AsistenteClase({
+  leccionId,
+  nombre,
+  avatar,
+  className,
+}: AsistenteClaseProps) {
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [pregunta, setPregunta] = useState("");
   const [pensando, setPensando] = useState(false);
@@ -97,9 +145,7 @@ export function AsistenteClase({ leccionId, nombre, className }: AsistenteClaseP
     <section className={cn("rounded-2xl bg-card ring-1 ring-foreground/10", className)}>
       <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
         <p className="flex items-center gap-2 text-sm font-medium text-foreground">
-          <span className="flex size-7 items-center justify-center rounded-full bg-primary/15 text-primary">
-            <Sparkles className="size-4" />
-          </span>
+          <CaraAsistente avatar={avatar} tam={7} />
           {nombre}
         </p>
         {restantes !== null && (
@@ -119,20 +165,13 @@ export function AsistenteClase({ leccionId, nombre, className }: AsistenteClaseP
 
         {mensajes.map((m, i) => (
           <div key={i} className="flex gap-2.5">
-            <span
-              className={cn(
-                "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full",
-                m.de === "alumno"
-                  ? "bg-muted text-muted-foreground"
-                  : "bg-primary/15 text-primary"
-              )}
-            >
-              {m.de === "alumno" ? (
+            {m.de === "alumno" ? (
+              <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
                 <User className="size-3.5" />
-              ) : (
-                <Sparkles className="size-3.5" />
-              )}
-            </span>
+              </span>
+            ) : (
+              <CaraAsistente avatar={avatar} tam={6} className="mt-0.5" />
+            )}
             <p className="min-w-0 flex-1 text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
               {m.texto}
             </p>

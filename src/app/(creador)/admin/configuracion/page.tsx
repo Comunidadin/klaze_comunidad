@@ -144,6 +144,7 @@ function ConfiguracionForm({
   const [logoUrl, setLogoUrl] = useState(community.logoUrl);
   const [colorAcento, setColorAcento] = useState(community.colorAcento);
   const [nombreIa, setNombreIa] = useState(community.nombreIa ?? "");
+  const [avatarIa, setAvatarIa] = useState(community.avatarIa ?? "");
 
   async function handleGuardar() {
     const nombreLimpio = nombre.trim();
@@ -158,6 +159,7 @@ function ConfiguracionForm({
         logoUrl: logoUrl.trim(),
         colorAcento,
         nombreIa,
+        avatarIa,
       });
       // Recargar el armazón para que el nombre y el color nuevos se vean en
       // toda la app, no solo en esta pantalla.
@@ -221,6 +223,19 @@ function ConfiguracionForm({
               Cómo se presenta la IA a tus alumnos en las clases donde la
               enciendas. Sin nombre propio se llama «Asistente».
             </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Cara del asistente</Label>
+            <SubirImagen
+              valor={avatarIa}
+              onCambio={setAvatarIa}
+              proporcion={1}
+              anchoSalida={256}
+              destino={{ tipo: "academia", comunidadId: community.id, uso: "logo" }}
+              etiqueta="Subir la cara del asistente"
+              ayuda="Cuadrada, 256 × 256. Se ve pequeña y en círculo, así que centra la cara. Sin foto se usa un icono."
+            />
           </div>
 
           <Separator />
