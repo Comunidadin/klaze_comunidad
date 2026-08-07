@@ -44,7 +44,13 @@ export function cursosVisiblesParaMiembro(
   comunidadId: string,
   cursos: Course[]
 ): Course[] {
-  return cursosDeComunidad(comunidadId, cursos).filter((c) => c.publicado);
+  return cursosDeComunidad(comunidadId, cursos)
+    .filter((c) => c.publicado)
+    // Y dentro, fuera los módulos en borrador. Se hace AQUÍ y no en cada
+    // pantalla porque este es el punto único: así el progreso, las filas y el
+    // "continuar" dejan de contar lo que el miembro no puede abrir, sin que
+    // ninguno de ellos tenga que saber que existe el borrador.
+    .map((c) => ({ ...c, modulos: c.modulos.filter((m) => m.publicado) }));
 }
 
 /**
