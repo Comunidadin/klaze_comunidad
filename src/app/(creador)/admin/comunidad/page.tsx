@@ -617,7 +617,7 @@ function EspaciosPorCurso({
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <span className="text-sm text-muted-foreground">Curso:</span>
+        <span className="text-sm text-muted-foreground">Vitrina:</span>
         <Select value={elegido} onValueChange={setCursoId}>
           <SelectTrigger className="w-[260px]" aria-label="Curso">
             <SelectValue />

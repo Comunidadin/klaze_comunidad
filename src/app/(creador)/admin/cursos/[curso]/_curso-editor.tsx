@@ -329,7 +329,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
             onClick={volver}
             className="mb-1 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
           >
-            <ChevronLeft className="size-3.5" /> Volver a cursos
+            <ChevronLeft className="size-3.5" /> Volver a vitrinas
           </button>
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="truncate font-display text-xl font-bold text-foreground sm:text-2xl">
@@ -356,11 +356,11 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
         </div>
       </div>
 
-      {/* Portada del curso. No estaba: solo se podía poner al crearlo, así que
+      {/* Portada de la vitrina. No estaba: solo se podía poner al crearlo, así que
           equivocarse era definitivo. Es además la imagen que el alumno ve
           primero, en la ficha del curso. */}
       <div className="mb-6 rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
-        <Label className="mb-2 block">Portada del curso</Label>
+        <Label className="mb-2 block">Portada de la vitrina</Label>
         <SubirImagen
           valor={curso.portadaUrl}
           onCambio={actualizarPortadaCurso}
@@ -377,10 +377,10 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-sm font-semibold text-foreground">
-              Estructura del curso
+              Estructura de la vitrina
             </h2>
             <Button variant="outline" size="sm" onClick={agregarModulo}>
-              <Plus /> Módulo
+              <Plus /> Curso
             </Button>
           </div>
 
@@ -543,7 +543,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
                       className="w-full justify-start text-muted-foreground"
                       onClick={() => agregarLeccion(modulo.id)}
                     >
-                      <Plus /> Agregar lección
+                      <Plus /> Agregar clase
                     </Button>
                   </div>
                 </div>
