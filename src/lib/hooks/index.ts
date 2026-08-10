@@ -51,3 +51,6 @@ export type {
   PlatformMetricas,
   UsePlatformResult,
 } from "@/lib/hooks/use-platform";
+
+export { useCanalesVenta, useRecepciones } from "@/lib/hooks/use-canales-venta";
+export type { UseCanalesVentaResult } from "@/lib/hooks/use-canales-venta";

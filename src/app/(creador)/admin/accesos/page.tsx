@@ -11,6 +11,7 @@ import { pedirEnlaceInvitacion } from "@/lib/invitaciones-api";
 import { esEmailValido } from "@/lib/validation";
 import { resumenCursosInvitacion } from "@/lib/invitation-summary";
 import { formatFechaLarga } from "@/lib/format-fecha";
+import { VentasAutomaticas } from "./_ventas-automaticas";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -383,6 +384,8 @@ export default function AccesosPage() {
             )}
           </CardContent>
         </Card>
+
+        <VentasAutomaticas comunidadId={community.id} cursos={cursos} />
       </div>
     </TooltipProvider>
   );
