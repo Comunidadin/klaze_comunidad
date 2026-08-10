@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  academiasDe,
   canalPorToken,
   clienteAdmin,
   emailDelCuerpo,
@@ -9,19 +10,16 @@ import {
 } from "@/lib/compras";
 
 /**
- * La otra mitad del enlace de compra: quitar el acceso.
+ * Un creador deja de pagarte: su academia se suspende.
  *
- * Se llama desde donde se entere del reembolso, el contracargo o la baja de la
- * suscripción — la misma herramienta que dispara el alta, o la pasarela.
+ * **Suspende, no borra.** Es la misma distinción que con un alumno, y aquí pesa
+ * más todavía: detrás de una academia hay cursos, publicaciones y el progreso
+ * de mucha gente. `pertenece_a` corta el contenido y `inscrito_en` deja ver la
+ * fila, así que sus alumnos ven «suspendida» y no «no encontrada» — y el día
+ * que vuelva a pagar, el alta la reactiva con todo dentro.
  *
- * **Suspende, no borra.** Es la diferencia que ya existe en el modelo:
- * `pertenece_a` corta el contenido pero `inscrito_en` deja ver la fila, así que
- * el alumno ve «tu acceso está suspendido» en vez de «academia no encontrada».
- * Y si vuelve a comprar, el alta lo reactiva sin perder su progreso ni sus
- * puntos.
- *
- * Toca **solo esta academia**. La cuenta no se toca: la misma persona puede
- * estar estudiando en otra, y darla de baja aquí no puede dejarla fuera de allí.
+ * Suspende **solo las academias que esa persona posee**. Su cuenta no se toca:
+ * podría además estar estudiando en la academia de otro.
  */
 export async function POST(
   request: Request,
@@ -37,7 +35,7 @@ export async function POST(
     );
   }
 
-  const canal = await canalPorToken(admin, token, "academia");
+  const canal = await canalPorToken(admin, token, "plataforma");
   if (!canal) {
     return NextResponse.json({ error: "No existe" }, { status: 404 });
   }
@@ -67,29 +65,27 @@ export async function POST(
     return NextResponse.json({ ok: false, motivo: "tope_diario" }, { status: 429 });
   }
 
-  const { data: usuarioId } = await admin.rpc("perfil_por_email", { p_email: email });
+  const suyas = await academiasDe(admin, email);
 
-  if (!usuarioId) {
+  if (suyas.length === 0) {
     await registrar(admin, canal.id, {
       email,
       accion: "baja",
       resultado: "sin_cuenta",
-      detalle: "Ese correo no tiene cuenta en Klaze",
+      detalle: "Ese correo no es dueño de ninguna academia",
       cuerpo: crudo,
     });
     return NextResponse.json({ ok: false, motivo: "sin_cuenta" });
   }
 
-  // `select()` y no solo `update()`: RLS aquí no filtra —va con la clave
-  // secreta— pero un correo sin inscripción en ESTA academia actualiza cero
-  // filas y vuelve sin error. Sin mirar las filas, se registraría como
-  // suspendido alguien que nunca estuvo dentro.
   const { data: filas, error } = await admin
-    .from("inscripciones")
-    .update({ estado: "suspendido" })
-    .eq("usuario_id", usuarioId)
-    .eq("comunidad_id", canal.comunidadId)
-    .select("id");
+    .from("comunidades")
+    .update({ estado: "suspendida" })
+    .in(
+      "id",
+      suyas.map((a) => a.id)
+    )
+    .select("slug");
 
   if (error) {
     await registrar(admin, canal.id, {
@@ -102,15 +98,18 @@ export async function POST(
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 
-  const suspendido = (filas ?? []).length > 0;
+  const suspendidas = (filas ?? []).map((f) => f.slug);
 
   await registrar(admin, canal.id, {
     email,
     accion: "baja",
-    resultado: suspendido ? "suspendido" : "sin_cuenta",
-    detalle: suspendido ? "" : "No estaba inscrito en esta academia",
+    resultado: suspendidas.length > 0 ? "academia_suspendida" : "sin_cuenta",
+    detalle:
+      suspendidas.length > 0
+        ? suspendidas.map((s) => `/c/${s}`).join(", ")
+        : "Ese correo no es dueño de ninguna academia",
     cuerpo: crudo,
   });
 
-  return NextResponse.json({ ok: suspendido });
+  return NextResponse.json({ ok: suspendidas.length > 0, academias: suspendidas });
 }

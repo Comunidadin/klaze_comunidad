@@ -83,8 +83,12 @@ El esquema vive en `supabase/migrations/`. Ver las specs en `docs/superpowers/sp
 ```bash
 supabase migration new <nombre>   # crea el archivo SQL
 bun run db:push                   # aplica lo pendiente al proyecto alojado
-bun run test:rls                  # pruebas de aislamiento — deben quedar verdes
+bun run test                      # todas las pruebas — deben quedar verdes
+bun run test:rls                  # solo las que tocan la base
 ```
+
+`bun run test` es el que hay que correr antes de terminar: `test:rls` se salta
+`tests/*.test.ts`, que son las de lógica pura (`slug`) y no necesitan base.
 
 - **No hay base local** (esta máquina no tiene Docker): las migraciones van al proyecto alojado. `bun run db:push` conecta directo a Postgres y registra cada migración en `supabase_migrations.schema_migrations`, así que `supabase db push` sigue siendo válido si alguien enlaza la CLI.
 - **RLS activado en toda tabla nueva, en su misma migración**, nunca después. Y `grant` explícito: crear una tabla por SQL no la expone al API sola.

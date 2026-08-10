@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { crearInvitaciones } from "@/lib/supabase/invitaciones";
-import { variableServidor } from "@/lib/entorno-servidor";
+import { enviarCorreo } from "@/lib/correo";
 
 /**
  * Dar acceso a alguien a una academia: cuenta, invitación y correo.
@@ -133,26 +133,11 @@ export async function darAcceso(
 
   if (!o.enviarCorreo) return { ...base, enviado: false };
 
-  // `variableServidor` y no `process.env`: en Cloudflare los secretos subidos
-  // con `wrangler secret put` viven en el entorno del worker, no en el build.
-  const resendKey = await variableServidor("RESEND_API_KEY");
-  const remitente = await variableServidor("RESEND_FROM");
-  if (!resendKey || !remitente) {
-    return { ...base, enviado: false, errorCorreo: "Faltan RESEND_API_KEY o RESEND_FROM" };
-  }
-
-  const respuesta = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${resendKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: remitente,
-      to: [email],
-      subject: `Tu acceso a ${o.comunidadNombre}`,
-      html: passwordTemporal
-        ? `
+  const r = await enviarCorreo({
+    para: email,
+    asunto: `Tu acceso a ${o.comunidadNombre}`,
+    html: passwordTemporal
+      ? `
         <p>Te han dado acceso a <strong>${o.comunidadNombre}</strong>.</p>
         <p>Entra en <a href="${o.origen}/login">${o.origen}/login</a> con:</p>
         <p>
@@ -169,13 +154,7 @@ export async function darAcceso(
         <p style="color:#666;font-size:13px">
           Si no la recuerdas, usa "¿Olvidaste tu contraseña?" en esa misma pantalla.
         </p>`,
-    }),
   });
 
-  if (!respuesta.ok) {
-    const detalle = await respuesta.text();
-    return { ...base, enviado: false, errorCorreo: detalle.slice(0, 200) };
-  }
-
-  return { ...base, enviado: true };
+  return { ...base, enviado: r.enviado, errorCorreo: r.error };
 }

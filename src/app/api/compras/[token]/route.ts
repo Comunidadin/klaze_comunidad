@@ -45,7 +45,7 @@ export async function POST(
     );
   }
 
-  const canal = await canalPorToken(admin, token);
+  const canal = await canalPorToken(admin, token, "academia");
   if (!canal) {
     return NextResponse.json({ error: "No existe" }, { status: 404 });
   }

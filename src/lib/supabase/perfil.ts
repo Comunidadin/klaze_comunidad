@@ -31,7 +31,17 @@ export async function actualizarPerfil(
 }
 
 export type CambiosComunidad = Partial<
-  Pick<Community, "nombre" | "logoUrl" | "colorAcento" | "nombresNiveles" | "marcaAuth" | "nombreIa" | "avatarIa">
+  Pick<
+    Community,
+    | "nombre"
+    | "slug"
+    | "logoUrl"
+    | "colorAcento"
+    | "nombresNiveles"
+    | "marcaAuth"
+    | "nombreIa"
+    | "avatarIa"
+  >
 >;
 
 /**
@@ -50,6 +60,10 @@ export async function guardarComunidad(
 ): Promise<void> {
   const fila: Record<string, unknown> = {};
   if (cambios.nombre !== undefined) fila.nombre = cambios.nombre;
+  // El trigger `congelar_slug_con_alumnos` rechaza este cambio en cuanto la
+  // academia tiene alumnos, y ese rechazo sí llega como error: es una excepción
+  // de Postgres, no un filtro de RLS.
+  if (cambios.slug !== undefined) fila.slug = cambios.slug;
   if (cambios.logoUrl !== undefined) fila.logo_url = cambios.logoUrl;
   if (cambios.colorAcento !== undefined) fila.color_acento = cambios.colorAcento;
   if (cambios.nombresNiveles !== undefined) fila.nombres_niveles = cambios.nombresNiveles;

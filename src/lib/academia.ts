@@ -84,13 +84,18 @@ export async function crearAcademia(
 
   // Reutiliza la cuenta si ya existe: puede haberla dejado un intento anterior
   // que creó el usuario y falló al crear la comunidad.
-  const { data: lista } = await admin.auth.admin.listUsers({
-    page: 1,
-    perPage: 1000,
-  });
-  let usuarioId = lista?.users?.find(
-    (u) => u.email?.toLowerCase() === op.email.toLowerCase()
-  )?.id;
+  //
+  // Antes esto listaba las primeras mil cuentas y buscaba a mano. Pasadas mil
+  // dejaba de encontrar a quien ya existe, intentaba crearlo otra vez y fallaba
+  // — y ahora que el súper enlace llama aquí en cada venta, ese día llega solo.
+  const { data: encontrado, error: errBusqueda } = await admin.rpc(
+    "perfil_por_email",
+    { p_email: op.email }
+  );
+  if (errBusqueda) {
+    throw new Error(`No se pudo buscar la cuenta: ${errBusqueda.message}`);
+  }
+  let usuarioId = (encontrado as string | null) ?? undefined;
 
   let password: string | null = null;
 

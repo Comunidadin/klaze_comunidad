@@ -6,6 +6,7 @@ import { Save, Settings } from "lucide-react";
 import { useHydrated } from "@/lib/hooks/use-session";
 import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { crearClienteNavegador } from "@/lib/supabase/client";
+import { slugDesde } from "@/lib/slug";
 import { cargarArmazon } from "@/lib/supabase/consultas";
 import { guardarComunidad } from "@/lib/supabase/perfil";
 import { useAppStore } from "@/lib/store";
@@ -141,6 +142,7 @@ function ConfiguracionForm({
 }) {
   const establecerArmazon = useAppStore((s) => s.establecerArmazon);
   const [nombre, setNombre] = useState(community.nombre);
+  const [slug, setSlug] = useState(community.slug);
   const [logoUrl, setLogoUrl] = useState(community.logoUrl);
   const [colorAcento, setColorAcento] = useState(community.colorAcento);
   const [nombreIa, setNombreIa] = useState(community.nombreIa ?? "");
@@ -154,10 +156,19 @@ function ConfiguracionForm({
       toast.error("El nombre de la comunidad no puede estar vacío.");
       return;
     }
+    const slugLimpio = slugDesde(slug);
+    if (!slug.trim()) {
+      toast.error("La dirección de la academia no puede estar vacía.");
+      return;
+    }
+
     try {
       const supabase = crearClienteNavegador();
       await guardarComunidad(supabase, community.id, {
         nombre: nombreLimpio,
+        // Solo se manda si cambió: el trigger que lo congela compara con el
+        // valor anterior, y reenviar el mismo no cuenta como cambio.
+        ...(slugLimpio !== community.slug ? { slug: slugLimpio } : {}),
         logoUrl: logoUrl.trim(),
         colorAcento,
         nombreIa,
@@ -199,6 +210,25 @@ function ConfiguracionForm({
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="config-slug">Dirección de tu academia</Label>
+            <Input
+              id="config-slug"
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              className="font-mono"
+            />
+            <p className="text-xs text-muted-foreground">
+              Tus alumnos entran por{" "}
+              <span className="font-mono text-foreground">
+                /login/{slugDesde(slug) || "…"}
+              </span>
+              . Puedes cambiarla mientras no tengas alumnos; en cuanto entre el
+              primero se queda fija, porque cambiarla rompería los enlaces que
+              ya tengan guardados.
+            </p>
           </div>
 
           <div className="space-y-1.5">
