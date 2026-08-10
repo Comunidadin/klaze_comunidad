@@ -4,6 +4,7 @@ import { Building2, GraduationCap, Users } from "lucide-react";
 import { useHydrated } from "@/lib/hooks/use-session";
 import { usePlatform } from "@/lib/hooks/use-platform";
 import { formatFechaLarga } from "@/lib/format-fecha";
+import { SuperEnlaces } from "./_super-enlace";
 import { StatCard } from "@/components/admin/stat-card";
 import { PlanBadge, EstadoComunidadBadge } from "@/components/admin/community-badges";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -43,7 +44,7 @@ function DashboardSkeleton() {
  */
 export default function PlataformaDashboardPage() {
   const hydrated = useHydrated();
-  const { academias, metricas, cargando } = usePlatform();
+  const { academias, metricas, planes, cargando } = usePlatform();
 
   if (!hydrated || cargando) {
     return <DashboardSkeleton />;
@@ -136,6 +137,8 @@ export default function PlataformaDashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      <SuperEnlaces planes={planes} />
     </div>
   );
 }

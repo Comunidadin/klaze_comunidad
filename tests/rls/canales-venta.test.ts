@@ -98,6 +98,65 @@ test("el dueno de otra empresa no lee mis recepciones", async () => {
   expect(data ?? []).toEqual([]);
 });
 
+test("el identificador se congela en cuanto hay un alumno", async () => {
+  // El super enlace deriva el identificador del nombre de la empresa sin
+  // preguntar, asi que hay que poder corregirlo. Pero solo al principio: vive
+  // en /c/{slug} y /login/{slug}, que son las direcciones que los alumnos ya
+  // tienen guardadas.
+  //
+  // La regla esta en un trigger y no en la pantalla: una comprobacion que solo
+  // existe en el navegador no es una regla, es una sugerencia.
+  const { error } = await e.duenoA.cliente
+    .from("comunidades")
+    .update({ slug: `empresa-a-canales-nuevo` })
+    .eq("id", e.comunidadA);
+
+  expect(error).not.toBeNull();
+  expect(error?.message).toContain("alumnos");
+
+  // Y sigue siendo el de antes: el rechazo no dejo nada a medias.
+  const { data } = await admin
+    .from("comunidades")
+    .select("slug")
+    .eq("id", e.comunidadA)
+    .single();
+  expect(data?.slug).toBe("empresa-a-canales");
+});
+
+test("sin alumnos si se puede cambiar", async () => {
+  // `comunidadB` tiene a `alumnoB`, asi que se monta una academia limpia: el
+  // caso real es el de quien acaba de comprar y aun no ha invitado a nadie.
+  const { data: recien, error: errCrear } = await admin
+    .from("comunidades")
+    .insert({
+      slug: "recien-comprada-canales",
+      nombre: "Recién comprada",
+      propietario_id: e.duenoA.id,
+      plan_id: "pro",
+    })
+    .select("id")
+    .single();
+  if (errCrear) throw new Error(errCrear.message);
+
+  // Con la inscripcion del propio dueño, que `crearAcademia` siempre crea: si
+  // el trigger la contara, el identificador nacería congelado.
+  await admin.from("inscripciones").insert({
+    usuario_id: e.duenoA.id,
+    comunidad_id: recien.id,
+    estado: "activo",
+    todos_los_cursos: true,
+  });
+
+  const { error } = await e.duenoA.cliente
+    .from("comunidades")
+    .update({ slug: "ya-elegido-canales" })
+    .eq("id", recien.id);
+
+  expect(error).toBeNull();
+
+  await admin.from("comunidades").delete().eq("id", recien.id);
+});
+
 test("nadie busca cuentas por correo desde una sesion", async () => {
   // `perfil_por_email` existe para el servidor, que ya se salta RLS con la
   // clave secreta. Abierta a `authenticated` seria un buscador de correos:

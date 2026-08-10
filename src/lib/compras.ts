@@ -15,12 +15,25 @@ import { esEmailValido } from "@/lib/validation";
 /** Cuántas recepciones admite un canal al día. */
 export const TOPE_DIARIO = 200;
 
+export type TipoCanal = "academia" | "plataforma";
+
+/**
+ * Un canal es una oferta. De los dos tipos, porque los dos niveles de venta
+ * necesitan exactamente lo mismo —token, tope, registro— con otro efecto:
+ *
+ * - `academia`: da acceso a un alumno. Lleva comunidad y módulos.
+ * - `plataforma`: da de alta una academia entera. Lleva plan.
+ */
 export interface Canal {
   id: string;
+  tipo: TipoCanal;
+  /** Solo en los de academia. */
   comunidadId: string;
   comunidadNombre: string;
   todosLosCursos: boolean;
   cursoIds: string[];
+  /** Solo en los de plataforma. */
+  planId: string;
 }
 
 export type Resultado =
@@ -29,7 +42,10 @@ export type Resultado =
   | "suspendido"
   | "sin_email"
   | "sin_cuenta"
-  | "rechazado";
+  | "rechazado"
+  | "academia_creada"
+  | "academia_reactivada"
+  | "academia_suspendida";
 
 /** El cliente con la clave secreta, o `null` si falta configurarla. */
 export async function clienteAdmin(): Promise<SupabaseClient | null> {
@@ -42,22 +58,30 @@ export async function clienteAdmin(): Promise<SupabaseClient | null> {
 }
 
 /**
- * El canal de ese token, si existe, está encendido y su academia está activa.
+ * El canal de ese token, si existe, es del tipo esperado y está utilizable.
  *
- * Devuelve `null` sin distinguir entre los tres casos, y las rutas responden
- * 404 en todos. Un 403 confirmaría que el token existe, que es justo lo que
- * protege a una dirección que cualquiera puede probar.
+ * Devuelve `null` sin distinguir entre los casos, y las rutas responden 404 en
+ * todos. Un 403 confirmaría que el token existe, que es justo lo que protege a
+ * una dirección que cualquiera puede probar.
+ *
+ * **El tipo se pide, no se deduce.** Sin ese filtro, el token de un enlace de
+ * plataforma serviría también en `/api/compras` y al revés: cada ruta acepta
+ * solo los suyos, y un token del otro tipo es tan desconocido como uno
+ * inventado.
  */
 export async function canalPorToken(
   admin: SupabaseClient,
-  token: string
+  token: string,
+  tipo: TipoCanal
 ): Promise<Canal | null> {
   const { data } = await admin
     .from("canales_venta")
-    .select(
-      "id, todos_los_cursos, activo, comunidad_id, comunidades(nombre, estado), canal_cursos(curso_id)"
-    )
+    // En una sola cadena literal, aunque pase de los 100 caracteres: Supabase
+    // lee este texto en tiempo de tipos para saber qué devuelve, y partirlo en
+    // dos trozos concatenados le deja `GenericStringError` en vez de la fila.
+    .select("id, tipo, plan_id, todos_los_cursos, activo, comunidad_id, comunidades(nombre, estado), canal_cursos(curso_id)")
     .eq("token", token)
+    .eq("tipo", tipo)
     .maybeSingle();
 
   if (!data || !data.activo) return null;
@@ -66,16 +90,24 @@ export async function canalPorToken(
     nombre: string;
     estado: string;
   } | null;
-  if (!comunidad || comunidad.estado !== "activa") return null;
+
+  // Un canal de academia muere con su academia: si está suspendida, sus
+  // enlaces de compra dejan de admitir gente. Uno de plataforma no tiene
+  // academia de la que depender.
+  if (tipo === "academia" && (!comunidad || comunidad.estado !== "activa")) {
+    return null;
+  }
 
   return {
     id: data.id,
-    comunidadId: data.comunidad_id,
-    comunidadNombre: comunidad.nombre,
+    tipo: data.tipo as TipoCanal,
+    comunidadId: data.comunidad_id ?? "",
+    comunidadNombre: comunidad?.nombre ?? "",
     todosLosCursos: data.todos_los_cursos,
     cursoIds: ((data.canal_cursos ?? []) as { curso_id: string }[]).map(
       (c) => c.curso_id
     ),
+    planId: data.plan_id ?? "",
   };
 }
 
@@ -185,6 +217,64 @@ export function nombreDelCuerpo(campos: Record<string, string>): string {
   const pila = primero(["first_name", "firstname"]);
   const apellido = primero(["last_name", "lastname", "apellido"]);
   return `${pila} ${apellido}`.trim().slice(0, 80);
+}
+
+/**
+ * El nombre de la empresa, para bautizar la academia. Nunca vacío.
+ *
+ * Los respaldos importan más de lo que parece: de aquí sale el nombre **y** la
+ * dirección de la academia, y quien ya pagó tiene que recibir algo aunque su
+ * formulario no preguntara por la empresa. Para eso el identificador se puede
+ * cambiar mientras no haya alumnos.
+ *
+ * A diferencia del correo, un nombre de empresa no se reconoce por su forma: si
+ * el campo no se llama de algo previsible, no hay nada que rastrear.
+ */
+export function empresaDelCuerpo(campos: Record<string, string>): string {
+  const claves = ["empresa", "company", "academia", "negocio", "marca", "nombre_empresa"];
+  for (const [clave, valor] of Object.entries(campos)) {
+    if (claves.includes(ultimoTramo(clave)) && valor.trim()) {
+      return valor.trim().slice(0, 60);
+    }
+  }
+
+  // Sin empresa, su propio nombre: "La academia de Ana" es peor nombre que
+  // "Ana", pero infinitamente mejor que ninguno.
+  const persona = nombreDelCuerpo(campos);
+  if (persona) return persona;
+
+  const correo = emailDelCuerpo(campos);
+  return correo ? correo.split("@")[0] : "Academia";
+}
+
+export interface AcademiaPropia {
+  id: string;
+  slug: string;
+  nombre: string;
+}
+
+/**
+ * Las academias que posee quien usa ese correo.
+ *
+ * La usan las dos puntas del súper enlace, y por eso vive aquí: el alta la
+ * consulta para no crear una segunda a quien ya tiene una, y la baja para saber
+ * cuáles suspender. Que las dos pregunten lo mismo es lo que hace que una
+ * renovación reactive exactamente lo que la baja suspendió.
+ */
+export async function academiasDe(
+  admin: SupabaseClient,
+  email: string
+): Promise<AcademiaPropia[]> {
+  const { data: usuarioId } = await admin.rpc("perfil_por_email", { p_email: email });
+  if (!usuarioId) return [];
+
+  const { data } = await admin
+    .from("comunidades")
+    .select("id, slug, nombre")
+    .eq("propietario_id", usuarioId as string)
+    .order("creado_el");
+
+  return (data ?? []) as AcademiaPropia[];
 }
 
 /** Deja constancia de la recepción. Nunca lanza: un fallo aquí no debe tumbar el acceso. */

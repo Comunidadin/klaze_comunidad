@@ -1,24 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import {
-  Check,
   ChevronDown,
   ChevronRight,
-  Copy,
   Link2,
   RefreshCw,
   Trash2,
   Zap,
 } from "lucide-react";
-import { useCanalesVenta, useRecepciones } from "@/lib/hooks/use-canales-venta";
+import { useCanalesVenta } from "@/lib/hooks/use-canales-venta";
 import type { CanalVenta } from "@/lib/supabase/canales-venta";
+import { Direccion, Recepciones, useOrigen } from "@/components/admin/enlace-compra";
 import { resumenCursosInvitacion } from "@/lib/invitation-summary";
-import { formatFechaLarga } from "@/lib/format-fecha";
 import type { Course } from "@/lib/types";
 import { EmptyState } from "@/components/shared/empty-state";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -36,104 +33,6 @@ import { Switch } from "@/components/ui/switch";
  * **la dirección a la que escribe ya lo sabe**. Es lo único que toda
  * herramienta sabe hacer, y por eso funciona con cualquiera.
  */
-
-/** Cómo se lee cada resultado del registro, y de qué color se pinta. */
-const RESULTADOS: Record<string, { texto: string; tono: "ok" | "aviso" | "malo" }> = {
-  creado: { texto: "Cuenta creada", tono: "ok" },
-  ya_tenia: { texto: "Ya tenía cuenta", tono: "ok" },
-  suspendido: { texto: "Acceso suspendido", tono: "aviso" },
-  sin_email: { texto: "Sin correo en el envío", tono: "malo" },
-  sin_cuenta: { texto: "No tenía acceso aquí", tono: "aviso" },
-  rechazado: { texto: "Rechazado", tono: "malo" },
-};
-
-function BotonCopiar({ texto, etiqueta }: { texto: string; etiqueta: string }) {
-  const [copiado, setCopiado] = useState(false);
-
-  return (
-    <Button
-      variant="outline"
-      size="sm"
-      className="shrink-0"
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(texto);
-          setCopiado(true);
-          setTimeout(() => setCopiado(false), 1600);
-        } catch {
-          toast.error("Tu navegador no dejó copiar. Selecciona la dirección a mano.");
-        }
-      }}
-    >
-      {copiado ? <Check /> : <Copy />}
-      {etiqueta}
-    </Button>
-  );
-}
-
-function Direccion({
-  titulo,
-  descripcion,
-  url,
-}: {
-  titulo: string;
-  descripcion: string;
-  url: string;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <div>
-        <p className="text-sm font-medium text-foreground">{titulo}</p>
-        <p className="text-xs text-muted-foreground">{descripcion}</p>
-      </div>
-      <div className="flex items-center gap-2">
-        <code className="min-w-0 flex-1 truncate rounded-md bg-muted px-2.5 py-1.5 font-mono text-xs text-muted-foreground">
-          {url}
-        </code>
-        <BotonCopiar texto={url} etiqueta="Copiar" />
-      </div>
-    </div>
-  );
-}
-
-function Recepciones({ canalId }: { canalId: string }) {
-  const { recepciones, cargando } = useRecepciones(canalId);
-
-  if (cargando) {
-    return <p className="text-xs text-muted-foreground">Cargando…</p>;
-  }
-
-  if (recepciones.length === 0) {
-    return (
-      <p className="text-xs text-muted-foreground">
-        Todavía no ha llegado nada a este enlace. Cuando tu formulario escriba
-        aquí, cada envío aparecerá en esta lista — también los que fallen.
-      </p>
-    );
-  }
-
-  return (
-    <ul className="space-y-2">
-      {recepciones.map((r) => {
-        const info = RESULTADOS[r.resultado] ?? { texto: r.resultado, tono: "aviso" as const };
-        return (
-          <li key={r.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-            <span className="text-muted-foreground">{formatFechaLarga(r.recibidaEl)}</span>
-            <span className="font-medium text-foreground">{r.email ?? "sin correo"}</span>
-            <Badge
-              variant={info.tono === "ok" ? "secondary" : "outline"}
-              className={info.tono === "malo" ? "border-destructive/40 text-destructive" : ""}
-            >
-              {r.accion === "baja" ? "Baja · " : ""}
-              {info.texto}
-            </Badge>
-            {r.detalle && <span className="text-muted-foreground">{r.detalle}</span>}
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
 
 function Enlace({
   canal,
@@ -211,7 +110,10 @@ function Enlace({
 
       {abierto && (
         <div className="mt-3 border-t border-border pt-3">
-          <Recepciones canalId={canal.id} />
+          <Recepciones
+            canalId={canal.id}
+            vacio="Todavía no ha llegado nada a este enlace. Cuando tu formulario escriba aquí, cada envío aparecerá en esta lista — también los que fallen."
+          />
         </div>
       )}
     </div>
@@ -233,17 +135,7 @@ export function VentasAutomaticas({
   const [todaLaComunidad, setTodaLaComunidad] = useState(false);
   const [creando, setCreando] = useState(false);
 
-  // `window` no existe al renderizar en el servidor, y la dirección tiene que
-  // ser la real: en local es localhost y en producción el dominio. Tampoco vale
-  // leerlo en el valor inicial — el servidor pintaría vacío y el navegador otra
-  // cosa, que es una discrepancia de hidratación.
-  //
-  // El `.then()` no es adorno: fijar el estado de forma síncrona dentro de un
-  // efecto dispara renders en cascada (ver CLAUDE.md).
-  const [origen, setOrigen] = useState("");
-  useEffect(() => {
-    void Promise.resolve(window.location.origin).then(setOrigen);
-  }, []);
+  const origen = useOrigen();
 
   const puedeCrear =
     nombre.trim().length > 0 && (todaLaComunidad || cursoIds.length > 0);

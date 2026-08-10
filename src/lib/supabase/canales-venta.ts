@@ -21,6 +21,8 @@ export interface CanalVenta {
   cursoIds: string[] | "todos";
   activo: boolean;
   creadoEl: string;
+  /** Vacío en los canales de academia; el plan que da, en los de plataforma. */
+  planId: string;
 }
 
 export interface RecepcionCanal {
@@ -39,10 +41,12 @@ interface FilaCanal {
   todos_los_cursos: boolean;
   activo: boolean;
   creado_el: string;
+  plan_id: string | null;
   canal_cursos: { curso_id: string }[] | null;
 }
 
-const CAMPOS = "id, nombre, token, todos_los_cursos, activo, creado_el, canal_cursos(curso_id)";
+const CAMPOS =
+  "id, nombre, token, todos_los_cursos, activo, creado_el, plan_id, canal_cursos(curso_id)";
 
 function aCanal(f: FilaCanal): CanalVenta {
   return {
@@ -54,6 +58,7 @@ function aCanal(f: FilaCanal): CanalVenta {
       : (f.canal_cursos ?? []).map((c) => c.curso_id),
     activo: f.activo,
     creadoEl: f.creado_el,
+    planId: f.plan_id ?? "",
   };
 }
 
@@ -64,11 +69,50 @@ export async function listarCanales(
   const { data, error } = await supabase
     .from("canales_venta")
     .select(CAMPOS)
+    .eq("tipo", "academia")
     .eq("comunidad_id", comunidadId)
     .order("creado_el", { ascending: false });
 
   if (error) throw new Error(`No se pudieron leer los enlaces: ${error.message}`);
   return ((data ?? []) as FilaCanal[]).map(aCanal);
+}
+
+/**
+ * Los enlaces que venden la plataforma entera.
+ *
+ * Sin `comunidad_id` con el que filtrar: la política solo se los enseña al
+ * superadmin, así que aquí basta el tipo. Un creador que llame a esto recibe
+ * lista vacía, no error — RLS filtra, no lanza.
+ */
+export async function listarCanalesPlataforma(
+  supabase: SupabaseClient
+): Promise<CanalVenta[]> {
+  const { data, error } = await supabase
+    .from("canales_venta")
+    .select(CAMPOS)
+    .eq("tipo", "plataforma")
+    .order("creado_el", { ascending: false });
+
+  if (error) throw new Error(`No se pudieron leer los enlaces: ${error.message}`);
+  return ((data ?? []) as FilaCanal[]).map(aCanal);
+}
+
+export async function crearCanalPlataforma(
+  supabase: SupabaseClient,
+  nombre: string,
+  planId: string
+): Promise<CanalVenta> {
+  const { data, error } = await supabase
+    .from("canales_venta")
+    .insert({ tipo: "plataforma", nombre: nombre.trim(), plan_id: planId })
+    .select(CAMPOS);
+
+  if (error) throw new Error(`No se pudo crear el enlace: ${error.message}`);
+  if (!data || data.length === 0) {
+    throw new Error("No se pudo crear el enlace: solo el superadmin puede");
+  }
+
+  return aCanal(data[0] as FilaCanal);
 }
 
 export async function crearCanal(
