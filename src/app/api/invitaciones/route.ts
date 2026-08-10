@@ -1,14 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { variableServidor } from "@/lib/entorno-servidor";
+import { darAcceso } from "@/lib/dar-acceso";
 
 /**
  * Genera el enlace de acceso de una invitación y lo manda por correo.
  *
- * Es el ÚNICO código de servidor del proyecto, y existe porque hacen falta dos
- * cosas que el navegador no puede hacer: la clave secreta de Supabase para
- * crear la cuenta del invitado, y la de Resend para enviar en nombre del
- * dominio.
+ * Existe porque hacen falta dos cosas que el navegador no puede hacer: la clave
+ * secreta de Supabase para crear la cuenta del invitado, y la de Resend para
+ * enviar en nombre del dominio.
+ *
+ * Esta es la puerta **del panel**: quien invita tiene sesión, y la fila de la
+ * invitación ya está creada. La otra puerta —los enlaces de compra, en
+ * `/api/compras/[token]`— no tiene sesión y crea la fila ella. Lo que hacen las
+ * dos una vez decidido que sí, vive en `src/lib/dar-acceso.ts`.
  *
  * OJO — aquí RLS NO protege nada. La clave secreta se salta todas las
  * políticas, así que el permiso hay que comprobarlo a mano. Es exactamente el
@@ -84,94 +89,39 @@ export async function POST(request: NextRequest) {
   }
 
   const origen = new URL(request.url).origin;
-  const destino = `${origen}/invitacion/${token}`;
 
-  // Se crea la cuenta CON contraseña temporal en vez de generar un enlace
-  // mágico.
-  //
-  // `generateLink({ type: "invite" })` no solo genera: **crea la cuenta y manda
-  // el correo de Supabase**, con su plantilla y su remitente. El nuestro salía
-  // después, así que el invitado recibía dos correos y abría el que no era. Y
-  // los enlaces mágicos ya habían fallado tres veces en este proyecto: caducan,
-  // se invalidan al generar el siguiente, y no sobreviven a un cliente de
-  // correo que los pre-visita.
-  //
-  // Una contraseña temporal no caduca, no se invalida sola, y se puede dictar
-  // por teléfono si el correo no llega.
-  const { data: lista } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-  const existente = lista?.users?.find(
-    (u) => u.email?.toLowerCase() === email.toLowerCase()
-  );
-
-  let passwordTemporal: string | null = null;
-
-  if (!existente) {
-    passwordTemporal = "Klaze-" + crypto.randomUUID().replace(/-/g, "").slice(0, 10);
-    const { error } = await admin.auth.admin.createUser({
+  let r;
+  try {
+    // La fila de invitación ya existe: la creó el navegador con su sesión, y
+    // por tanto con RLS comprobando que es su academia. Aquí solo llega el
+    // token.
+    r = await darAcceso(admin, {
+      comunidadId,
+      comunidadNombre: comunidad.nombre,
       email,
-      password: passwordTemporal,
-      email_confirm: true,
+      origen,
+      token,
+      enviarCorreo: !soloEnlace,
     });
-    if (error) {
-      return NextResponse.json(
-        { error: `No se pudo crear la cuenta: ${error.message}` },
-        { status: 500 }
-      );
-    }
-  }
-  // Si ya tenía cuenta NO se le cambia la contraseña: podría estar en otra
-  // academia y le dejaríamos fuera de ella sin avisar. Entra con la suya.
-
-  const enlace = destino;
-
-  if (soloEnlace) {
-    return NextResponse.json({ ok: true, enlace, enviado: false });
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "No se pudo dar el acceso" },
+      { status: 500 }
+    );
   }
 
-  const respuesta = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${resendKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: remitente,
-      to: [email],
-      subject: `Tu acceso a ${comunidad.nombre}`,
-      html: passwordTemporal
-        ? `
-        <p>Te han dado acceso a <strong>${comunidad.nombre}</strong>.</p>
-        <p>Entra en <a href="${origen}/login">${origen}/login</a> con:</p>
-        <p>
-          Correo: <strong>${email}</strong><br>
-          Contraseña: <strong style="font-family:monospace">${passwordTemporal}</strong>
-        </p>
-        <p style="color:#666;font-size:13px">
-          Puedes cambiarla cuando quieras desde tu perfil.
-        </p>`
-        : `
-        <p>Te han dado acceso a <strong>${comunidad.nombre}</strong>.</p>
-        <p>Ya tenías cuenta, así que entra en
-           <a href="${origen}/login">${origen}/login</a> con tu contraseña de siempre.</p>
-        <p style="color:#666;font-size:13px">
-          Si no la recuerdas, usa "¿Olvidaste tu contraseña?" en esa misma pantalla.
-        </p>`,
-    }),
-  });
-
-  if (!respuesta.ok) {
+  if (r.errorCorreo) {
     // La invitación NO se borra: sin ella, quien invita se queda sin forma de
     // recuperar a ese alumno. Se devuelve el enlace para poder copiarlo a mano.
-    const detalle = await respuesta.text();
     return NextResponse.json(
       {
         ok: false,
-        enlace,
-        error: `La invitación se creó, pero el correo no salió: ${detalle.slice(0, 200)}`,
+        enlace: r.enlace,
+        error: `La invitación se creó, pero el correo no salió: ${r.errorCorreo}`,
       },
       { status: 502 }
     );
   }
 
-  return NextResponse.json({ ok: true, enlace, enviado: true });
+  return NextResponse.json({ ok: true, enlace: r.enlace, enviado: r.enviado });
 }

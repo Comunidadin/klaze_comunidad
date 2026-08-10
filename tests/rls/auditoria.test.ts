@@ -44,12 +44,17 @@ test("A2b. ninguna tabla se queda solo con politica de lectura", async () => {
   // encontro la primera prueba que intento guardar un curso, no la auditoria.
   // Esta comprobacion existe para que no vuelva a colarse.
   //
-  // `uso_ia` es la unica excepcion, y es deliberada: ahi la AUSENCIA de
-  // politica de escritura ES la proteccion. Solo escribe el Route Handler con
-  // la clave secreta, que se salta RLS. Con una politica de escritura, un
-  // alumno pondria su contador de preguntas a cero y gastaria sin limite la
-  // clave de OpenAI del dueno de la plataforma.
-  const EXCEPCIONES = ["uso_ia"];
+  // Dos excepciones, y las dos por lo mismo: ahi la AUSENCIA de politica de
+  // escritura ES la proteccion. Solo escribe el Route Handler con la clave
+  // secreta, que se salta RLS.
+  //
+  // - `uso_ia`: con una politica de escritura, un alumno pondria su contador de
+  //   preguntas a cero y gastaria sin limite la clave de OpenAI del dueno de la
+  //   plataforma.
+  // - `recepciones_canal`: es el registro de lo que llego por los enlaces de
+  //   compra. Un registro que su dueno puede editar o borrar no sirve para
+  //   averiguar por que alguien no entro.
+  const EXCEPCIONES = ["uso_ia", "recepciones_canal"];
 
   const soloLectura = await sql`
     select t.tablename
