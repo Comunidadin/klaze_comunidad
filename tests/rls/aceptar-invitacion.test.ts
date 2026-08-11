@@ -35,6 +35,63 @@ test("invitar a alguien que YA tiene cuenta tambien le da acceso", async () => {
   expect((cursos ?? []).map((c) => c.id)).toContain(e.cursoAPublicado);
 });
 
+test("comprar un segundo producto no quita el acceso del primero", async () => {
+  // El caso de varios productos en la misma academia: el pase completo y
+  // luego un taller suelto. Antes, la segunda compra ponia
+  // `todos_los_cursos = false` y dejaba a esa persona con UN modulo despues de
+  // pagar dos veces — sin error, sin aviso, y con su inscripcion "activa".
+  const dos = await comoUsuario("dos-productos@prueba.klaze");
+  extra.push(dos.id);
+
+  // 1. Compra el pase completo.
+  await crearInvitaciones(e.duenoA.cliente, e.comunidadA, ["dos-productos@prueba.klaze"], "todos");
+  await dos.cliente.rpc("aceptar_mis_invitaciones");
+
+  // 2. Compra un taller suelto, que es una lista de un solo modulo.
+  await crearInvitaciones(
+    e.duenoA.cliente,
+    e.comunidadA,
+    ["dos-productos@prueba.klaze"],
+    [e.cursoAPublicado]
+  );
+  await dos.cliente.rpc("aceptar_mis_invitaciones");
+
+  const { data } = await admin
+    .from("inscripciones")
+    .select("todos_los_cursos")
+    .eq("usuario_id", dos.id)
+    .eq("comunidad_id", e.comunidadA)
+    .single();
+
+  // Comprar SUMA. Quitar acceso tiene sus propias puertas, y ninguna es esta.
+  expect(data?.todos_los_cursos).toBe(true);
+
+  // Y de verdad los sigue viendo, no solo la marca: `cursoASinAcceso` es el
+  // que nunca estuvo en ninguna lista.
+  const { data: cursos } = await dos.cliente.from("cursos").select("id");
+  expect((cursos ?? []).map((c) => c.id)).toContain(e.cursoASinAcceso);
+});
+
+test("comprar un segundo producto suma sus modulos al primero", async () => {
+  const suma = await comoUsuario("suma-productos@prueba.klaze");
+  extra.push(suma.id);
+
+  await crearInvitaciones(e.duenoA.cliente, e.comunidadA, ["suma-productos@prueba.klaze"], [
+    e.cursoAPublicado,
+  ]);
+  await suma.cliente.rpc("aceptar_mis_invitaciones");
+
+  await crearInvitaciones(e.duenoA.cliente, e.comunidadA, ["suma-productos@prueba.klaze"], [
+    e.cursoASinAcceso,
+  ]);
+  await suma.cliente.rpc("aceptar_mis_invitaciones");
+
+  const { data: cursos } = await suma.cliente.from("cursos").select("id");
+  const ids = (cursos ?? []).map((c) => c.id);
+  expect(ids).toContain(e.cursoAPublicado);
+  expect(ids).toContain(e.cursoASinAcceso);
+});
+
 test("llamarla dos veces no duplica inscripciones", async () => {
   const ya = await comoUsuario("doble@prueba.klaze");
   extra.push(ya.id);

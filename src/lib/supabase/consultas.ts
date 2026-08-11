@@ -51,24 +51,60 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
     throw new Error(`No se pudo leer el perfil: ${errPerfil.message}`);
   }
 
-  // Sin `.eq()`: RLS ya deja pasar solo la comunidad que posees o en la que
-  // estás inscrito.
-  const { data: comunidades } = await supabase
+  const CAMPOS_COMUNIDAD =
+    "id, slug, nombre, descripcion, logo_url, color_acento, propietario_id, plan_id, estado, nombres_niveles, marca_auth, nombre_ia, avatar_ia, creado_el";
+
+  // Primero la que POSEES, y solo si no posees ninguna, la que estudias.
+  //
+  // Antes esto era un `.limit(1)` a secas, confiando en que «RLS ya deja pasar
+  // solo la tuya». Es falso para un superadmin: su política le deja ver TODAS
+  // las academias de la plataforma, así que Postgres le devolvía la primera que
+  // le viniera bien — la de otro. Con una sola academia en la base nunca se
+  // notó; con dos, el panel de creador enseñaba la ajena.
+  const { data: propias } = await supabase
     .from("comunidades")
-    .select(
-      "id, slug, nombre, descripcion, logo_url, color_acento, propietario_id, plan_id, estado, nombres_niveles, marca_auth, nombre_ia, avatar_ia, creado_el"
-    )
+    .select(CAMPOS_COMUNIDAD)
+    .eq("propietario_id", usuario.id)
     .limit(1);
-  const c = comunidades?.[0] ?? null;
+
+  let c = propias?.[0] ?? null;
+
+  if (!c) {
+    // La del alumno, alcanzada por su inscripción. Se pregunta por el id en vez
+    // de leer `comunidades` a pelo por lo mismo de arriba: el resultado tiene
+    // que salir de algo suyo, no del orden de la tabla.
+    const { data: suya } = await supabase
+      .from("inscripciones")
+      .select("comunidad_id")
+      .eq("usuario_id", usuario.id)
+      .limit(1);
+
+    if (suya?.[0]) {
+      const { data: filas } = await supabase
+        .from("comunidades")
+        .select(CAMPOS_COMUNIDAD)
+        .eq("id", suya[0].comunidad_id)
+        .limit(1);
+      c = filas?.[0] ?? null;
+    }
+  }
 
   const { data: progresoFilas } = await supabase.from("progreso").select("leccion_id");
 
-  const { data: cursosFilas } = await supabase.from("cursos").select(
-    `id, comunidad_id, slug, titulo, descripcion, portada_url,
+  // Filtrado por la academia elegida, y por el mismo motivo: sin el `.eq()` un
+  // superadmin se descargaba los cursos de todas las academias de la
+  // plataforma para pintar los de una.
+  const { data: cursosFilas } = c
+    ? await supabase
+        .from("cursos")
+        .select(
+          `id, comunidad_id, slug, titulo, descripcion, portada_url,
      precio_referencial, nivel_requerido, publicado, orden,
      modulos ( id, titulo, orden, portada_url, publicado,
        lecciones ( id, titulo, orden, duracion_min, recursos, portada_url, bloques, ia_habilitada, ia_contexto ) )`
-  );
+        )
+        .eq("comunidad_id", c.id)
+    : { data: [] };
 
   const perfil: User = {
     id: perfilFila.id,
