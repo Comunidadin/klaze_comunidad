@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SubirImagen } from "@/components/shared/subir-imagen";
 import { Separator } from "@/components/ui/separator";
+import { CorreosDeLaAcademia } from "./_correos";
 import type { Community } from "@/lib/types";
 
 function ConfiguracionSkeleton() {
@@ -362,6 +363,17 @@ function ConfiguracionForm({
           </Button>
         </CardContent>
       </Card>
+
+      {/* Aparte de la tarjeta de identidad y con su propio guardado: cada
+          plantilla se guarda sola, y meterlas en el mismo botón obligaría a
+          escribir los tres correos antes de poder guardar el logo. */}
+      <div className="mt-6">
+        <CorreosDeLaAcademia
+          comunidadId={community.id}
+          academia={community.nombre}
+          slug={community.slug}
+        />
+      </div>
     </div>
   );
 }

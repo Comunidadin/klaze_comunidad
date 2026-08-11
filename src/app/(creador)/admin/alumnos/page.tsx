@@ -8,6 +8,7 @@ import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { useMembers, type MemberConEstado } from "@/lib/hooks/use-members";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { cambiarEstadoAlumno } from "@/lib/supabase/alumnos";
+import { avisarBajaAlumno } from "@/lib/invitaciones-api";
 import { formatFechaLarga } from "@/lib/format-fecha";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -156,10 +157,20 @@ export default function AlumnosPage() {
         nuevoEstado
       );
       await recargar();
+
+      if (nuevoEstado !== "suspendido") {
+        toast.success(`Reactivaste a ${miembro.nombre}. Su progreso sigue intacto.`);
+        return;
+      }
+
+      // El aviso va después de suspender y no puede tumbarlo: la suspensión ya
+      // está escrita. Antes no se avisaba, y al alumno le desaparecía el
+      // contenido sin saber por qué.
+      const r = await avisarBajaAlumno(community.id, miembro.id);
       toast.success(
-        nuevoEstado === "suspendido"
-          ? `Suspendiste a ${miembro.nombre}. Ya no puede ver los cursos.`
-          : `Reactivaste a ${miembro.nombre}. Su progreso sigue intacto.`
+        r.enviado
+          ? `Suspendiste a ${miembro.nombre}. Ya no puede ver los cursos, y le avisamos por correo.`
+          : `Suspendiste a ${miembro.nombre}. Ya no puede ver los cursos, pero el correo de aviso no salió.`
       );
     } catch (e) {
       toast.error(

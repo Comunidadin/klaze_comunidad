@@ -7,6 +7,7 @@ import {
   registrar,
   topeAlcanzado,
 } from "@/lib/compras";
+import { avisarBaja } from "@/lib/quitar-acceso";
 
 /**
  * La otra mitad del enlace de compra: quitar el acceso.
@@ -103,6 +104,30 @@ export async function POST(
   }
 
   const suspendido = (filas ?? []).length > 0;
+
+  // El aviso va DESPUÉS de la escritura y no lanza: la suspensión ya ocurrió, y
+  // un correo que no sale no puede convertirla en un 500 que haga reintentar al
+  // formulario. Solo a quien de verdad estaba dentro.
+  if (suspendido) {
+    const { data: quien } = await admin
+      .from("perfiles")
+      .select("nombre")
+      .eq("id", usuarioId as string)
+      .maybeSingle();
+
+    const { data: comunidad } = await admin
+      .from("comunidades")
+      .select("nombre")
+      .eq("id", canal.comunidadId)
+      .maybeSingle();
+
+    await avisarBaja(admin, {
+      comunidadId: canal.comunidadId,
+      comunidadNombre: comunidad?.nombre ?? "tu academia",
+      email,
+      nombre: quien?.nombre ?? undefined,
+    });
+  }
 
   await registrar(admin, canal.id, {
     email,

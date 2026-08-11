@@ -1,6 +1,7 @@
 import { expect, test, beforeAll, afterAll } from "bun:test";
+import { admin } from "./ayudas";
 import { montarEscenario, desmontar, type Escenario } from "./escenario";
-import { guardarCurso } from "../../src/lib/supabase/guardar-curso";
+import { borrarCurso, guardarCurso } from "../../src/lib/supabase/guardar-curso";
 import { cargarArmazon } from "../../src/lib/supabase/consultas";
 import type { Course } from "../../src/lib/types";
 
@@ -116,6 +117,66 @@ test("quitar una leccion la borra sin tocar las demas", async () => {
   const leido = armazon.cursos.find((c) => c.id === curso.id);
   expect(leido?.modulos[0].lecciones.length).toBe(1);
   expect(leido?.modulos[0].lecciones[0].titulo).toBe("Leccion 1");
+});
+
+test("borrar un curso se lleva sus modulos y sus lecciones", async () => {
+  const curso = cursoDePrueba(e.comunidadA, "curso-borrado");
+  await guardarCurso(e.duenoA.cliente, curso);
+
+  const moduloId = curso.modulos[0].id;
+  const leccionId = curso.modulos[0].lecciones[0].id;
+
+  await borrarCurso(e.duenoA.cliente, curso.id);
+
+  const { cursos } = await cargarArmazon(e.duenoA.cliente);
+  expect(cursos.find((c) => c.id === curso.id)).toBeUndefined();
+
+  // Con la clave secreta, que se salta RLS: si las filas hijas siguieran ahi,
+  // una lectura con sesion no lo notaria —la politica las esconde igual— y
+  // quedarian huerfanas para siempre. El `on delete cascade` es lo que se
+  // comprueba aqui.
+  const { data: modulos } = await admin.from("modulos").select("id").eq("id", moduloId);
+  const { data: lecciones } = await admin.from("lecciones").select("id").eq("id", leccionId);
+  expect(modulos ?? []).toEqual([]);
+  expect(lecciones ?? []).toEqual([]);
+});
+
+test("borrar un curso se lleva el progreso de sus alumnos", async () => {
+  const curso = cursoDePrueba(e.comunidadA, "curso-con-progreso");
+  await guardarCurso(e.duenoA.cliente, curso);
+  const leccionId = curso.modulos[0].lecciones[0].id;
+
+  const { error } = await admin
+    .from("progreso")
+    .insert({ usuario_id: e.alumnoA.id, leccion_id: leccionId });
+  if (error) throw new Error(error.message);
+
+  await borrarCurso(e.duenoA.cliente, curso.id);
+
+  // No es un detalle tecnico: es la razon por la que el dialogo lo avisa y
+  // pide escribir la palabra. Lo que se borra tambien es de sus alumnos.
+  const { data } = await admin.from("progreso").select("leccion_id").eq("leccion_id", leccionId);
+  expect(data ?? []).toEqual([]);
+});
+
+test("el dueno de otra empresa no puede borrar mi curso", async () => {
+  const curso = cursoDePrueba(e.comunidadA, "curso-ajeno");
+  await guardarCurso(e.duenoA.cliente, curso);
+
+  // Tiene que LANZAR: RLS filtra en vez de lanzar, asi que un delete rechazado
+  // vuelve vacio y sin error. Si `borrarCurso` no comprobara `data.length`,
+  // esto pasaria por eliminado sin haber eliminado nada.
+  await expect(borrarCurso(e.duenoB.cliente, curso.id)).rejects.toThrow();
+
+  const { data } = await admin.from("cursos").select("id").eq("id", curso.id);
+  expect(data?.length).toBe(1);
+});
+
+test("un alumno no puede borrar un curso de su propia academia", async () => {
+  await expect(borrarCurso(e.alumnoA.cliente, e.cursoAPublicado)).rejects.toThrow();
+
+  const { data } = await admin.from("cursos").select("id").eq("id", e.cursoAPublicado);
+  expect(data?.length).toBe(1);
 });
 
 test("un alumno no puede guardar un curso en la comunidad de su dueno", async () => {
