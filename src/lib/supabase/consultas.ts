@@ -65,7 +65,7 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
 
   const { data: cursosFilas } = await supabase.from("cursos").select(
     `id, comunidad_id, slug, titulo, descripcion, portada_url,
-     precio_referencial, nivel_requerido, publicado,
+     precio_referencial, nivel_requerido, publicado, orden,
      modulos ( id, titulo, orden, portada_url, publicado,
        lecciones ( id, titulo, orden, duracion_min, recursos, portada_url, bloques, ia_habilitada, ia_contexto ) )`
   );
@@ -117,6 +117,7 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
     precioReferencial: Number(f.precio_referencial),
     nivelRequerido: f.nivel_requerido,
     publicado: f.publicado,
+    orden: f.orden ?? 0,
     secciones: [],
     modulos: (f.modulos ?? [])
       .slice()
@@ -143,6 +144,12 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
           })),
       })),
   }));
+
+  // Y los propios cursos por su `orden`, igual que sus módulos y sus lecciones.
+  // Se hace aquí, en el único sitio que los carga, para que ninguna pantalla
+  // tenga que acordarse: el classroom del alumno y la lista del panel enseñan
+  // el mismo temario o no sirve de nada haberlo ordenado.
+  cursos.sort((a, b) => a.orden - b.orden);
 
   const progreso = ((progresoFilas ?? []) as { leccion_id: string }[]).map(
     (p) => p.leccion_id

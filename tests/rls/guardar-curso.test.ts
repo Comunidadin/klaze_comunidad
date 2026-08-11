@@ -1,7 +1,12 @@
 import { expect, test, beforeAll, afterAll } from "bun:test";
 import { admin } from "./ayudas";
 import { montarEscenario, desmontar, type Escenario } from "./escenario";
-import { borrarCurso, guardarCurso } from "../../src/lib/supabase/guardar-curso";
+import {
+  borrarCurso,
+  cambiarPublicadoCurso,
+  guardarCurso,
+  reordenarCursos,
+} from "../../src/lib/supabase/guardar-curso";
 import { cargarArmazon } from "../../src/lib/supabase/consultas";
 import type { Course } from "../../src/lib/types";
 
@@ -24,6 +29,7 @@ function cursoDePrueba(comunidadId: string, slug: string): Course {
     precioReferencial: 0,
     nivelRequerido: null,
     publicado: true,
+    orden: 1,
     secciones: [],
     modulos: [
       {
@@ -117,6 +123,64 @@ test("quitar una leccion la borra sin tocar las demas", async () => {
   const leido = armazon.cursos.find((c) => c.id === curso.id);
   expect(leido?.modulos[0].lecciones.length).toBe(1);
   expect(leido?.modulos[0].lecciones[0].titulo).toBe("Leccion 1");
+});
+
+test("el armazon devuelve los cursos por su orden", async () => {
+  // El orden ES el temario: "Introduccion" no puede salir detras de
+  // "Avanzada". Antes no habia columna y la lista salia como la devolviera
+  // Postgres, que no promete nada --- un fallo que aparece cuando ya hay
+  // muchos modulos, o sea cuando ya es caro descubrirlo.
+  const tercero = { ...cursoDePrueba(e.comunidadA, "orden-c"), titulo: "C", orden: 30 };
+  const primero = { ...cursoDePrueba(e.comunidadA, "orden-a"), titulo: "A", orden: 10 };
+  const segundo = { ...cursoDePrueba(e.comunidadA, "orden-b"), titulo: "B", orden: 20 };
+
+  // Se guardan al reves de como deben salir.
+  await guardarCurso(e.duenoA.cliente, tercero);
+  await guardarCurso(e.duenoA.cliente, segundo);
+  await guardarCurso(e.duenoA.cliente, primero);
+
+  const { cursos } = await cargarArmazon(e.duenoA.cliente);
+  const titulos = cursos
+    .filter((c) => c.slug.startsWith("orden-"))
+    .map((c) => c.titulo);
+  expect(titulos).toEqual(["A", "B", "C"]);
+
+  await admin.from("cursos").delete().in("id", [primero.id, segundo.id, tercero.id]);
+});
+
+test("reordenar cambia el orden sin tocar el contenido", async () => {
+  const curso = cursoDePrueba(e.comunidadA, "curso-reordenado");
+  await guardarCurso(e.duenoA.cliente, curso);
+
+  await reordenarCursos(e.duenoA.cliente, [{ id: curso.id, orden: 7 }]);
+
+  const { cursos } = await cargarArmazon(e.duenoA.cliente);
+  const leido = cursos.find((c) => c.id === curso.id);
+  expect(leido?.orden).toBe(7);
+  // Mover una fila de sitio no puede arrastrar el temario: por eso esto no
+  // pasa por `guardarCurso`, que sube el curso entero y borra lo que sobra.
+  expect(leido?.modulos.length).toBe(2);
+  expect(leido?.modulos[0].lecciones.length).toBe(1);
+
+  await admin.from("cursos").delete().eq("id", curso.id);
+});
+
+test("un alumno no puede reordenar ni publicar los cursos de su academia", async () => {
+  await expect(
+    reordenarCursos(e.alumnoA.cliente, [{ id: e.cursoAPublicado, orden: 99 }])
+  ).rejects.toThrow();
+
+  await expect(
+    cambiarPublicadoCurso(e.alumnoA.cliente, e.cursoAPublicado, false)
+  ).rejects.toThrow();
+
+  const { data } = await admin
+    .from("cursos")
+    .select("orden, publicado")
+    .eq("id", e.cursoAPublicado)
+    .single();
+  expect(data?.orden).not.toBe(99);
+  expect(data?.publicado).toBe(true);
 });
 
 test("borrar un curso se lleva sus modulos y sus lecciones", async () => {

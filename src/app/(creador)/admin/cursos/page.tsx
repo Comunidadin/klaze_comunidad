@@ -10,10 +10,10 @@ import { useAdminCourses } from "@/lib/hooks/use-admin-courses";
 import { slugify, useAppStore } from "@/lib/store";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { cargarArmazon } from "@/lib/supabase/consultas";
-import { guardarCurso } from "@/lib/supabase/guardar-curso";
+import { guardarCurso, reordenarCursos } from "@/lib/supabase/guardar-curso";
 import { guardarSecciones } from "@/lib/supabase/espacios";
 import { crearSeccionesDefault } from "@/lib/espacios-default";
-import { AdminCourseCard } from "@/components/admin/admin-course-card";
+import { FilaModulo } from "@/components/admin/fila-modulo";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -39,9 +39,9 @@ function CursosSkeleton() {
         <Skeleton className="h-8 w-32" />
         <Skeleton className="h-8 w-36" />
       </div>
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="aspect-[4/5] rounded-2xl sm:aspect-[3/4]" />
+      <div className="space-y-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-16 rounded-2xl" />
         ))}
       </div>
     </div>
@@ -92,6 +92,36 @@ export default function AdminCursosPage() {
     }
   }
 
+  /**
+   * Intercambia un módulo con su vecino y guarda el orden nuevo.
+   *
+   * Solo escribe las DOS filas que se mueven, no las diez. Reindexar la lista
+   * entera en cada clic haría diez escrituras por flecha, y con dos personas en
+   * el panel la segunda pisaría el orden de la primera.
+   */
+  async function mover(indice: number, direccion: "arriba" | "abajo") {
+    const otro = direccion === "arriba" ? indice - 1 : indice + 1;
+    if (!cursos[otro]) return;
+
+    const a = cursos[indice];
+    const b = cursos[otro];
+    // Si los dos comparten `orden` —datos viejos, antes de la columna— el
+    // intercambio no movería nada. Se les da la posición de la lista.
+    const ordenA = a.orden === b.orden ? indice + 1 : a.orden;
+    const ordenB = a.orden === b.orden ? otro + 1 : b.orden;
+
+    const supabase = crearClienteNavegador();
+    try {
+      await reordenarCursos(supabase, [
+        { id: a.id, orden: ordenB },
+        { id: b.id, orden: ordenA },
+      ]);
+      establecerArmazon(await cargarArmazon(supabase));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo reordenar");
+    }
+  }
+
   async function crearCurso() {
     if (!community || !titulo.trim()) return;
 
@@ -112,6 +142,9 @@ export default function AdminCursosPage() {
       nivelRequerido: null,
       modulos: [],
       publicado: false,
+      // Al final de la lista: quien crea un módulo lo está añadiendo al final
+      // de su temario, no al principio.
+      orden: cursos.length + 1,
       // Los espacios se siembran justo después, con `guardarSecciones`: van a
       // su propia tabla, no dentro del curso.
       secciones: [],
@@ -231,9 +264,15 @@ export default function AdminCursosPage() {
           accion={{ label: "Nuevo módulo", onClick: () => setDialogAbierto(true) }}
         />
       ) : (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {cursos.map((curso) => (
-            <AdminCourseCard key={curso.id} curso={curso} />
+        <div className="space-y-2">
+          {cursos.map((curso, i) => (
+            <FilaModulo
+              key={curso.id}
+              curso={curso}
+              primero={i === 0}
+              ultimo={i === cursos.length - 1}
+              onMover={(direccion) => void mover(i, direccion)}
+            />
           ))}
         </div>
       )}

@@ -72,6 +72,14 @@ export interface Course {
   modulos: CourseModule[];
   publicado: boolean;
   /**
+   * Posición en la lista de módulos de su academia, 1..N.
+   *
+   * Existe porque con diez módulos el orden ES el temario: «Introducción» no
+   * puede salir detrás de «Avanzada», y sin esta columna la lista salía como
+   * la devolviera Postgres, que no promete nada.
+   */
+  orden: number;
+  /**
    * Espacios/secciones del feed de comunidad de ESTE curso (Cambio 3: la
    * comunidad social vive dentro de cada curso, no a nivel de comunidad).
    * `Community.secciones` se mantiene intacto para no romper `/admin/comunidad`

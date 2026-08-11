@@ -32,6 +32,7 @@ export async function guardarCurso(
     precio_referencial: curso.precioReferencial,
     nivel_requerido: curso.nivelRequerido,
     publicado: curso.publicado,
+    orden: curso.orden,
   });
   if (errCurso) throw new Error(`No se pudo guardar el curso: ${errCurso.message}`);
 
@@ -77,6 +78,59 @@ export async function guardarCurso(
       }))
     );
     if (error) throw new Error(`No se pudieron guardar las lecciones: ${error.message}`);
+  }
+}
+
+/**
+ * Cambia solo el `orden` de varios cursos, y solo eso.
+ *
+ * No pasa por `guardarCurso` a propósito: ese sube el curso entero con sus
+ * módulos y sus lecciones, y borra por el camino lo que ya no está. Mover una
+ * fila de sitio no puede arrastrar todo eso — sería reescribir el temario
+ * completo para cambiar un número, y con dos personas en el panel la segunda
+ * pisaría el trabajo de la primera.
+ */
+export async function reordenarCursos(
+  supabase: SupabaseClient,
+  ordenes: { id: string; orden: number }[]
+): Promise<void> {
+  // Uno a uno y no un `upsert` de todos: un upsert con filas parciales dejaría
+  // el resto de columnas en su valor por defecto, o sea el título en blanco.
+  for (const { id, orden } of ordenes) {
+    const { data, error } = await supabase
+      .from("cursos")
+      .update({ orden })
+      .eq("id", id)
+      .select("id");
+
+    if (error) throw new Error(`No se pudo reordenar: ${error.message}`);
+    // RLS filtra, no lanza. Sin mirar las filas, un alumno «reordenaría» la
+    // lista: la pantalla se recolocaría, el armazón volvería con el orden de
+    // siempre, y la fila daría un salto que nadie sabría explicar. Lo cazó la
+    // prueba de aislamiento.
+    if (!data || data.length === 0) {
+      throw new Error("No se pudo reordenar: sin permiso sobre esa academia");
+    }
+  }
+}
+
+/** Publica o pasa a borrador un curso, sin tocar su contenido. */
+export async function cambiarPublicadoCurso(
+  supabase: SupabaseClient,
+  cursoId: string,
+  publicado: boolean
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("cursos")
+    .update({ publicado })
+    .eq("id", cursoId)
+    .select("id");
+
+  if (error) throw new Error(`No se pudo cambiar el estado: ${error.message}`);
+  // RLS filtra en vez de lanzar: sin mirar las filas, «publicado» se quedaría
+  // encendido en la pantalla y apagado en la base.
+  if (!data || data.length === 0) {
+    throw new Error("No se pudo cambiar el estado: sin permiso");
   }
 }
 
