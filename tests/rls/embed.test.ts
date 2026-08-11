@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { urlDeEmbed, altoSugerido } from "../../src/lib/embed";
+import { urlDeEmbed, altoSugerido, pistaDeEmbed } from "../../src/lib/embed";
 
 /**
  * Lo que decide si insertar contenido es seguro.
@@ -69,34 +69,39 @@ test("el alto se ajusta al servicio", () => {
   );
 });
 
-test("el fragmento de Typeform se convierte en su direccion", () => {
-  // Es LO QUE TYPEFORM DA POR DEFECTO: un div con el identificador y un script
-  // que lo rellena. No hay `<iframe>` del que sacar un `src`, asi que antes
-  // esto devolvia null y quien usara Typeform se quedaba sin insertar nada.
+test("el fragmento de Typeform NO se convierte: no se puede", () => {
+  // Esta prueba afirmaba lo contrario y estaba MAL. Se dio por hecho que el
+  // identificador de `data-tf-live` valdria como `form.typeform.com/to/{id}`;
+  // Typeform responde a eso con una redireccion a su propia web marcada como
+  // `typeform-incorrectURL`, asi que la clase acababa enseñando el anuncio de
+  // Typeform en lugar del formulario. Y en silencio: el editor decia
+  // "Contenido insertado".
+  //
+  // Ese identificador solo lo resuelve el script de Typeform, y aqui no se
+  // ejecuta ningun script de fuera. Lo unico correcto es no aceptarlo.
   const pegado =
     '<div data-tf-live="01JKRAVFBPREFJQT1NAPWT8BSB"></div>' +
     '<script src="//embed.typeform.com/next/embed.js"></script>';
 
-  expect(urlDeEmbed(pegado)).toBe(
-    "https://form.typeform.com/to/01JKRAVFBPREFJQT1NAPWT8BSB"
+  expect(urlDeEmbed(pegado)).toBeNull();
+});
+
+test("y se explica donde esta el enlace bueno", () => {
+  // "No parece un enlace valido" deja a alguien pegando lo mismo una y otra
+  // vez. La pista dice el sitio exacto: la pestaña de compartir de Typeform.
+  const pista = pistaDeEmbed('<div data-tf-live="01JKRAV"></div>') ?? "";
+  expect(pista).toContain("Share");
+  expect(pista).toContain("form.typeform.com/to/");
+});
+
+test("un script cualquiera tambien explica por que no", () => {
+  const pista = pistaDeEmbed('<script src="https://otro.com/w.js"></script>') ?? "";
+  expect(pista).toContain("scripts");
+});
+
+test("el enlace normal de Typeform si vale", () => {
+  // El de la pestaña de compartir: codigo corto, y se inserta tal cual.
+  expect(urlDeEmbed("https://form.typeform.com/to/AbC12dEf")).toBe(
+    "https://form.typeform.com/to/AbC12dEf"
   );
-});
-
-test("del fragmento de Typeform NO sobrevive su script", () => {
-  // El identificador se reconoce, pero el `<script>` se queda fuera igual que
-  // el de un iframe: lo que se guarda es una direccion, nunca codigo.
-  const pegado =
-    '<div data-tf-live="ABC123"></div><script src="//embed.typeform.com/next/embed.js"></script>';
-  const url = urlDeEmbed(pegado) ?? "";
-
-  expect(url).not.toContain("script");
-  expect(url).not.toContain("embed.js");
-  expect(url.startsWith("https://form.typeform.com/to/")).toBe(true);
-});
-
-test("un data-tf con comillas raras o vacio no cuela", () => {
-  // Sin identificador no hay formulario: mejor decir que no vale que guardar
-  // una direccion rota que aparece en blanco en la clase.
-  expect(urlDeEmbed('<div data-tf-live=""></div>')).toBeNull();
-  expect(urlDeEmbed("<div data-tf-live></div>")).toBeNull();
 });

@@ -26,9 +26,11 @@ beforeAll(async () => {
     .select("id").single();
   publicacionA = pub!.id;
 
+  // `modulos` SI cuelga del curso: lo que subio a la academia fueron las
+  // tablas sociales —secciones, publicaciones, eventos—, no el contenido.
   const { data: mod } = await admin
     .from("modulos")
-    .insert({ comunidad_id: e.comunidadA, titulo: "m", orden: 1 })
+    .insert({ curso_id: e.cursoAPublicado, titulo: "m", orden: 1 })
     .select("id").single();
   const { data: lec } = await admin
     .from("lecciones")

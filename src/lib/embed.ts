@@ -42,18 +42,6 @@ export function urlDeEmbed(pegado: string): string | null {
   const texto = pegado.trim();
   if (!texto) return null;
 
-  // Typeform no da un `<iframe>`: su pestaña de insertar entrega un `<div>` con
-  // el identificador y un `<script>` que lo rellena al cargar. Ese script no se
-  // ejecuta aquí nunca —ver la cabecera de este archivo—, pero el identificador
-  // vale por sí solo: `form.typeform.com/to/{id}` es el mismo formulario y sí
-  // se puede insertar.
-  //
-  // Se reconoce aquí porque es LO QUE TYPEFORM DA POR DEFECTO. Sin esto, todo
-  // el que use Typeform pega su fragmento, recibe "esto no parece un enlace" y
-  // se queda sin saber que existe otra forma.
-  const typeform = texto.match(/data-tf-(?:live|widget|popup)\s*=\s*["']([\w-]+)["']/i);
-  if (typeform) return `https://form.typeform.com/to/${typeform[1]}`;
-
   // ¿Es código de inserción? Se saca el src y se descarta todo lo demás.
   const src = texto.match(/<iframe[^>]*\ssrc\s*=\s*["']([^"']+)["']/i);
   const candidato = src ? src[1] : texto;
@@ -74,6 +62,42 @@ export function urlDeEmbed(pegado: string): string | null {
   }
 
   return url.href;
+}
+
+/**
+ * Por qué eso concreto no sirve, cuando se puede decir algo mejor que «no vale».
+ *
+ * Existe por un error que ya se cometió aquí: el fragmento que Typeform da por
+ * defecto es un `<div data-tf-live="01J…">` más un `<script>`, y se dio por
+ * hecho que ese identificador serviría como `form.typeform.com/to/{id}`. No
+ * sirve — Typeform responde con una redirección a su propia web marcada como
+ * `typeform-incorrectURL`, así que la clase acababa mostrando el anuncio de
+ * Typeform en vez del formulario. Y encima en silencio, que es lo peor: quien
+ * lo pegó veía «Contenido insertado» y se iba tranquilo.
+ *
+ * Ese identificador solo lo sabe resolver el script de Typeform, y aquí no se
+ * ejecuta ningún script de fuera. La dirección buena existe, pero está en otro
+ * sitio de Typeform —la pestaña de compartir— y lo único honesto es decir
+ * dónde.
+ */
+export function pistaDeEmbed(pegado: string): string | null {
+  if (/data-tf-(?:live|widget|popup|sidetab|popover)/i.test(pegado)) {
+    return (
+      "Ese código de Typeform lleva un identificador que solo entiende su " +
+      "propio script. En Typeform, abre tu formulario → Share (Compartir) y " +
+      "copia el enlace de ahí: es un form.typeform.com/to/ con un código corto."
+    );
+  }
+
+  if (/<script/i.test(pegado)) {
+    return (
+      "Eso es un script, y Klaze no ejecuta scripts de fuera: correrían en el " +
+      "navegador de tus alumnos con su sesión abierta. Busca en ese servicio " +
+      "la opción de compartir por enlace, o el código <iframe>."
+    );
+  }
+
+  return null;
 }
 
 /** Alto por defecto según el servicio: un calendario y un vídeo no piden lo mismo. */

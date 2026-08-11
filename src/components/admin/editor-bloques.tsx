@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { urlDeEmbed, altoSugerido } from "@/lib/embed";
+import { urlDeEmbed, altoSugerido, pistaDeEmbed } from "@/lib/embed";
 import type { BloqueClase } from "@/lib/types";
 
 export interface EditorBloquesProps {
@@ -126,8 +126,11 @@ export function EditorBloques({ bloques, onCambio }: EditorBloquesProps) {
   function aplicarEmbed(id: string, texto: string) {
     const url = urlDeEmbed(texto);
     if (!url) {
+      // La pista concreta cuando la hay: "no parece válido" deja a alguien
+      // pegando lo mismo una y otra vez sin saber qué buscar.
       toast.error(
-        "Eso no parece un enlace o código de inserción válido. Tiene que empezar por https://"
+        pistaDeEmbed(texto) ??
+          "Eso no parece un enlace o código de inserción válido. Tiene que empezar por https://"
       );
       return;
     }
