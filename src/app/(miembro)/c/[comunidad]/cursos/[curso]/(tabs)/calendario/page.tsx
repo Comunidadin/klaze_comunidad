@@ -1,16 +1,11 @@
-import { CalendarioLista } from "./_calendario-lista";
+import { redirect } from "next/navigation";
 
-/**
- * Pestaña "Calendario" de un curso (Cambio 3) — Server Component: solo
- * desenvuelve `params` (async en Next 16) y delega la data/hidratación a
- * `CalendarioLista` (client).
- */
-export default async function CalendarioCursoPage({
+/** El calendario ya es de la academia. Ver `../comunidad/page.tsx`. */
+export default async function CalendarioDelModuloRedirige({
   params,
 }: {
-  params: Promise<{ comunidad: string; curso: string }>;
+  params: Promise<{ comunidad: string }>;
 }) {
-  const { comunidad, curso } = await params;
-
-  return <CalendarioLista comunidadSlug={comunidad} cursoSlug={curso} />;
+  const { comunidad } = await params;
+  redirect(`/c/${comunidad}/calendario`);
 }

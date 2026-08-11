@@ -18,7 +18,7 @@ afterAll(async () => {
 });
 
 test("el dueno guarda secciones con sus espacios y las relee", async () => {
-  await guardarSecciones(e.duenoA.cliente, e.cursoAPublicado, [
+  await guardarSecciones(e.duenoA.cliente, e.comunidadA, [
     {
       id: crypto.randomUUID(),
       titulo: "Comienza aquí",
@@ -36,34 +36,34 @@ test("el dueno guarda secciones con sus espacios y las relee", async () => {
     },
   ]);
 
-  const leidas = await leerSecciones(e.duenoA.cliente, e.cursoAPublicado);
+  const leidas = await leerSecciones(e.duenoA.cliente, e.comunidadA);
   expect(leidas.length).toBe(1);
   expect(leidas[0].espacios[0].nombre).toBe("Anuncios");
   expect(leidas[0].espacios[0].soloLectura).toBe(true);
 });
 
 test("un alumno con acceso ve los espacios; uno de otra empresa no", async () => {
-  expect((await leerSecciones(e.alumnoA.cliente, e.cursoAPublicado)).length).toBe(1);
-  expect((await leerSecciones(e.alumnoB.cliente, e.cursoAPublicado)).length).toBe(0);
+  expect((await leerSecciones(e.alumnoA.cliente, e.comunidadA)).length).toBe(1);
+  expect((await leerSecciones(e.alumnoB.cliente, e.comunidadA)).length).toBe(0);
 });
 
 test("un alumno no puede cambiar los espacios", async () => {
   await expect(
-    guardarSecciones(e.alumnoA.cliente, e.cursoAPublicado, [
+    guardarSecciones(e.alumnoA.cliente, e.comunidadA, [
       { id: crypto.randomUUID(), titulo: "Colado", orden: 1, espacios: [] },
     ])
   ).rejects.toThrow();
 });
 
 test("guardar sin una seccion la borra de verdad", async () => {
-  await guardarSecciones(e.duenoA.cliente, e.cursoAPublicado, []);
-  expect((await leerSecciones(e.duenoA.cliente, e.cursoAPublicado)).length).toBe(0);
+  await guardarSecciones(e.duenoA.cliente, e.comunidadA, []);
+  expect((await leerSecciones(e.duenoA.cliente, e.comunidadA)).length).toBe(0);
 });
 
 test("el dueno crea un evento y el alumno lo ve", async () => {
   await guardarEvento(e.duenoA.cliente, {
     id: crypto.randomUUID(),
-    cursoId: e.cursoAPublicado,
+    comunidadId: e.comunidadA,
     comunidadId: e.comunidadA,
     titulo: "Sesión en vivo",
     descripcion: "",
@@ -72,10 +72,10 @@ test("el dueno crea un evento y el alumno lo ve", async () => {
     urlSala: "https://meet.example/x",
   });
 
-  const delAlumno = await leerEventos(e.alumnoA.cliente, e.cursoAPublicado);
+  const delAlumno = await leerEventos(e.alumnoA.cliente, e.comunidadA);
   expect(delAlumno.map((v) => v.titulo)).toContain("Sesión en vivo");
 
-  const deOtraEmpresa = await leerEventos(e.alumnoB.cliente, e.cursoAPublicado);
+  const deOtraEmpresa = await leerEventos(e.alumnoB.cliente, e.comunidadA);
   expect(deOtraEmpresa).toEqual([]);
 });
 
@@ -83,7 +83,7 @@ test("un alumno no puede crear eventos", async () => {
   await expect(
     guardarEvento(e.alumnoA.cliente, {
       id: crypto.randomUUID(),
-      cursoId: e.cursoAPublicado,
+      comunidadId: e.comunidadA,
       comunidadId: e.comunidadA,
       titulo: "Colado",
       descripcion: "",
@@ -95,14 +95,14 @@ test("un alumno no puede crear eventos", async () => {
 });
 
 test("el dueno edita y borra su evento", async () => {
-  const antes = await leerEventos(e.duenoA.cliente, e.cursoAPublicado);
+  const antes = await leerEventos(e.duenoA.cliente, e.comunidadA);
   const evento = antes[0];
 
   await guardarEvento(e.duenoA.cliente, { ...evento, titulo: "Sesión movida" });
-  const tras = await leerEventos(e.duenoA.cliente, e.cursoAPublicado);
+  const tras = await leerEventos(e.duenoA.cliente, e.comunidadA);
   expect(tras.find((v) => v.id === evento.id)?.titulo).toBe("Sesión movida");
 
   await eliminarEvento(e.duenoA.cliente, evento.id);
-  const finales = await leerEventos(e.duenoA.cliente, e.cursoAPublicado);
+  const finales = await leerEventos(e.duenoA.cliente, e.comunidadA);
   expect(finales.some((v) => v.id === evento.id)).toBe(false);
 });

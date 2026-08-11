@@ -13,8 +13,6 @@ export interface ContextoRailProps {
   comunidadId: string;
   comunidadSlug: string;
   /** Curso del que se muestran eventos y publicaciones destacadas (Cambio 3). */
-  cursoId: string;
-  cursoSlug: string;
 }
 
 const MAX_EVENTOS = 3;
@@ -29,11 +27,11 @@ const MAX_DESTACADOS = 5;
  * Puramente de lectura: cada bloque enlaza a donde vive el contenido real
  * (calendario / espacio del post), sin acciones propias.
  */
-export function ContextoRail({ comunidadId, comunidadSlug, cursoId, cursoSlug }: ContextoRailProps) {
-  const { eventos } = useEvents(comunidadId, cursoId);
+export function ContextoRail({ comunidadId, comunidadSlug }: ContextoRailProps) {
+  const { eventos } = useEvents(comunidadId);
   const ahora = useAhora();
-  const { posts } = useFeed(comunidadId, cursoId);
-  const { secciones } = useEspacios(comunidadId, cursoId);
+  const { posts } = useFeed(comunidadId);
+  const { secciones } = useEspacios(comunidadId);
 
   const proximos = eventos
     .filter((e) => new Date(e.fechaInicio).getTime() + e.duracionMin * 60_000 >= ahora)
@@ -67,7 +65,7 @@ export function ContextoRail({ comunidadId, comunidadSlug, cursoId, cursoSlug }:
             {proximos.map((evento) => (
               <li key={evento.id}>
                 <Link
-                  href={`/c/${comunidadSlug}/cursos/${cursoSlug}/calendario`}
+                  href={`/c/${comunidadSlug}/calendario`}
                   className="-mx-2 flex items-start gap-3 rounded-lg p-2 transition-colors hover:bg-muted"
                 >
                   <div className="flex h-10 w-9 shrink-0 flex-col items-center justify-center rounded-md bg-muted">
@@ -106,8 +104,8 @@ export function ContextoRail({ comunidadId, comunidadSlug, cursoId, cursoSlug }:
             {destacados.map((post) => {
               const slug = espacioSlugPorId.get(post.espacioId);
               const href = slug
-                ? `/c/${comunidadSlug}/cursos/${cursoSlug}/comunidad/espacio/${slug}`
-                : `/c/${comunidadSlug}/cursos/${cursoSlug}/comunidad`;
+                ? `/c/${comunidadSlug}/comunidad/espacio/${slug}`
+                : `/c/${comunidadSlug}/comunidad`;
               return (
                 <li key={post.id}>
                   <Link

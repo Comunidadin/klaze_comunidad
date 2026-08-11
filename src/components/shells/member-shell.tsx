@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { LogOut, SearchX, User as UserIcon } from "lucide-react";
 import { useCommunity } from "@/lib/hooks/use-community";
 import { useSession } from "@/lib/hooks/use-session";
@@ -10,6 +10,7 @@ import { LevelBadge } from "@/components/shared/level-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { AcademiaSuspendida } from "@/components/shared/academia-suspendida";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,21 +27,30 @@ export interface MemberShellProps {
 }
 
 /**
- * Shell del área de miembros: header sticky con logo/nombre de la comunidad
- * y menú de avatar. Aplica `colorAcento` de la comunidad como
- * `--community-accent` para personalización visual por comunidad.
+ * Lo que hay en una academia, además de sus módulos.
  *
- * Desde Cambio 3 el nivel superior del área de miembros es solo la lista de
- * cursos — ya no hay tabs de Inicio/Calendario/Miembros/Ranking a este
- * nivel (esas 4 pantallas viven ahora DENTRO de cada curso, ver
- * `cursos/[curso]/(tabs)/_curso-tabs-shell.tsx`), así que este shell dejó de
- * necesitar la nav de tabs y el layout de 3 columnas que tenía antes: es una
- * sola columna centrada para toda página de `/c/[comunidad]/*`.
+ * Las cuatro últimas vivían dentro de cada módulo. Subieron aquí con la
+ * comunidad: un alumno no tiene "el ranking de Introducción" y "el ranking de
+ * Avanzada", tiene el de su academia.
+ */
+const NAV = [
+  { label: "Módulos", segmento: "/cursos" },
+  { label: "Comunidad", segmento: "/comunidad" },
+  { label: "Calendario", segmento: "/calendario" },
+  { label: "Miembros", segmento: "/miembros" },
+  { label: "Ranking", segmento: "/ranking" },
+] as const;
+
+/**
+ * Shell del área de miembros: cabecera fija con el logo y el nombre de la
+ * academia, su navegación y el menú de la cuenta. Aplica `colorAcento` como
+ * `--community-accent`, que es de donde sale el color de toda el área.
  */
 export function MemberShell({ communitySlug, children }: MemberShellProps) {
   const resultado = useCommunity(communitySlug);
   const { user, logout } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
   const { Icono: IconoTema, etiqueta: etiquetaTema, toggle: toggleTema } = useThemeToggle();
 
   if (!resultado) {
@@ -107,6 +117,31 @@ export function MemberShell({ communitySlug, children }: MemberShellProps) {
               {community.nombre}
             </span>
           </Link>
+
+          {/* La navegación de la academia. Estas cuatro eran pestañas DENTRO de
+              cada módulo; al subir la comunidad al nivel de la academia suben
+              con ella, porque ya no dependen de en qué módulo estés. */}
+          <nav className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">
+            {NAV.map((item) => {
+              const href = `/c/${community.slug}${item.segmento}`;
+              // `startsWith` y no igualdad: `/comunidad/espacio/preguntas` tiene
+              // que dejar «Comunidad» marcada como activa.
+              const activo = pathname === href || (pathname?.startsWith(`${href}/`) ?? false);
+              return (
+                <Link
+                  key={item.label}
+                  href={href}
+                  aria-current={activo ? "page" : undefined}
+                  className={cn(
+                    "shrink-0 rounded-lg px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+                    activo && "bg-primary/10 text-primary"
+                  )}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
 
           <div className="flex shrink-0 items-center gap-3">
             {user && <LevelBadge nivel={user.nivel} size="sm" />}

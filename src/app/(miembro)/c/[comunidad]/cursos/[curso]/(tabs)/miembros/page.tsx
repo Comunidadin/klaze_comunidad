@@ -1,16 +1,11 @@
-import { MiembrosDirectorio } from "./_miembros-directorio";
+import { redirect } from "next/navigation";
 
-/**
- * Pestaña "Miembros" de un curso (Cambio 3) — Server Component: solo
- * desenvuelve `params` (async en Next 16) y delega la data/hidratación a
- * `MiembrosDirectorio` (client).
- */
-export default async function MiembrosCursoPage({
+/** El directorio ya es de la academia. Ver `../comunidad/page.tsx`. */
+export default async function MiembrosDelModuloRedirige({
   params,
 }: {
-  params: Promise<{ comunidad: string; curso: string }>;
+  params: Promise<{ comunidad: string }>;
 }) {
-  const { comunidad, curso } = await params;
-
-  return <MiembrosDirectorio comunidadSlug={comunidad} cursoSlug={curso} />;
+  const { comunidad } = await params;
+  redirect(`/c/${comunidad}/miembros`);
 }

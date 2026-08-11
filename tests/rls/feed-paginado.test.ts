@@ -18,7 +18,7 @@ beforeAll(async () => {
 
   const { data: sec } = await admin
     .from("secciones")
-    .insert({ curso_id: e.cursoAPublicado, titulo: "General", orden: 1 })
+    .insert({ comunidad_id: e.comunidadA, titulo: "General", orden: 1 })
     .select("id")
     .single();
   const { data: esp } = await admin
@@ -31,7 +31,7 @@ beforeAll(async () => {
   // 25 publicaciones con fechas separadas, para que el orden sea inequivoco.
   for (let i = 0; i < 25; i++) {
     await admin.from("publicaciones").insert({
-      curso_id: e.cursoAPublicado,
+      comunidad_id: e.comunidadA,
       espacio_id: espacioId,
       autor_id: e.alumnoA.id,
       titulo: `Post ${i}`,
@@ -48,7 +48,7 @@ afterAll(async () => {
 });
 
 test("la primera pagina trae 20 y la segunda el resto, sin repetir", async () => {
-  const filtro = { cursoIds: [e.cursoAPublicado], espacioId };
+  const filtro = { comunidadId: e.comunidadA, espacioId };
   const p1 = await leerPagina(e.alumnoA.cliente, filtro, null);
   expect(p1.length).toBe(POR_PAGINA);
 
@@ -62,11 +62,11 @@ test("la primera pagina trae 20 y la segunda el resto, sin repetir", async () =>
 test("publicar entre pagina y pagina NO duplica ninguna", async () => {
   // El fallo exacto que motiva paginar por fecha: con paginas numeradas, una
   // publicacion nueva desplaza a las demas y la 20 reaparece en la pagina 2.
-  const filtro = { cursoIds: [e.cursoAPublicado], espacioId };
+  const filtro = { comunidadId: e.comunidadA, espacioId };
   const p1 = await leerPagina(e.alumnoA.cliente, filtro, null);
 
   await crearPost(e.alumnoA.cliente, {
-    cursoId: e.cursoAPublicado,
+    comunidadId: e.comunidadA,
     espacioId,
     titulo: "Intruso",
     cuerpo: "y",
@@ -78,20 +78,20 @@ test("publicar entre pagina y pagina NO duplica ninguna", async () => {
 });
 
 test("la publicacion fijada sale aparte, no en la paginacion", async () => {
-  const filtro = { cursoIds: [e.cursoAPublicado], espacioId };
+  const filtro = { comunidadId: e.comunidadA, espacioId };
   const p1 = await leerPagina(e.alumnoA.cliente, filtro, null);
   // La mas antigua: si entrara en el orden por fecha no la veria nadie.
   const { data: vieja } = await admin
     .from("publicaciones")
     .select("id")
-    .eq("curso_id", e.cursoAPublicado)
+    .eq("comunidad_id", e.comunidadA)
     .order("creado_el", { ascending: true })
     .limit(1)
     .single();
 
   await fijarPost(e.duenoA.cliente, vieja!.id);
 
-  const fijada = await leerFijado(e.alumnoA.cliente, e.cursoAPublicado);
+  const fijada = await leerFijado(e.alumnoA.cliente, e.comunidadA);
   expect(fijada?.id).toBe(vieja!.id);
 
   const tras = await leerPagina(e.alumnoA.cliente, filtro, null);
@@ -99,11 +99,11 @@ test("la publicacion fijada sale aparte, no en la paginacion", async () => {
   expect(p1.length).toBeGreaterThan(0);
 });
 
-test("solo hay una publicacion fijada por curso", async () => {
+test("solo hay una publicacion fijada por academia", async () => {
   const { data: otra } = await admin
     .from("publicaciones")
     .select("id")
-    .eq("curso_id", e.cursoAPublicado)
+    .eq("comunidad_id", e.comunidadA)
     .eq("fijado", false)
     .limit(1)
     .single();
@@ -113,7 +113,7 @@ test("solo hay una publicacion fijada por curso", async () => {
   const { data: fijadas } = await admin
     .from("publicaciones")
     .select("id")
-    .eq("curso_id", e.cursoAPublicado)
+    .eq("comunidad_id", e.comunidadA)
     .eq("fijado", true);
   expect(fijadas?.length).toBe(1);
 });
@@ -125,7 +125,7 @@ test("un alumno de otra empresa no ve nada de este feed", async () => {
 
 test("nadie publica a nombre de otro", async () => {
   const { error } = await e.alumnoA.cliente.from("publicaciones").insert({
-    curso_id: e.cursoAPublicado,
+    comunidad_id: e.comunidadA,
     espacio_id: espacioId,
     autor_id: e.duenoA.id,
     titulo: "suplantada",
@@ -138,7 +138,7 @@ test("borra el autor y el dueno, pero no un tercero", async () => {
   const { data: p } = await admin
     .from("publicaciones")
     .insert({
-      curso_id: e.cursoAPublicado,
+      comunidad_id: e.comunidadA,
       espacio_id: espacioId,
       autor_id: e.alumnoA.id,
       titulo: "Borrable",

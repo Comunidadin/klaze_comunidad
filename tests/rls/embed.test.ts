@@ -68,3 +68,35 @@ test("el alto se ajusta al servicio", () => {
     altoSugerido("https://www.youtube.com/embed/x")
   );
 });
+
+test("el fragmento de Typeform se convierte en su direccion", () => {
+  // Es LO QUE TYPEFORM DA POR DEFECTO: un div con el identificador y un script
+  // que lo rellena. No hay `<iframe>` del que sacar un `src`, asi que antes
+  // esto devolvia null y quien usara Typeform se quedaba sin insertar nada.
+  const pegado =
+    '<div data-tf-live="01JKRAVFBPREFJQT1NAPWT8BSB"></div>' +
+    '<script src="//embed.typeform.com/next/embed.js"></script>';
+
+  expect(urlDeEmbed(pegado)).toBe(
+    "https://form.typeform.com/to/01JKRAVFBPREFJQT1NAPWT8BSB"
+  );
+});
+
+test("del fragmento de Typeform NO sobrevive su script", () => {
+  // El identificador se reconoce, pero el `<script>` se queda fuera igual que
+  // el de un iframe: lo que se guarda es una direccion, nunca codigo.
+  const pegado =
+    '<div data-tf-live="ABC123"></div><script src="//embed.typeform.com/next/embed.js"></script>';
+  const url = urlDeEmbed(pegado) ?? "";
+
+  expect(url).not.toContain("script");
+  expect(url).not.toContain("embed.js");
+  expect(url.startsWith("https://form.typeform.com/to/")).toBe(true);
+});
+
+test("un data-tf con comillas raras o vacio no cuela", () => {
+  // Sin identificador no hay formulario: mejor decir que no vale que guardar
+  // una direccion rota que aparece en blanco en la clase.
+  expect(urlDeEmbed('<div data-tf-live=""></div>')).toBeNull();
+  expect(urlDeEmbed("<div data-tf-live></div>")).toBeNull();
+});

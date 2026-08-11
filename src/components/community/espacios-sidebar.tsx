@@ -9,8 +9,6 @@ export interface EspaciosSidebarProps {
   comunidadId: string;
   comunidadSlug: string;
   /** Curso al que pertenecen estos espacios (Cambio 3: la comunidad social vive dentro de cada curso). */
-  cursoId: string;
-  cursoSlug: string;
   /** Cierra el `Sheet` móvil al navegar a un espacio — no aplica en el desktop fijo. */
   onNavigate?: () => void;
   className?: string;
@@ -26,12 +24,10 @@ export interface EspaciosSidebarProps {
 export function EspaciosSidebar({
   comunidadId,
   comunidadSlug,
-  cursoId,
-  cursoSlug,
   onNavigate,
   className,
 }: EspaciosSidebarProps) {
-  const { secciones } = useEspacios(comunidadId, cursoId);
+  const { secciones } = useEspacios(comunidadId);
   const pathname = usePathname();
 
   return (
@@ -43,7 +39,7 @@ export function EspaciosSidebar({
           </h3>
           <ul className="mt-1.5 space-y-0.5">
             {seccion.espacios.map((espacio) => {
-              const href = `/c/${comunidadSlug}/cursos/${cursoSlug}/comunidad/espacio/${espacio.slug}`;
+              const href = `/c/${comunidadSlug}/comunidad/espacio/${espacio.slug}`;
               const activo = pathname === href;
               return (
                 <li key={espacio.id}>

@@ -42,6 +42,18 @@ export function urlDeEmbed(pegado: string): string | null {
   const texto = pegado.trim();
   if (!texto) return null;
 
+  // Typeform no da un `<iframe>`: su pestaña de insertar entrega un `<div>` con
+  // el identificador y un `<script>` que lo rellena al cargar. Ese script no se
+  // ejecuta aquí nunca —ver la cabecera de este archivo—, pero el identificador
+  // vale por sí solo: `form.typeform.com/to/{id}` es el mismo formulario y sí
+  // se puede insertar.
+  //
+  // Se reconoce aquí porque es LO QUE TYPEFORM DA POR DEFECTO. Sin esto, todo
+  // el que use Typeform pega su fragmento, recibe "esto no parece un enlace" y
+  // se queda sin saber que existe otra forma.
+  const typeform = texto.match(/data-tf-(?:live|widget|popup)\s*=\s*["']([\w-]+)["']/i);
+  if (typeform) return `https://form.typeform.com/to/${typeform[1]}`;
+
   // ¿Es código de inserción? Se saca el src y se descarta todo lo demás.
   const src = texto.match(/<iframe[^>]*\ssrc\s*=\s*["']([^"']+)["']/i);
   const candidato = src ? src[1] : texto;

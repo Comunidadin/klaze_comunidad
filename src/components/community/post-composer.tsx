@@ -30,7 +30,7 @@ export interface PostComposerProps {
   /** Se llama tras publicar: el feed vive en el padre y es quien recarga. */
   onCambio?: () => void | Promise<void>;
   /** Curso dentro del cual se crea la publicación (Cambio 3). */
-  cursoId: string;
+  comunidadId: string;
   /** Espacios en los que el usuario actual puede publicar (ya filtrados por `soloLectura`/dueño, ver `Feed`). */
   espacios: CommunitySpace[];
   /** Espacio preseleccionado — el de la página actual si se abrió desde `/espacio/[slug]`, si no el primero de la lista. */
@@ -47,7 +47,7 @@ export interface PostComposerProps {
  */
 export function PostComposer({
   onCambio,
-  cursoId,
+  comunidadId,
   espacios,
   espacioIdPorDefecto,
   open,
@@ -58,7 +58,7 @@ export function PostComposer({
   async function publicar(espacio: string, titulo: string, cuerpo: string) {
     try {
       await crearPost(crearClienteNavegador(), {
-        cursoId,
+        comunidadId,
         espacioId: espacio,
         titulo,
         cuerpo,

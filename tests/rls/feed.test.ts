@@ -11,7 +11,7 @@ beforeAll(async () => {
 
   const { data: sec } = await admin
     .from("secciones")
-    .insert({ curso_id: e.cursoAPublicado, titulo: "General", orden: 1 })
+    .insert({ comunidad_id: e.comunidadA, titulo: "General", orden: 1 })
     .select("id").single();
   const { data: esp } = await admin
     .from("espacios")
@@ -20,7 +20,7 @@ beforeAll(async () => {
   const { data: pub } = await admin
     .from("publicaciones")
     .insert({
-      curso_id: e.cursoAPublicado, espacio_id: esp!.id,
+      comunidad_id: e.comunidadA, espacio_id: esp!.id,
       autor_id: e.alumnoA.id, titulo: "hola", cuerpo: "de A",
     })
     .select("id").single();
@@ -28,7 +28,7 @@ beforeAll(async () => {
 
   const { data: mod } = await admin
     .from("modulos")
-    .insert({ curso_id: e.cursoAPublicado, titulo: "m", orden: 1 })
+    .insert({ comunidad_id: e.comunidadA, titulo: "m", orden: 1 })
     .select("id").single();
   const { data: lec } = await admin
     .from("lecciones")
@@ -57,7 +57,7 @@ test("6c. nadie publica a nombre de otro", async () => {
   const { data: esp } = await admin
     .from("espacios").select("id").limit(1).single();
   const { error } = await e.alumnoA.cliente.from("publicaciones").insert({
-    curso_id: e.cursoAPublicado, espacio_id: esp!.id,
+    comunidad_id: e.comunidadA, espacio_id: esp!.id,
     autor_id: e.duenoA.id, titulo: "suplantada", cuerpo: "x",
   });
   expect(error).not.toBeNull();
@@ -73,7 +73,7 @@ test("6d. el progreso de un alumno es privado hasta para el dueno", async () => 
 
 test("6e. el alumno de B no ve eventos de A", async () => {
   await admin.from("eventos").insert({
-    curso_id: e.cursoAPublicado, titulo: "evento-de-A",
+    comunidad_id: e.comunidadA, titulo: "evento-de-A",
     fecha_inicio: "2026-09-01T18:00:00Z",
   });
 

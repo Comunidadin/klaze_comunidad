@@ -1,27 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { Lock, SearchX } from "lucide-react";
 import { useCommunity } from "@/lib/hooks/use-community";
 import { useCourses } from "@/lib/hooks/use-courses";
 import { EmptyState } from "@/components/shared/empty-state";
 import { CoursePortada } from "@/components/course/course-portada";
-import { cn } from "@/lib/utils";
 
 export interface CursoTabsShellProps {
   comunidadSlug: string;
   cursoSlug: string;
   children: React.ReactNode;
 }
-
-const TABS = [
-  { label: "Clases", segmento: "" },
-  { label: "Comunidad", segmento: "comunidad" },
-  { label: "Calendario", segmento: "calendario" },
-  { label: "Miembros", segmento: "miembros" },
-  { label: "Ranking", segmento: "ranking" },
-] as const;
 
 /**
  * Cabecera + pestañas compartidas de un curso (Cambio 3: la comunidad social
@@ -37,13 +27,11 @@ const TABS = [
 export function CursoTabsShell({ comunidadSlug, cursoSlug, children }: CursoTabsShellProps) {
   const resultado = useCommunity(comunidadSlug);
   const { cursos } = useCourses(resultado?.community.id ?? "");
-  const pathname = usePathname();
 
   if (!resultado) return null;
   const { community } = resultado;
 
   const curso = cursos.find((c) => c.slug === cursoSlug);
-  const base = `/c/${comunidadSlug}/cursos/${cursoSlug}`;
 
   if (!curso) {
     return (
@@ -96,28 +84,6 @@ export function CursoTabsShell({ comunidadSlug, cursoSlug, children }: CursoTabs
           </h1>
         </div>
 
-        <nav className="mt-4 flex items-center gap-1 overflow-x-auto">
-          {TABS.map((tab) => {
-            const href = tab.segmento ? `${base}/${tab.segmento}` : base;
-            const activo =
-              tab.segmento === "comunidad"
-                ? pathname === href || (pathname?.startsWith(`${href}/`) ?? false)
-                : pathname === href;
-            return (
-              <Link
-                key={tab.label}
-                href={href}
-                aria-current={activo ? "page" : undefined}
-                className={cn(
-                  "shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-                  activo && "bg-primary/10 text-primary"
-                )}
-              >
-                {tab.label}
-              </Link>
-            );
-          })}
-        </nav>
       </div>
 
       {children}

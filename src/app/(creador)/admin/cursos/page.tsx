@@ -11,8 +11,6 @@ import { slugify, useAppStore } from "@/lib/store";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { cargarArmazon } from "@/lib/supabase/consultas";
 import { guardarCurso, reordenarCursos } from "@/lib/supabase/guardar-curso";
-import { guardarSecciones } from "@/lib/supabase/espacios";
-import { crearSeccionesDefault } from "@/lib/espacios-default";
 import { FilaModulo } from "@/components/admin/fila-modulo";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -145,17 +143,13 @@ export default function AdminCursosPage() {
       // Al final de la lista: quien crea un módulo lo está añadiendo al final
       // de su temario, no al principio.
       orden: cursos.length + 1,
-      // Los espacios se siembran justo después, con `guardarSecciones`: van a
-      // su propia tabla, no dentro del curso.
-      secciones: [],
     };
 
     const supabase = crearClienteNavegador();
     try {
       await guardarCurso(supabase, curso);
-      // Un curso nuevo nace con sus espacios por defecto: si su pestaña de
-      // comunidad arranca en blanco, nadie la usa.
-      await guardarSecciones(supabase, curso.id, crearSeccionesDefault());
+      // Ya no se siembran espacios aquí: la comunidad es de la academia y se
+      // crea con ella. Un módulo nuevo entra en la que ya existe.
       establecerArmazon(await cargarArmazon(supabase));
     } catch (e) {
       toast.error(

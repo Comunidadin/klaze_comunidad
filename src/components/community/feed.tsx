@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { Menu, MessagesSquare, PenSquare, SearchX } from "lucide-react";
 import { useCommunity } from "@/lib/hooks/use-community";
-import { useCourses } from "@/lib/hooks/use-courses";
 import { useEspacios } from "@/lib/hooks/use-espacios";
 import { useAppStore } from "@/lib/store";
 import { useFeed } from "@/lib/hooks/use-feed";
@@ -19,12 +18,10 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 
 export interface FeedProps {
   comunidadSlug: string;
-  /** Curso al que pertenece este feed (Cambio 3: la comunidad social vive dentro de cada curso). */
-  cursoSlug: string;
   /**
    * Slug del espacio (segmento `[slug]` de
-   * `/c/[comunidad]/cursos/[curso]/comunidad/espacio/[slug]`). Sin él,
-   * `Feed` muestra el agregado de todos los espacios del curso.
+   * `/c/[comunidad]/comunidad/espacio/[slug]`). Sin él, `Feed` muestra el
+   * agregado de todos los espacios de la academia.
    */
   espacioSlug?: string;
 }
@@ -61,15 +58,12 @@ function EsqueletoFeed() {
  * hidratar mostramos un esqueleto en vez de un feed momentáneamente
  * incompleto (mismo criterio que la pantalla de invitación).
  */
-export function Feed({ comunidadSlug, cursoSlug, espacioSlug }: FeedProps) {
+export function Feed({ comunidadSlug, espacioSlug }: FeedProps) {
   const resultado = useCommunity(comunidadSlug);
   const comunidadId = resultado?.community.id ?? "";
-  const { cursos } = useCourses(comunidadId);
-  const curso = cursos.find((c) => c.slug === cursoSlug);
-  const cursoId = curso?.id ?? "";
 
   const hydrated = useHydrated();
-  const { secciones } = useEspacios(comunidadId, cursoId);
+  const { secciones } = useEspacios(comunidadId);
   const marcarEspacioVisto = useAppStore((s) => s.marcarEspacioVisto);
   const [composerAbierto, setComposerAbierto] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -80,7 +74,6 @@ export function Feed({ comunidadSlug, cursoSlug, espacioSlug }: FeedProps) {
 
   const { posts, fijado, cargando, hayMas, cargarMas, recargar } = useFeed(
     comunidadId,
-    cursoId,
     espacioId
   );
 
@@ -99,7 +92,7 @@ export function Feed({ comunidadSlug, cursoSlug, espacioSlug }: FeedProps) {
     if (hydrated && espacioId) marcarEspacioVisto(espacioId);
   }, [hydrated, espacioId, marcarEspacioVisto]);
 
-  if (!resultado || !curso) return null;
+  if (!resultado) return null;
   const { community, isOwner } = resultado;
 
   if (espacioSlug && !espacio) {
@@ -107,8 +100,8 @@ export function Feed({ comunidadSlug, cursoSlug, espacioSlug }: FeedProps) {
       <EmptyState
         icono={SearchX}
         titulo="Espacio no encontrado"
-        descripcion={`No existe ningún espacio con el enlace "${espacioSlug}" en ${curso.titulo}.`}
-        accion={{ label: "Ir a Comunidad", href: `/c/${community.slug}/cursos/${cursoSlug}/comunidad` }}
+        descripcion={`No existe ningún espacio con el enlace "${espacioSlug}" en ${community.nombre}.`}
+        accion={{ label: "Ir a Comunidad", href: `/c/${community.slug}/comunidad` }}
       />
     );
   }
@@ -127,8 +120,6 @@ export function Feed({ comunidadSlug, cursoSlug, espacioSlug }: FeedProps) {
           <EspaciosSidebar
             comunidadId={comunidadId}
             comunidadSlug={comunidadSlug}
-            cursoId={cursoId}
-            cursoSlug={cursoSlug}
           />
         </div>
       </aside>
@@ -151,7 +142,7 @@ export function Feed({ comunidadSlug, cursoSlug, espacioSlug }: FeedProps) {
               </h1>
               {!espacio && (
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Lo que está pasando ahora mismo en {curso.titulo}.
+                  Lo que está pasando ahora mismo en {community.nombre}.
                 </p>
               )}
             </div>
@@ -174,7 +165,7 @@ export function Feed({ comunidadSlug, cursoSlug, espacioSlug }: FeedProps) {
           <>
             {puedePublicarAqui && (
               <PostComposer
-                cursoId={cursoId}
+                comunidadId={comunidadId}
                 espacios={espaciosSeleccionables}
                 espacioIdPorDefecto={espacio?.id}
                 open={composerAbierto}
@@ -229,8 +220,6 @@ export function Feed({ comunidadSlug, cursoSlug, espacioSlug }: FeedProps) {
           <ContextoRail
             comunidadId={comunidadId}
             comunidadSlug={comunidadSlug}
-            cursoId={cursoId}
-            cursoSlug={cursoSlug}
           />
         </div>
       </aside>
@@ -238,14 +227,12 @@ export function Feed({ comunidadSlug, cursoSlug, espacioSlug }: FeedProps) {
       <Sheet open={menuAbierto} onOpenChange={setMenuAbierto}>
         <SheetContent side="left" className="w-72">
           <SheetHeader>
-            <SheetTitle>{curso.titulo}</SheetTitle>
+            <SheetTitle>{community.nombre}</SheetTitle>
           </SheetHeader>
           <div className="overflow-y-auto px-4 pb-4">
             <EspaciosSidebar
               comunidadId={comunidadId}
               comunidadSlug={comunidadSlug}
-              cursoId={cursoId}
-              cursoSlug={cursoSlug}
               onNavigate={() => setMenuAbierto(false)}
             />
           </div>

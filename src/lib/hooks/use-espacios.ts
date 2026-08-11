@@ -33,21 +33,21 @@ const SIN_DATOS: { secciones: CommunitySection[]; recientes: Reciente[] } = {
 };
 
 /**
- * Es `async` aunque la rama sin curso no espere nada, para que el `.then()` que
- * fija el estado no corra de forma síncrona dentro del efecto.
+ * Es `async` aunque la rama sin academia no espere nada, para que el `.then()`
+ * que fija el estado no corra de forma síncrona dentro del efecto.
  */
 async function leerDatos(
-  cursoId: string | undefined
+  comunidadId: string | undefined
 ): Promise<{ secciones: CommunitySection[]; recientes: Reciente[] }> {
-  if (!cursoId) return SIN_DATOS;
+  if (!comunidadId) return SIN_DATOS;
 
   const supabase = crearClienteNavegador();
   const [secciones, { data }] = await Promise.all([
-    leerSecciones(supabase, cursoId),
+    leerSecciones(supabase, comunidadId),
     supabase
       .from("publicaciones")
       .select("espacio_id, creado_el")
-      .eq("curso_id", cursoId)
+      .eq("comunidad_id", comunidadId)
       .order("creado_el", { ascending: false })
       .limit(MAX_RECIENTES),
   ]);
@@ -60,29 +60,26 @@ async function leerDatos(
 }
 
 /**
- * Espacios de un curso, con cuántas publicaciones sin leer tiene cada uno.
+ * Espacios de la academia, con cuántas publicaciones sin leer tiene cada uno.
  *
  * "Visto" sigue viviendo en el navegador (`espaciosVistos` del store), y es
  * deliberado: es una preferencia de lectura de ESTE dispositivo, no un dato de
  * la academia. Guardarlo en la base obligaría a decidir qué pasa cuando alguien
  * lee en el móvil y luego abre el portátil, y esa complejidad no compra nada.
  */
-export function useEspacios(
-  comunidadId: string,
-  cursoId?: string
-): { secciones: SeccionConEspacios[] } {
+export function useEspacios(comunidadId: string): { secciones: SeccionConEspacios[] } {
   const espaciosVistos = useAppStore((s) => s.espaciosVistos);
   const [datos, setDatos] = useState(SIN_DATOS);
 
   useEffect(() => {
     let vivo = true;
-    void leerDatos(cursoId).then((d) => {
+    void leerDatos(comunidadId).then((d) => {
       if (vivo) setDatos(d);
     });
     return () => {
       vivo = false;
     };
-  }, [cursoId]);
+  }, [comunidadId]);
 
   return useMemo(() => {
     const secciones: SeccionConEspacios[] = datos.secciones

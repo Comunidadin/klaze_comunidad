@@ -87,7 +87,7 @@ function PostModeracionRow({
   // Cambio 3: los espacios de un post viven en `Course.secciones` (namespaced
   // por curso), no en `Community.secciones` — hay que resolver con el
   // `cursoId` del post, si no el lookup nunca matchea y el badge desaparece.
-  const { secciones } = useEspacios(post.comunidadId, post.cursoId);
+  const { secciones } = useEspacios(post.comunidadId);
   const espacio = secciones.flatMap((s) => s.espacios).find((e) => e.id === post.espacioId);
 
   return (

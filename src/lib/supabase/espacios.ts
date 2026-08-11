@@ -11,19 +11,19 @@ interface FilaEspacio {
 }
 
 /**
- * Secciones de un curso con sus espacios, en orden.
+ * Secciones de la academia con sus espacios, en orden.
  *
  * PostgREST no garantiza el orden de las filas anidadas, así que los espacios
  * se ordenan aquí aunque las secciones ya vengan ordenadas por la consulta.
  */
 export async function leerSecciones(
   supabase: SupabaseClient,
-  cursoId: string
+  comunidadId: string
 ): Promise<CommunitySection[]> {
   const { data, error } = await supabase
     .from("secciones")
     .select("id, titulo, orden, espacios ( id, slug, nombre, icono, orden, solo_lectura )")
-    .eq("curso_id", cursoId)
+    .eq("comunidad_id", comunidadId)
     .order("orden");
 
   if (error) throw new Error(`No se pudieron leer los espacios: ${error.message}`);
@@ -47,7 +47,7 @@ export async function leerSecciones(
 }
 
 /**
- * Guarda la estructura completa de espacios de un curso.
+ * Guarda la estructura completa de espacios de la academia.
  *
  * Borra lo que ya no está, igual que `guardarCurso`: sin esa limpieza, quitar
  * un espacio en el editor no lo quitaría de la base y reaparecería al recargar.
@@ -58,11 +58,11 @@ export async function leerSecciones(
  */
 export async function guardarSecciones(
   supabase: SupabaseClient,
-  cursoId: string,
+  comunidadId: string,
   secciones: CommunitySection[]
 ): Promise<void> {
   const ids = secciones.map((s) => s.id);
-  const borrar = supabase.from("secciones").delete().eq("curso_id", cursoId);
+  const borrar = supabase.from("secciones").delete().eq("comunidad_id", comunidadId);
   const { error: errBorrar } = ids.length
     ? await borrar.not("id", "in", `(${ids.join(",")})`)
     : await borrar;
@@ -77,7 +77,7 @@ export async function guardarSecciones(
     .upsert(
       secciones.map((s) => ({
         id: s.id,
-        curso_id: cursoId,
+        comunidad_id: comunidadId,
         titulo: s.titulo,
         orden: s.orden,
       }))
@@ -86,7 +86,7 @@ export async function guardarSecciones(
 
   if (errSec) throw new Error(`No se pudieron guardar las secciones: ${errSec.message}`);
   if (!guardadas || guardadas.length === 0) {
-    throw new Error("No se pudieron guardar los espacios: sin permiso sobre ese curso");
+    throw new Error("No se pudieron guardar los espacios: sin permiso sobre esa academia");
   }
 
   for (const seccion of secciones) {

@@ -1,9 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useAppStore } from "@/lib/store";
 import { crearClienteNavegador } from "@/lib/supabase/client";
-import { cursosDeComunidad } from "@/lib/hooks/use-courses";
 import { leerFijado, leerPagina, POR_PAGINA } from "@/lib/supabase/feed";
 import type { Post } from "@/lib/types";
 import type { PostConAutor } from "@/lib/supabase/feed";
@@ -27,35 +25,33 @@ export interface UseFeedResult {
   recargar: () => Promise<void>;
 }
 
-/** Referencia estable para "sin cursos": un `[]` nuevo relanzaría el efecto en bucle. */
-const SIN_CURSOS: string[] = [];
-
 /**
- * Es `async` aunque la rama sin cursos no espere nada, para que el `setState`
+ * Es `async` aunque la rama sin academia no espere nada, para que el `setState`
  * de quien la llama nunca corra de forma síncrona dentro del efecto.
  */
 async function leerTodo(
-  claveCursos: string,
-  cursoId: string | undefined,
+  comunidadId: string,
   espacioId: string | undefined
 ): Promise<{ pagina: PostConAutor[]; elFijado: PostConAutor | null }> {
-  const ids = claveCursos ? claveCursos.split(",") : [];
-  if (ids.length === 0) return { pagina: [], elFijado: null };
+  if (!comunidadId) return { pagina: [], elFijado: null };
 
   const supabase = crearClienteNavegador();
   const [pagina, elFijado] = await Promise.all([
-    leerPagina(supabase, { cursoIds: ids, espacioId }, null),
-    // Solo hay fijada dentro de un curso concreto: en la vista de toda la
-    // academia no tendría sentido destacar la de uno solo.
-    cursoId ? leerFijado(supabase, cursoId) : Promise.resolve(null),
+    leerPagina(supabase, { comunidadId, espacioId }, null),
+    leerFijado(supabase, comunidadId),
   ]);
 
   return { pagina, elFijado };
 }
 
 /**
- * Feed de un curso o, sin `cursoId`, de toda la academia — que es lo que
- * modera `/admin/comunidad`.
+ * El feed de la academia, opcionalmente acotado a un espacio.
+ *
+ * Recibía además un `cursoId` y una lista de cursos, porque cada módulo tenía
+ * su propio feed y `/admin/comunidad` moderaba el de todos a la vez. Al subir
+ * la comunidad al nivel de la academia, la pantalla del alumno y la del panel
+ * piden lo mismo, y toda esa maquinaria —la clave de cursos, la referencia
+ * estable del array vacío— se fue con ella.
  *
  * Es el primer hook que rompe la firma síncrona del proyecto, y es deliberado:
  * el feed crece sin techo, así que no viaja en el armazón como el resto. Aquí
@@ -66,41 +62,25 @@ async function leerTodo(
  * base, y hacerlo sobre lo ya cargado daría un orden que cambia según cuánto
  * hayas bajado — un control que miente es peor que uno que no está.
  */
-export function useFeed(
-  comunidadId: string,
-  cursoId?: string,
-  espacioId?: string
-): UseFeedResult {
-  const armazon = useAppStore((s) => s.armazon);
+export function useFeed(comunidadId: string, espacioId?: string): UseFeedResult {
   const [posts, setPosts] = useState<PostConAutor[]>([]);
   const [fijado, setFijado] = useState<PostConAutor | null>(null);
   const [cargando, setCargando] = useState(true);
   const [hayMas, setHayMas] = useState(false);
 
-  const cursosDeLaComunidad = cursosDeComunidad(comunidadId, armazon?.cursos ?? []);
-  const cursoIds = !comunidadId
-    ? SIN_CURSOS
-    : cursoId
-      ? [cursoId]
-      : cursosDeLaComunidad.map((c) => c.id);
-
-  // Clave estable para el efecto: el array se recrea en cada render, así que
-  // depender de él directamente relanzaría la carga sin parar.
-  const claveCursos = cursoIds.join(",");
-
   const recargar = useCallback(async () => {
-    const { pagina, elFijado } = await leerTodo(claveCursos, cursoId, espacioId);
+    const { pagina, elFijado } = await leerTodo(comunidadId, espacioId);
     setPosts(pagina);
     setFijado(elFijado);
     setHayMas(pagina.length === POR_PAGINA);
     setCargando(false);
-  }, [claveCursos, cursoId, espacioId]);
+  }, [comunidadId, espacioId]);
 
   useEffect(() => {
     let vivo = true;
     // Se llama a `leerTodo` y no a `recargar` para que el `setState` viva en un
     // `.then()` y nunca corra de forma síncrona dentro del efecto.
-    void leerTodo(claveCursos, cursoId, espacioId).then(({ pagina, elFijado }) => {
+    void leerTodo(comunidadId, espacioId).then(({ pagina, elFijado }) => {
       if (!vivo) return;
       setPosts(pagina);
       setFijado(elFijado);
@@ -110,22 +90,21 @@ export function useFeed(
     return () => {
       vivo = false;
     };
-  }, [claveCursos, cursoId, espacioId]);
+  }, [comunidadId, espacioId]);
 
   const cargarMas = useCallback(async () => {
     if (posts.length === 0 || !hayMas) return;
-    const ids = claveCursos ? claveCursos.split(",") : [];
     const ultima = posts[posts.length - 1].creadoEl;
 
     const siguiente = await leerPagina(
       crearClienteNavegador(),
-      { cursoIds: ids, espacioId },
+      { comunidadId, espacioId },
       ultima
     );
 
     setPosts((previas) => [...previas, ...siguiente]);
     setHayMas(siguiente.length === POR_PAGINA);
-  }, [posts, hayMas, claveCursos, espacioId]);
+  }, [posts, hayMas, comunidadId, espacioId]);
 
   return { posts, fijado, cargando, hayMas, cargarMas, recargar };
 }

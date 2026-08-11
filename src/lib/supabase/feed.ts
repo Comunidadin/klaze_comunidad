@@ -18,13 +18,15 @@ export type PostConAutor = Post & {
 };
 
 /**
- * `cursoIds` es una lista y no un id suelto porque el feed se lee desde dos
- * sitios: la pestaña de comunidad de UN curso, y `/admin/comunidad`, que modera
- * el de TODA la academia. Con un id suelto, la segunda pantalla no tenía forma
- * de pedir lo suyo.
+ * El feed es uno por academia.
+ *
+ * Antes esto era una LISTA de cursos, porque cada módulo tenía su feed y
+ * `/admin/comunidad` necesitaba pedir los de todos a la vez. Al subir la
+ * comunidad al nivel de la academia, la pantalla del alumno y la del panel
+ * piden exactamente lo mismo — y esa lista deja de tener sentido.
  */
 export interface FiltroFeed {
-  cursoIds: string[];
+  comunidadId: string;
   espacioId?: string;
 }
 
@@ -36,7 +38,7 @@ export interface FiltroFeed {
  * consulta entera se cae.
  */
 const CAMPOS = `
-  id, curso_id, espacio_id, autor_id, titulo, cuerpo, fijado, creado_el,
+  id, comunidad_id, espacio_id, autor_id, titulo, cuerpo, fijado, creado_el,
   perfiles!publicaciones_autor_id_fkey ( id, nombre, email, avatar_url, bio, rol, puntos, creado_el ),
   comentarios ( id, autor_id, cuerpo, padre_id, creado_el, perfiles!comentarios_autor_id_fkey ( nombre, email, avatar_url, puntos ) ),
   me_gusta ( usuario_id )
@@ -121,11 +123,7 @@ function aPost(f: any, yo: string): PostConAutor {
 
   return {
     id: f.id,
-    // `comunidadId` ya no viaja en la fila: la publicación cuelga del curso, y
-    // el curso de la comunidad. Se deja vacío porque el tipo lo exige y ningún
-    // consumidor lo usa desde que el feed vive dentro del curso.
-    comunidadId: "",
-    cursoId: f.curso_id,
+    comunidadId: f.comunidad_id,
     autorId: f.autor_id,
     espacioId: f.espacio_id,
     titulo: f.titulo,
@@ -176,12 +174,12 @@ export async function leerPagina(
   filtro: FiltroFeed,
   antesDe: string | null
 ): Promise<PostConAutor[]> {
-  if (filtro.cursoIds.length === 0) return [];
+  if (!filtro.comunidadId) return [];
 
   let consulta = supabase
     .from("publicaciones")
     .select(CAMPOS)
-    .in("curso_id", filtro.cursoIds)
+    .eq("comunidad_id", filtro.comunidadId)
     .eq("fijado", false)
     .order("creado_el", { ascending: false })
     .limit(POR_PAGINA);
@@ -196,15 +194,15 @@ export async function leerPagina(
   return (data ?? []).map((f) => aPost(f, yo));
 }
 
-/** La publicación fijada del curso, si la hay. Va aparte de la paginación. */
+/** La publicación fijada de la academia, si la hay. Fuera de la paginación. */
 export async function leerFijado(
   supabase: SupabaseClient,
-  cursoId: string
+  comunidadId: string
 ): Promise<PostConAutor | null> {
   const { data, error } = await supabase
     .from("publicaciones")
     .select(CAMPOS)
-    .eq("curso_id", cursoId)
+    .eq("comunidad_id", comunidadId)
     .eq("fijado", true)
     .limit(1);
 
@@ -217,13 +215,13 @@ export async function leerFijado(
 /** El autor sale de la sesión: no existe forma de publicar a nombre de otro. */
 export async function crearPost(
   supabase: SupabaseClient,
-  datos: { cursoId: string; espacioId: string; titulo: string; cuerpo: string }
+  datos: { comunidadId: string; espacioId: string; titulo: string; cuerpo: string }
 ): Promise<void> {
   const autorId = await idDeSesion(supabase);
   if (!autorId) throw new Error("Publicar requiere una sesión activa");
 
   const { error } = await supabase.from("publicaciones").insert({
-    curso_id: datos.cursoId,
+    comunidad_id: datos.comunidadId,
     espacio_id: datos.espacioId,
     autor_id: autorId,
     titulo: datos.titulo,

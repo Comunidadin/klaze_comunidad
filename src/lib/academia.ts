@@ -1,4 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { guardarSecciones } from "@/lib/supabase/espacios";
+import { crearSeccionesDefault } from "@/lib/espacios-default";
 
 export interface OpcionesAcademia {
   email: string;
@@ -154,6 +156,20 @@ export async function crearAcademia(
   });
   if (errInscripcion) {
     throw new Error(`No se pudo inscribir al creador: ${errInscripcion.message}`);
+  }
+
+  // La comunidad nace con sus espacios. Antes se sembraban al crear el primer
+  // módulo, porque colgaban de él; ahora cuelgan de la academia y hay que
+  // hacerlo aquí. Sin esto, quien compra Klaze entra a una comunidad sin un
+  // solo espacio — y sin espacio no se puede ni publicar.
+  //
+  // No tumba el alta si falla: la academia ya existe y el creador ya puede
+  // entrar. Los espacios se pueden crear a mano desde el panel; quedarse sin
+  // cuenta por un fallo aquí sería mucho peor.
+  try {
+    await guardarSecciones(admin, com.id, crearSeccionesDefault());
+  } catch {
+    /* La academia queda creada igual, con la comunidad vacía. */
   }
 
   return {

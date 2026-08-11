@@ -1,29 +1,22 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CommunityEvent } from "@/lib/types";
 
-/**
- * Eventos de un curso, del más próximo al más lejano.
- *
- * Devuelve `comunidadId` vacío: la tabla no lo guarda porque el evento cuelga
- * del curso, y el curso de la comunidad. El tipo lo exige por historia, y
- * ningún consumidor lo lee desde que el calendario vive dentro del curso.
- */
+/** Eventos de la academia, del más próximo al más lejano. */
 export async function leerEventos(
   supabase: SupabaseClient,
-  cursoId: string
+  comunidadId: string
 ): Promise<CommunityEvent[]> {
   const { data, error } = await supabase
     .from("eventos")
-    .select("id, curso_id, titulo, descripcion, fecha_inicio, duracion_min, url_sala")
-    .eq("curso_id", cursoId)
+    .select("id, comunidad_id, titulo, descripcion, fecha_inicio, duracion_min, url_sala")
+    .eq("comunidad_id", comunidadId)
     .order("fecha_inicio");
 
   if (error) throw new Error(`No se pudieron leer los eventos: ${error.message}`);
 
   return (data ?? []).map((f) => ({
     id: f.id,
-    comunidadId: "",
-    cursoId: f.curso_id,
+    comunidadId: f.comunidad_id,
     titulo: f.titulo,
     descripcion: f.descripcion,
     fechaInicio: f.fecha_inicio,
@@ -46,7 +39,7 @@ export async function guardarEvento(
     .from("eventos")
     .upsert({
       id: evento.id,
-      curso_id: evento.cursoId,
+      comunidad_id: evento.comunidadId,
       titulo: evento.titulo,
       descripcion: evento.descripcion,
       fecha_inicio: evento.fechaInicio,
@@ -57,7 +50,7 @@ export async function guardarEvento(
 
   if (error) throw new Error(`No se pudo guardar el evento: ${error.message}`);
   if (!data || data.length === 0) {
-    throw new Error("No se pudo guardar el evento: sin permiso sobre ese curso");
+    throw new Error("No se pudo guardar el evento: sin permiso sobre esa academia");
   }
 }
 

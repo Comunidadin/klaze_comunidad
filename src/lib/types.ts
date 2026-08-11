@@ -79,14 +79,6 @@ export interface Course {
    * la devolviera Postgres, que no promete nada.
    */
   orden: number;
-  /**
-   * Espacios/secciones del feed de comunidad de ESTE curso (Cambio 3: la
-   * comunidad social vive dentro de cada curso, no a nivel de comunidad).
-   * `Community.secciones` se mantiene intacto para no romper `/admin/comunidad`
-   * — el área de miembros ya no lo usa, solo este campo. Sembrado con
-   * `crearSeccionesDefault()` (ver `src/lib/espacios-default.ts`).
-   */
-  secciones: CommunitySection[];
 }
 
 export interface CourseModule {
@@ -179,13 +171,12 @@ export interface Invitation {
 
 export interface Post {
   id: string;
-  comunidadId: string;
   /**
-   * Curso dentro del cual vive esta publicación (Cambio 3). No reemplaza a
-   * `comunidadId` — se mantiene para que `/admin/comunidad` siga moderando
-   * el feed completo de la comunidad sin tener que tocarlo curso por curso.
+   * La academia. Fue `cursoId` durante un tiempo —la comunidad vivía dentro de
+   * cada módulo— y volvió aquí: con diez módulos, cada alumno acababa en una
+   * isla distinta según lo que hubiera comprado.
    */
-  cursoId: string;
+  comunidadId: string;
   autorId: string;
   espacioId: string;
   titulo: string;
@@ -218,9 +209,8 @@ export interface PostComment {
 
 export interface CommunityEvent {
   id: string;
+  /** La academia entera: un evento es del calendario común, no de un módulo. */
   comunidadId: string;
-  /** Curso al que pertenece este evento (Cambio 3) — ver docstring homónimo en `Post.cursoId`. */
-  cursoId: string;
   titulo: string;
   descripcion: string;
   fechaInicio: string; // ISO datetime

@@ -1,18 +1,15 @@
-import { Feed } from "@/components/community/feed";
+import { redirect } from "next/navigation";
 
 /**
- * Feed de un espacio puntual dentro de un curso
- * (`/c/[comunidad]/cursos/[curso]/comunidad/espacio/[slug]`), enlazado desde
- * `EspaciosSidebar`. Server Component: solo desenvuelve `params` (async en
- * Next 16) y delega la data/hidratación a `Feed` (client), igual que la
- * pestaña "Comunidad" agregada.
+ * Un espacio concreto, en su dirección vieja. Ver el docstring de la pestaña
+ * de comunidad: el espacio conserva su `slug`, así que quien tuviera guardado
+ * «Preguntas» sigue aterrizando en «Preguntas».
  */
-export default async function EspacioCursoPage({
+export default async function EspacioDelModuloRedirige({
   params,
 }: {
-  params: Promise<{ comunidad: string; curso: string; slug: string }>;
+  params: Promise<{ comunidad: string; slug: string }>;
 }) {
-  const { comunidad, curso, slug } = await params;
-
-  return <Feed comunidadSlug={comunidad} cursoSlug={curso} espacioSlug={slug} />;
+  const { comunidad, slug } = await params;
+  redirect(`/c/${comunidad}/comunidad/espacio/${slug}`);
 }
