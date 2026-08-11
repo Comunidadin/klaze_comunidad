@@ -216,7 +216,7 @@ export default function AdminCursosPage() {
                 Cancelar
               </Button>
               <Button onClick={crearCurso} disabled={!titulo.trim()}>
-                Crear submódulo
+                Crear módulo
               </Button>
             </DialogFooter>
           </DialogContent>

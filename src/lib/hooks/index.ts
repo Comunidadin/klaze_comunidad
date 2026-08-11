@@ -54,3 +54,5 @@ export type {
 
 export { useCanalesVenta, useRecepciones } from "@/lib/hooks/use-canales-venta";
 export type { UseCanalesVentaResult } from "@/lib/hooks/use-canales-venta";
+
+export { usePlantillas } from "@/lib/hooks/use-plantillas";

@@ -54,3 +54,35 @@ export async function pedirEnlaceInvitacion(
 
   return { enlace: cuerpo.enlace, enviado: cuerpo.enviado ?? false };
 }
+
+/**
+ * Avisa por correo a un alumno que acaba de quedar suspendido.
+ *
+ * Se llama **después** de suspenderlo, nunca antes: la suspensión es lo que
+ * importa y ya está hecha en la base. Por eso esto no lanza — devuelve si el
+ * correo salió, y quien llama lo enseña como aviso.
+ */
+export async function avisarBajaAlumno(
+  comunidadId: string,
+  usuarioId: string
+): Promise<{ enviado: boolean; error?: string }> {
+  try {
+    const { data } = await crearClienteNavegador().auth.getSession();
+    const jwt = data.session?.access_token;
+    if (!jwt) return { enviado: false, error: "Tu sesión ha caducado" };
+
+    const respuesta = await fetch("/api/baja", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${jwt}`,
+      },
+      body: JSON.stringify({ comunidadId, usuarioId }),
+    });
+
+    const cuerpo = (await respuesta.json()) as { ok?: boolean; error?: string };
+    return { enviado: cuerpo.ok ?? false, error: cuerpo.error };
+  } catch (e) {
+    return { enviado: false, error: e instanceof Error ? e.message : "Error de red" };
+  }
+}

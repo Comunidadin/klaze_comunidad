@@ -1,6 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { variableServidor } from "@/lib/entorno-servidor";
+import { enviarCorreo } from "@/lib/correo";
+import {
+  PLANTILLAS_POR_DEFECTO,
+  bloqueRecuperacion,
+  componerCorreo,
+  leerPlantilla,
+} from "@/lib/plantillas";
 
 /**
  * "¿Olvidaste tu contraseña?" — manda un enlace para poner una nueva.
@@ -32,7 +39,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let cuerpo: { email?: string };
+  let cuerpo: { email?: string; slug?: string };
   try {
     cuerpo = await request.json();
   } catch {
@@ -47,6 +54,19 @@ export async function POST(request: NextRequest) {
   const admin = createClient(url, secreta, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+
+  // El identificador lo manda `/login/{academia}`, que ya sabe de cuál es;
+  // `/login` a secas no lo manda y se queda con el texto por defecto.
+  //
+  // Es la única respuesta correcta: una persona puede estar en varias
+  // academias, y un correo suelto no dice en cuál está pidiendo entrar.
+  const { data: academia } = cuerpo.slug
+    ? await admin
+        .from("comunidades")
+        .select("id, nombre")
+        .eq("slug", cuerpo.slug)
+        .maybeSingle()
+    : { data: null };
 
   const origen = new URL(request.url).origin;
 
@@ -66,25 +86,17 @@ export async function POST(request: NextRequest) {
   const enlace = !error ? data?.properties?.action_link : null;
 
   if (enlace) {
-    await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${resendKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: remitente,
-        to: [email],
-        subject: "Recupera tu acceso",
-        html: `
-          <p>Pulsa aquí para poner una contraseña nueva:</p>
-          <p><a href="${enlace}">Elegir contraseña nueva</a></p>
-          <p style="color:#666;font-size:13px">
-            El enlace caduca en una hora. Si no has sido tú, ignora este correo:
-            tu contraseña actual sigue funcionando.
-          </p>`,
-      }),
-    }).catch(() => {
+    const plantilla = academia
+      ? await leerPlantilla(admin, academia.id, "recuperacion")
+      : PLANTILLAS_POR_DEFECTO.recuperacion;
+
+    const { asunto, html } = componerCorreo(
+      plantilla,
+      { academia: academia?.nombre ?? "tu academia", correo: email },
+      bloqueRecuperacion(enlace)
+    );
+
+    await enviarCorreo({ para: email, asunto, html }).catch(() => {
       /* Si el correo no sale, tampoco se lo decimos a quien pregunta. */
     });
   }

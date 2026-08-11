@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { KeyRound, MailCheck, Send } from "lucide-react";
 import { useSession } from "@/lib/hooks/use-session";
@@ -50,6 +50,10 @@ function mensajeDeError(bruto?: string): string {
 export default function LoginPage() {
   const { enviarEnlace, entrarConClave } = useSession();
   const router = useRouter();
+  // Vacío en `/login`, el identificador de la academia en `/login/{academia}`
+  // — es el mismo componente en las dos rutas. Sirve para que el correo de
+  // recuperación salga con el texto de ESA academia y no con el genérico.
+  const params = useParams<{ academia?: string }>();
 
   const [modo, setModo] = useState<Modo>("clave");
   const [email, setEmail] = useState("");
@@ -75,7 +79,7 @@ export default function LoginPage() {
     await fetch("/api/recuperar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: correo }),
+      body: JSON.stringify({ email: correo, slug: params?.academia }),
     }).catch(() => {});
 
     toast.success(

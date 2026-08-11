@@ -81,6 +81,37 @@ export async function guardarCurso(
 }
 
 /**
+ * Borra un curso entero: él, sus módulos, sus lecciones y todo lo que colgaba.
+ *
+ * No hace falta ir borrando hacia dentro: cada tabla que apunta a `cursos` lo
+ * hace con `on delete cascade`, así que una sola sentencia se lleva los
+ * módulos, las lecciones, sus comentarios, el progreso de los alumnos, las
+ * publicaciones del curso y su fila en los enlaces de compra. Recorrerlo a
+ * mano solo añadiría un orden que la base ya sabe.
+ *
+ * Y por eso **no se puede deshacer**: quien llame a esto tiene que haber
+ * preguntado antes. Lo que se pierde no es solo del creador — el progreso es
+ * de sus alumnos.
+ */
+export async function borrarCurso(
+  supabase: SupabaseClient,
+  cursoId: string
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("cursos")
+    .delete()
+    .eq("id", cursoId)
+    .select("id");
+
+  if (error) throw new Error(`No se pudo eliminar el módulo: ${error.message}`);
+  // RLS no lanza: filtra. Un delete rechazado por política vuelve vacío y sin
+  // error, y devolverlo en silencio diría "eliminado" sin haber eliminado nada.
+  if (!data || data.length === 0) {
+    throw new Error("No se pudo eliminar el módulo: sin permiso sobre esa academia");
+  }
+}
+
+/**
  * Borra las filas hijas de `padreId` que ya no están en `idsQueSeQuedan`.
  *
  * El caso de lista vacía va aparte: `.not("id", "in", "()")` genera SQL

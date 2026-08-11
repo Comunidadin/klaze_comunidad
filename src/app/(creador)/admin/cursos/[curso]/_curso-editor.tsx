@@ -26,6 +26,7 @@ import { useAppStore } from "@/lib/store";
 import { leccionesOrdenadas, moduloDeLeccion, modulosOrdenados } from "@/components/course/course-utils";
 import { SubirImagen } from "@/components/shared/subir-imagen";
 import { LessonEditor } from "@/components/admin/lesson-editor";
+import { DialogoEliminarModulo } from "@/components/admin/eliminar-modulo";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -126,6 +127,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
   if (moduloAEliminar && moduloAEliminar !== moduloMostrado) {
     setModuloMostrado(moduloAEliminar);
   }
+  const [confirmarBorrarCurso, setConfirmarBorrarCurso] = useState(false);
 
   // Siembra la copia local de edición la primera vez que `cursoOriginal`
   // resuelve para este `cursoId` — ver docstring de arriba. Ajustar estado
@@ -318,6 +320,11 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
     router.push("/admin/cursos");
   }
 
+  // Del original y no de la copia local: `numAlumnos` lo calcula
+  // `useAdminCourse` a partir de las inscripciones, y no es algo que el editor
+  // pueda cambiar.
+  const numAlumnos = cursoOriginal?.numAlumnos ?? 0;
+
   const moduloDeSeleccionada = leccionSeleccionada
     ? moduloDeLeccion(curso, leccionSeleccionada.id)
     : undefined;
@@ -345,12 +352,22 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 flex-wrap items-center gap-3">
+          {/* En el extremo opuesto a "Guardar cambios", con el interruptor de
+              publicación entre medias: es el botón que más se aprieta al día,
+              y pegarle al lado el que destruye invita al resbalón. */}
+          <Button
+            variant="outline"
+            className="text-destructive hover:text-destructive"
+            onClick={() => setConfirmarBorrarCurso(true)}
+          >
+            <Trash2 /> Eliminar
+          </Button>
           <div className="flex items-center gap-2 rounded-lg border border-border px-3 py-1.5">
             <Label htmlFor="curso-publicado" className="text-xs text-muted-foreground">
               {curso.publicado ? "Publicado" : "Borrador"}
             </Label>
-            <Switch id="submódulo-publicado" checked={curso.publicado} onCheckedChange={togglePublicado} />
+            <Switch id="curso-publicado" checked={curso.publicado} onCheckedChange={togglePublicado} />
           </div>
           <Button onClick={guardar} disabled={!dirty}>
             <Save /> Guardar cambios
@@ -382,7 +399,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
               Estructura del módulo
             </h2>
             <Button variant="outline" size="sm" onClick={agregarModulo}>
-              <Plus /> Curso
+              <Plus /> Submódulo
             </Button>
           </div>
 
@@ -401,7 +418,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
                     <Input
                       value={modulo.titulo}
                       onChange={(e) => renombrarModulo(modulo.id, e.target.value)}
-                      aria-label={`Título del módulo ${indiceModulo + 1}`}
+                      aria-label={`Título del submódulo ${indiceModulo + 1}`}
                       className="h-8 border-transparent bg-transparent px-1.5 font-display text-sm font-semibold shadow-none hover:border-input focus-visible:border-ring"
                     />
                     <div className="flex shrink-0 items-center gap-1.5">
@@ -569,20 +586,30 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
             <EmptyState
               icono={BookOpen}
               titulo="Selecciona una clase"
-              descripcion="Elige una clase del temario a la izquierda, o crea la primera desde un curso."
+              descripcion="Elige una clase del temario a la izquierda, o crea la primera desde un submódulo."
             />
           )}
         </div>
       </div>
+
+      <DialogoEliminarModulo
+        curso={curso}
+        numAlumnos={numAlumnos}
+        abierto={confirmarBorrarCurso}
+        onOpenChange={setConfirmarBorrarCurso}
+        // Aquí sí hay que irse: el editor de un módulo que ya no existe no
+        // tiene nada que enseñar.
+        onEliminado={() => router.push("/admin/cursos")}
+      />
 
       <Dialog open={!!moduloAEliminar} onOpenChange={(open) => !open && setModuloAEliminar(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>¿Eliminar &quot;{moduloMostrado?.titulo}&quot;?</DialogTitle>
             <DialogDescription>
-              Este módulo tiene {moduloMostrado?.lecciones.length}{" "}
+              Este submódulo tiene {moduloMostrado?.lecciones.length}{" "}
               {moduloMostrado?.lecciones.length === 1 ? "clase" : "clases"} — se eliminarán
-              junto con el módulo. Esta acción no se puede deshacer.
+              junto con él. Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

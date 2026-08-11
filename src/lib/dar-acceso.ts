@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { crearInvitaciones } from "@/lib/supabase/invitaciones";
 import { enviarCorreo } from "@/lib/correo";
+import { bloqueAcceso, componerCorreo, leerPlantilla } from "@/lib/plantillas";
 
 /**
  * Dar acceso a alguien a una academia: cuenta, invitación y correo.
@@ -133,28 +134,28 @@ export async function darAcceso(
 
   if (!o.enviarCorreo) return { ...base, enviado: false };
 
-  const r = await enviarCorreo({
-    para: email,
-    asunto: `Tu acceso a ${o.comunidadNombre}`,
-    html: passwordTemporal
-      ? `
-        <p>Te han dado acceso a <strong>${o.comunidadNombre}</strong>.</p>
-        <p>Entra en <a href="${o.origen}/login">${o.origen}/login</a> con:</p>
-        <p>
-          Correo: <strong>${email}</strong><br>
-          Contraseña: <strong style="font-family:monospace">${passwordTemporal}</strong>
-        </p>
-        <p style="color:#666;font-size:13px">
-          Puedes cambiarla cuando quieras desde tu perfil.
-        </p>`
-        : `
-        <p>Te han dado acceso a <strong>${o.comunidadNombre}</strong>.</p>
-        <p>Ya tenías cuenta, así que entra en
-           <a href="${o.origen}/login">${o.origen}/login</a> con tu contraseña de siempre.</p>
-        <p style="color:#666;font-size:13px">
-          Si no la recuerdas, usa "¿Olvidaste tu contraseña?" en esa misma pantalla.
-        </p>`,
-  });
+  // El texto lo pone el dueño de la academia; el bloque de acceso, Klaze.
+  const plantilla = await leerPlantilla(admin, o.comunidadId, "bienvenida");
+
+  // A la entrada de SU academia y no a `/login` a secas: es la pantalla con su
+  // logo y su portada. Si por lo que sea no se puede leer el identificador,
+  // `/login` sirve igual — pide el correo y resuelve la academia sola.
+  const { data: comunidad } = await admin
+    .from("comunidades")
+    .select("slug")
+    .eq("id", o.comunidadId)
+    .maybeSingle();
+  const loginUrl = comunidad?.slug
+    ? `${o.origen}/login/${comunidad.slug}`
+    : `${o.origen}/login`;
+
+  const { asunto, html } = componerCorreo(
+    plantilla,
+    { academia: o.comunidadNombre, correo: email, nombre: o.nombre },
+    bloqueAcceso({ loginUrl, correo: email, password: passwordTemporal })
+  );
+
+  const r = await enviarCorreo({ para: email, asunto, html });
 
   return { ...base, enviado: r.enviado, errorCorreo: r.error };
 }
