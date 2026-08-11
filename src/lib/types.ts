@@ -141,10 +141,22 @@ export type BloqueClase =
    * sus alumnos con la sesión abierta.
    */
   | { id: string; tipo: "texto"; doc: unknown }
-  | { id: string; tipo: "embed"; url: string; alto?: number };
+  | { id: string; tipo: "embed"; url: string; alto?: number }
+  /**
+   * Una imagen de referencia dentro de la clase: la captura del paso 3, el
+   * diagrama, el ejemplo de formulario relleno.
+   *
+   * Guarda la URL, no el archivo. Es un enlace público a una imagen alojada
+   * donde sea; Klaze no la copia. Eso tiene una consecuencia que el editor
+   * dice con estas palabras: si ese sitio se cae o borras la imagen, aquí
+   * desaparece.
+   */
+  | { id: string; tipo: "imagen"; url: string; pie?: string };
 
 /** El tipo de una clase se deduce de su primera pieza — para el icono. */
-export function tipoDeClase(bloques: BloqueClase[]): "video" | "texto" | "embed" {
+export function tipoDeClase(
+  bloques: BloqueClase[]
+): "video" | "texto" | "embed" | "imagen" {
   return bloques[0]?.tipo ?? "texto";
 }
 

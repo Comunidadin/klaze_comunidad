@@ -150,6 +150,41 @@ export function EmbedDeClase({ url, alto }: { url: string; alto?: number }) {
 
 /* ------------------------------------------------------------------------- */
 
+/**
+ * Una imagen de referencia, con su pie opcional.
+ *
+ * `<img>` y no `next/image`: el optimizador exige declarar de antemano los
+ * dominios permitidos, y aquí la URL la pega el creador — cualquier dominio,
+ * decidido después de compilar. Es la misma razón por la que `CoursePortada`
+ * lo hace así.
+ *
+ * `referrerPolicy="no-referrer"` para no ir contándole a cada servidor de
+ * imágenes qué academia y qué clase la está mirando.
+ */
+function ImagenDeClase({ url, pie }: { url: string; pie?: string }) {
+  if (!url.trim()) return null;
+
+  return (
+    <figure className="space-y-2">
+      {/* eslint-disable-next-line @next/next/no-img-element -- URL arbitraria pegada por el creador, ver docstring */}
+      <img
+        src={url}
+        alt={pie?.trim() || ""}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        className="w-full rounded-xl ring-1 ring-foreground/10"
+      />
+      {pie?.trim() && (
+        <figcaption className="text-center text-xs text-muted-foreground">
+          {pie}
+        </figcaption>
+      )}
+    </figure>
+  );
+}
+
+/* ------------------------------------------------------------------------- */
+
 /** Las piezas de una clase, en orden. */
 export function BloquesDeClase({
   bloques,
@@ -170,6 +205,8 @@ export function BloquesDeClase({
             return <TextoDeClase key={b.id} doc={b.doc} />;
           case "embed":
             return <EmbedDeClase key={b.id} url={b.url} alto={b.alto} />;
+          case "imagen":
+            return <ImagenDeClase key={b.id} url={b.url} pie={b.pie} />;
           default:
             return null;
         }

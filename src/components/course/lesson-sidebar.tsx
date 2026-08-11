@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircle2, Circle, FileText, Video } from "lucide-react";
+import { CheckCircle2, Circle } from "lucide-react";
+import { ICONO_CLASE } from "@/components/course/iconos-clase";
 import {
   Accordion,
   AccordionContent,
@@ -67,7 +68,7 @@ export function LessonSidebar({
                   {modulo.lecciones.map((leccion) => {
                     const activa = leccion.id === leccionActualId;
                     const completada = leccionesCompletadasIds.has(leccion.id);
-                    const TipoIcon = tipoDeClase(leccion.bloques) === "video" ? Video : FileText;
+                    const TipoIcon = ICONO_CLASE[tipoDeClase(leccion.bloques)];
                     return (
                       <li key={leccion.id}>
                         <Link

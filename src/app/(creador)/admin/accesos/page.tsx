@@ -12,13 +12,13 @@ import { esEmailValido } from "@/lib/validation";
 import { resumenCursosInvitacion } from "@/lib/invitation-summary";
 import { formatFechaLarga } from "@/lib/format-fecha";
 import { VentasAutomaticas } from "./_ventas-automaticas";
+import { SelectorModulos } from "@/components/admin/selector-modulos";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -174,18 +174,6 @@ export default function AccesosPage() {
     );
   }
 
-  function toggleCurso(cursoId: string, marcado: boolean) {
-    setTodaLaComunidad(false);
-    setCursoIdsSeleccionados((prev) =>
-      marcado ? [...prev, cursoId] : prev.filter((id) => id !== cursoId)
-    );
-  }
-
-  function toggleTodaLaComunidad(marcado: boolean) {
-    setTodaLaComunidad(marcado);
-    if (marcado) setCursoIdsSeleccionados([]);
-  }
-
   async function handleEnviar() {
     if (!puedeEnviar || enviando) return;
     setEnviando(true);
@@ -279,46 +267,17 @@ export default function AccesosPage() {
 
             <Separator />
 
-            <div className="space-y-2.5">
-              <Label>¿A qué dan acceso?</Label>
-
-              <label className="flex items-center gap-2.5 rounded-lg border border-border p-2.5 text-sm has-aria-checked:border-primary/40 has-aria-checked:bg-primary/5">
-                <Checkbox
-                  checked={todaLaComunidad}
-                  onCheckedChange={(v) => toggleTodaLaComunidad(v === true)}
-                />
-                <span className="font-medium text-foreground">Toda la comunidad</span>
-                <span className="text-muted-foreground">— acceso a todos los submódulos, presentes y futuros</span>
-              </label>
-
-              {cursos.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  Todavía no publicas submódulos individuales — por ahora solo puedes invitar a
-                  &quot;Toda la comunidad&quot;.
-                </p>
-              ) : (
-                <div
-                  className={
-                    "grid grid-cols-1 gap-2 sm:grid-cols-2" +
-                    (todaLaComunidad ? " pointer-events-none opacity-50" : "")
-                  }
-                >
-                  {cursos.map((curso) => (
-                    <label
-                      key={curso.id}
-                      className="flex items-center gap-2.5 rounded-lg border border-border p-2.5 text-sm has-aria-checked:border-primary/40 has-aria-checked:bg-primary/5"
-                    >
-                      <Checkbox
-                        checked={cursoIdsSeleccionados.includes(curso.id)}
-                        disabled={todaLaComunidad}
-                        onCheckedChange={(v) => toggleCurso(curso.id, v === true)}
-                      />
-                      <span className="truncate text-foreground">{curso.titulo}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* El mismo selector que usa «Editar acceso» en Alumnos: invitar y
+                cambiar el acceso de alguien tienen que enseñar lo mismo, o el
+                dueño creerá que ha dado un acceso distinto del que dio. */}
+            <SelectorModulos
+              cursos={cursos}
+              valor={todaLaComunidad ? "todos" : cursoIdsSeleccionados}
+              onCambio={(v) => {
+                setTodaLaComunidad(v === "todos");
+                setCursoIdsSeleccionados(v === "todos" ? [] : v);
+              }}
+            />
 
             <Button onClick={handleEnviar} disabled={!puedeEnviar || enviando} size="lg">
               <Send /> Enviar invitaciones

@@ -2,12 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { MoreHorizontal, Search, ShieldOff, UserCheck, Users } from "lucide-react";
+import { KeyRound, MoreHorizontal, Search, ShieldOff, UserCheck, Users } from "lucide-react";
 import { useHydrated } from "@/lib/hooks/use-session";
 import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { useMembers, type MemberConEstado } from "@/lib/hooks/use-members";
+import { useAdminCourses } from "@/lib/hooks/use-admin-courses";
 import { crearClienteNavegador } from "@/lib/supabase/client";
-import { cambiarEstadoAlumno } from "@/lib/supabase/alumnos";
+import { cambiarAccesoAlumno, cambiarEstadoAlumno } from "@/lib/supabase/alumnos";
+import { SelectorModulos } from "@/components/admin/selector-modulos";
 import { avisarBajaAlumno } from "@/lib/invitaciones-api";
 import { formatFechaLarga } from "@/lib/format-fecha";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -46,7 +48,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { Enrollment } from "@/lib/types";
+import type { Course, Enrollment } from "@/lib/types";
 
 type FiltroEstado = "todos" | Enrollment["estado"];
 
@@ -101,7 +103,9 @@ function AlumnosSkeleton() {
 export default function AlumnosPage() {
   const hydrated = useHydrated();
   const community = useMyCommunity();
-  const { miembros, recargar } = useMembers(community?.id ?? "");
+  const { miembros, accesos, recargar } = useMembers(community?.id ?? "");
+  const { cursos } = useAdminCourses(community?.id ?? "");
+  const [editando, setEditando] = useState<MemberConEstado | null>(null);
 
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>("todos");
@@ -143,6 +147,12 @@ export default function AlumnosPage() {
         descripcion="No encontramos ninguna comunidad asociada a tu cuenta."
       />
     );
+  }
+
+  async function guardarAcceso(usuarioId: string, cursoIds: string[] | "todos") {
+    if (!community) return;
+    await cambiarAccesoAlumno(crearClienteNavegador(), usuarioId, community.id, cursoIds);
+    await recargar();
   }
 
   async function confirmarCambio() {
@@ -230,6 +240,7 @@ export default function AlumnosPage() {
                 <TableHead>Alumno</TableHead>
                 <TableHead>Correo</TableHead>
                 <TableHead>Estado</TableHead>
+                <TableHead>Acceso</TableHead>
                 <TableHead>Progreso</TableHead>
                 <TableHead>Ingresó</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
@@ -250,6 +261,9 @@ export default function AlumnosPage() {
                   <TableCell className="text-muted-foreground">{miembro.email}</TableCell>
                   <TableCell>
                     <EstadoBadge estado={miembro.estado} />
+                  </TableCell>
+                  <TableCell className="max-w-52 text-xs text-muted-foreground">
+                    {resumenAcceso(accesos.get(miembro.id), cursos)}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -273,6 +287,9 @@ export default function AlumnosPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onSelect={() => setEditando(miembro)}>
+                            <KeyRound /> Editar acceso
+                          </DropdownMenuItem>
                           {miembro.estado === "activo" ? (
                             <DropdownMenuItem
                               variant="destructive"
@@ -325,6 +342,115 @@ export default function AlumnosPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {editando && (
+        <DialogoEditarAcceso
+          // `key` para que el diálogo nazca con el acceso de ESTE alumno: su
+          // estado vive dentro, y sin remontarlo el segundo que abras saldría
+          // con las casillas del primero.
+          key={editando.id}
+          miembro={editando}
+          cursos={cursos}
+          acceso={accesos.get(editando.id)}
+          onCerrar={() => setEditando(null)}
+          onGuardar={guardarAcceso}
+        />
+      )}
     </div>
+  );
+}
+
+/** «Toda la comunidad», o los módulos por su nombre. */
+function resumenAcceso(
+  acceso: { todos: boolean; cursoIds: string[] } | undefined,
+  cursos: { id: string; titulo: string }[]
+): string {
+  if (!acceso) return "—";
+  if (acceso.todos) return "Toda la comunidad";
+  if (acceso.cursoIds.length === 0) return "Ningún módulo";
+
+  const nombres = acceso.cursoIds
+    .map((id) => cursos.find((c) => c.id === id)?.titulo)
+    .filter(Boolean);
+
+  // Los ids que no encuentran módulo se caen de la lista: son de módulos
+  // borrados, y enseñar un identificador crudo no le dice nada a nadie.
+  return nombres.length > 0 ? nombres.join(", ") : "Ningún módulo";
+}
+
+/**
+ * Cambiar a qué módulos entra un alumno que ya está dentro.
+ *
+ * Existe porque una invitación aceptada es historia: reenviarla no quita nada
+ * —`aceptar_invitaciones_de` solo suma, para que comprar dos productos no
+ * borre el primero—, así que la única forma de retirar un módulo es esta.
+ */
+function DialogoEditarAcceso({
+  miembro,
+  cursos,
+  acceso,
+  onCerrar,
+  onGuardar,
+}: {
+  miembro: MemberConEstado;
+  cursos: Course[];
+  acceso?: { todos: boolean; cursoIds: string[] };
+  onCerrar: () => void;
+  onGuardar: (usuarioId: string, cursoIds: string[] | "todos") => Promise<void>;
+}) {
+  const [valor, setValor] = useState<string[] | "todos">(
+    acceso?.todos ? "todos" : (acceso?.cursoIds ?? [])
+  );
+  const [guardando, setGuardando] = useState(false);
+
+  const vacio = valor !== "todos" && valor.length === 0;
+
+  async function guardar() {
+    setGuardando(true);
+    try {
+      await onGuardar(miembro.id, valor);
+      toast.success(`Acceso de ${miembro.nombre} actualizado.`);
+      onCerrar();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo cambiar el acceso");
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(abierto) => !abierto && !guardando && onCerrar()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Acceso de {miembro.nombre}</DialogTitle>
+          <DialogDescription>
+            El cambio es inmediato. Su progreso no se toca: si le quitas un
+            módulo y se lo devuelves, vuelve donde lo dejó.
+          </DialogDescription>
+        </DialogHeader>
+
+        <SelectorModulos
+          cursos={cursos}
+          valor={valor}
+          onCambio={setValor}
+          etiqueta="¿A qué módulos entra?"
+        />
+
+        {vacio && (
+          <p className="text-xs text-destructive">
+            Sin ningún módulo marcado no verá nada al entrar. Si lo que quieres
+            es cerrarle la puerta del todo, suspéndelo — así queda dicho por qué.
+          </p>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onCerrar} disabled={guardando}>
+            Cancelar
+          </Button>
+          <Button onClick={() => void guardar()} disabled={guardando}>
+            {guardando ? "Guardando…" : "Guardar acceso"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

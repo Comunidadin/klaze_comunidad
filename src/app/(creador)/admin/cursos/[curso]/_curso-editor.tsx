@@ -8,13 +8,11 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronUp,
-  FileText,
   Layers,
   Plus,
   Save,
   SearchX,
   Trash2,
-  Video,
 } from "lucide-react";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { cargarArmazon } from "@/lib/supabase/consultas";
@@ -26,6 +24,7 @@ import { useAppStore } from "@/lib/store";
 import { leccionesOrdenadas, moduloDeLeccion, modulosOrdenados } from "@/components/course/course-utils";
 import { SubirImagen } from "@/components/shared/subir-imagen";
 import { LessonEditor } from "@/components/admin/lesson-editor";
+import { ICONO_CLASE } from "@/components/course/iconos-clase";
 import { DialogoEliminarModulo } from "@/components/admin/eliminar-modulo";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -568,7 +567,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
                   <div className="space-y-1 p-2">
                     {modulo.lecciones.map((leccion, indiceLeccion) => {
                       const seleccionada = leccion.id === leccionSeleccionada?.id;
-                      const TipoIcon = tipoDeClase(leccion.bloques) === "video" ? Video : FileText;
+                      const TipoIcon = ICONO_CLASE[tipoDeClase(leccion.bloques)];
                       return (
                         <div
                           key={leccion.id}

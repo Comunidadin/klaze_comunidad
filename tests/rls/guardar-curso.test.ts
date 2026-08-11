@@ -243,6 +243,34 @@ test("un alumno no puede borrar un curso de su propia academia", async () => {
   expect(data?.length).toBe(1);
 });
 
+test("una imagen de referencia sobrevive al guardado, con su pie", async () => {
+  const curso = cursoDePrueba(e.comunidadA, "curso-con-imagen");
+  curso.modulos[0].lecciones[0].bloques = [
+    { id: crypto.randomUUID(), tipo: "video", vimeoId: "444" },
+    {
+      id: crypto.randomUUID(),
+      tipo: "imagen",
+      url: "https://ejemplo.test/captura.png",
+      pie: "Paso 3 del formulario",
+    },
+  ];
+
+  await guardarCurso(e.duenoA.cliente, curso);
+
+  const { cursos } = await cargarArmazon(e.duenoA.cliente);
+  const piezas = cursos.find((c) => c.id === curso.id)?.modulos[0].lecciones[0].bloques ?? [];
+
+  // El orden importa igual que con las demas piezas: la imagen va DEBAJO del
+  // video, y si `bloques` se guardara como objeto acabaria encima.
+  expect(piezas.map((b) => b.tipo)).toEqual(["video", "imagen"]);
+  expect(piezas[1]).toMatchObject({
+    url: "https://ejemplo.test/captura.png",
+    pie: "Paso 3 del formulario",
+  });
+
+  await admin.from("cursos").delete().eq("id", curso.id);
+});
+
 test("un alumno no puede guardar un curso en la comunidad de su dueno", async () => {
   const curso = cursoDePrueba(e.comunidadA, "curso-intruso");
   await expect(guardarCurso(e.alumnoA.cliente, curso)).rejects.toThrow();

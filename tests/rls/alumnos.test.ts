@@ -1,7 +1,11 @@
 import { expect, test, beforeAll, afterAll } from "bun:test";
 import { admin } from "./ayudas";
 import { montarEscenario, desmontar, type Escenario } from "./escenario";
-import { listarAlumnos, cambiarEstadoAlumno } from "../../src/lib/supabase/alumnos";
+import {
+  listarAlumnos,
+  cambiarAccesoAlumno,
+  cambiarEstadoAlumno,
+} from "../../src/lib/supabase/alumnos";
 
 let e: Escenario;
 
@@ -113,4 +117,66 @@ test("el dueno de B no puede suspender a un alumno de A", async () => {
   // que comprobarlo por el efecto y no por el error.
   const { data } = await e.alumnoA.cliente.from("cursos").select("id");
   expect((data ?? []).length).toBeGreaterThan(0);
+});
+
+test("el dueno puede AÑADIR un modulo al acceso de un alumno", async () => {
+  // `alumnoA` entra con `cursoAPublicado` y `cursoABorrador`; `cursoASinAcceso`
+  // es justo el que nunca compro.
+  await cambiarAccesoAlumno(e.duenoA.cliente, e.alumnoA.id, e.comunidadA, [
+    e.cursoAPublicado,
+    e.cursoASinAcceso,
+  ]);
+
+  const { data: cursos } = await e.alumnoA.cliente.from("cursos").select("id");
+  expect((cursos ?? []).map((c) => c.id)).toContain(e.cursoASinAcceso);
+});
+
+test("y puede QUITARLO, que es lo que una invitacion no sabe hacer", async () => {
+  // Reenviar una invitacion solo suma —`aceptar_invitaciones_de` esta escrito
+  // asi a proposito, para que comprar dos productos no borre el primero—, de
+  // modo que esta es la unica puerta para retirar un modulo.
+  await cambiarAccesoAlumno(e.duenoA.cliente, e.alumnoA.id, e.comunidadA, [
+    e.cursoAPublicado,
+  ]);
+
+  const { data: cursos } = await e.alumnoA.cliente.from("cursos").select("id");
+  const ids = (cursos ?? []).map((c) => c.id);
+  expect(ids).toContain(e.cursoAPublicado);
+  expect(ids).not.toContain(e.cursoASinAcceso);
+});
+
+test("dar 'toda la comunidad' no borra los modulos que tenia elegidos", async () => {
+  await cambiarAccesoAlumno(e.duenoA.cliente, e.alumnoA.id, e.comunidadA, "todos");
+
+  const { data: insc } = await admin
+    .from("inscripciones")
+    .select("id, todos_los_cursos")
+    .eq("usuario_id", e.alumnoA.id)
+    .eq("comunidad_id", e.comunidadA)
+    .single();
+  expect(insc?.todos_los_cursos).toBe(true);
+
+  // La lista se conserva: si mañana se le quita "toda la comunidad", vuelve a
+  // lo que tenia en vez de quedarse sin nada.
+  const { count } = await admin
+    .from("inscripcion_cursos")
+    .select("curso_id", { count: "exact", head: true })
+    .eq("inscripcion_id", insc!.id);
+  expect(count).toBeGreaterThan(0);
+
+  // Y con la marca puesta ve tambien el que no esta en su lista.
+  const { data: cursos } = await e.alumnoA.cliente.from("cursos").select("id");
+  expect((cursos ?? []).map((c) => c.id)).toContain(e.cursoASinAcceso);
+});
+
+test("el dueno de otra empresa no puede tocar el acceso de mi alumno", async () => {
+  await expect(
+    cambiarAccesoAlumno(e.duenoB.cliente, e.alumnoA.id, e.comunidadA, "todos")
+  ).rejects.toThrow();
+});
+
+test("un alumno no puede darse acceso a si mismo", async () => {
+  await expect(
+    cambiarAccesoAlumno(e.alumnoA.cliente, e.alumnoA.id, e.comunidadA, "todos")
+  ).rejects.toThrow();
 });

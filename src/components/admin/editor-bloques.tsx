@@ -6,6 +6,7 @@ import {
   ChevronUp,
   Code2,
   FileText,
+  ImageIcon,
   Trash2,
   Video,
 } from "lucide-react";
@@ -28,7 +29,58 @@ const NOMBRES: Record<BloqueClase["tipo"], { titulo: string; icono: typeof Video
   video: { titulo: "Vídeo", icono: Video },
   texto: { titulo: "Texto", icono: FileText },
   embed: { titulo: "Insertado", icono: Code2 },
+  imagen: { titulo: "Imagen", icono: ImageIcon },
 };
+
+/**
+ * La imagen tal como se verá, o el motivo por el que no se ve.
+ *
+ * Un enlace de imagen falla de dos maneras que no se distinguen escribiéndolo:
+ * apunta a la página que contiene la imagen en vez de a la imagen, o el sitio
+ * bloquea que se muestre desde otro dominio. Las dos se ven aquí en un
+ * segundo; sin esto se descubren en la clase de un alumno.
+ */
+function VistaPreviaImagen({ url }: { url: string }) {
+  const [fallo, setFallo] = useState(false);
+  // Al cambiar la URL hay que volver a intentarlo. Sin esto, el primer enlace
+  // malo dejaría el aviso rojo puesto para siempre y el bueno de después no se
+  // vería nunca. Se ajusta durante el render, no en un efecto — es el patrón
+  // del proyecto (ver `_curso-editor.tsx`).
+  const [urlVista, setUrlVista] = useState(url);
+  if (url !== urlVista) {
+    setUrlVista(url);
+    setFallo(false);
+  }
+
+  if (!url.trim()) {
+    return (
+      <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">
+        Pega el enlace arriba y aquí verás la imagen.
+      </p>
+    );
+  }
+
+  if (fallo) {
+    return (
+      <p className="rounded-lg border border-dashed border-destructive/50 px-3 py-6 text-center text-xs text-destructive">
+        No se pudo cargar. Comprueba que el enlace lleve directo a la imagen
+        (que termine en .jpg, .png o .webp) y que sea público.
+      </p>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- URL arbitraria pegada por el creador
+    <img
+      key={url}
+      src={url}
+      alt=""
+      onError={() => setFallo(true)}
+      referrerPolicy="no-referrer"
+      className="w-full rounded-lg ring-1 ring-foreground/10"
+    />
+  );
+}
 
 /**
  * Las piezas de una clase: añadir, ordenar y borrar.
@@ -47,7 +99,9 @@ export function EditorBloques({ bloques, onCambio }: EditorBloquesProps) {
         ? { id, tipo: "video", vimeoId: "" }
         : tipo === "texto"
           ? { id, tipo: "texto", doc: { type: "doc", content: [] } }
-          : { id, tipo: "embed", url: "" };
+          : tipo === "imagen"
+            ? { id, tipo: "imagen", url: "" }
+            : { id, tipo: "embed", url: "" };
     onCambio([...bloques, nuevo]);
   }
 
@@ -87,7 +141,7 @@ export function EditorBloques({ bloques, onCambio }: EditorBloquesProps) {
       <div className="flex items-center justify-between">
         <Label>Contenido de la clase</Label>
         <div className="flex gap-1">
-          {(["video", "texto", "embed"] as const).map((t) => {
+          {(["video", "texto", "imagen", "embed"] as const).map((t) => {
             const { titulo, icono: Icono } = NOMBRES[t];
             return (
               <Button key={t} type="button" variant="outline" size="sm" onClick={() => agregar(t)}>
@@ -161,6 +215,50 @@ export function EditorBloques({ bloques, onCambio }: EditorBloquesProps) {
                       doc={bloque.doc}
                       onCambio={(doc) => actualizar(bloque.id, { doc } as Partial<BloqueClase>)}
                     />
+                  )}
+
+                  {bloque.tipo === "imagen" && (
+                    <div className="space-y-2">
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`img-${bloque.id}`} className="text-xs">
+                          Enlace de la imagen
+                        </Label>
+                        <Input
+                          id={`img-${bloque.id}`}
+                          value={bloque.url}
+                          onChange={(e) =>
+                            actualizar(bloque.id, { url: e.target.value.trim() } as Partial<BloqueClase>)
+                          }
+                          placeholder="https://…/captura.png"
+                          className="font-mono text-xs"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Tiene que ser un enlace directo a la imagen —
+                          termina en .jpg, .png o .webp—, no la página que la
+                          contiene. Klaze no se queda una copia: si borras la
+                          imagen de su sitio, aquí desaparece.
+                        </p>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`pie-${bloque.id}`} className="text-xs">
+                          Pie de foto (opcional)
+                        </Label>
+                        <Input
+                          id={`pie-${bloque.id}`}
+                          value={bloque.pie ?? ""}
+                          onChange={(e) =>
+                            actualizar(bloque.id, { pie: e.target.value } as Partial<BloqueClase>)
+                          }
+                          placeholder="Ej. Paso 3 del formulario, ya relleno"
+                        />
+                      </div>
+
+                      {/* La vista previa es la comprobación: si el enlace no
+                          es directo, o el sitio no deja verla desde fuera,
+                          aquí se ve roto — y no en la clase de un alumno. */}
+                      <VistaPreviaImagen url={bloque.url} />
+                    </div>
                   )}
 
                   {bloque.tipo === "embed" && (
