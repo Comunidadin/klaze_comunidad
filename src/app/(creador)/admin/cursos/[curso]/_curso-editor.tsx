@@ -34,6 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -207,6 +208,26 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
     actualizarCurso((c) => ({ ...c, portadaUrl: portadaUrl.trim() }));
   }
 
+  function renombrarCurso(titulo: string) {
+    actualizarCurso((c) => ({ ...c, titulo }));
+  }
+
+  function actualizarDescripcionCurso(descripcion: string) {
+    actualizarCurso((c) => ({ ...c, descripcion }));
+  }
+
+  /**
+   * El precio solo se enseña, no se cobra: es el «valor referencial» que ve
+   * quien todavía no tiene acceso. Se guarda como número porque el campo de
+   * texto devuelve cadena, y un `NaN` aquí acabaría escrito en la base.
+   */
+  function actualizarPrecioCurso(valor: string) {
+    actualizarCurso((c) => ({
+      ...c,
+      precioReferencial: Math.max(0, Number(valor) || 0),
+    }));
+  }
+
   function actualizarPortadaModulo(moduloId: string, portadaUrl: string) {
     actualizarCurso((c) => ({
       ...c,
@@ -298,9 +319,16 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
   }
 
   async function guardar() {
+    // Un módulo sin título sale como una tarjeta en blanco en el classroom de
+    // sus alumnos, y desde ahí no hay pista de cuál era.
+    if (!curso?.titulo.trim()) {
+      toast.error("El módulo necesita un título.");
+      return;
+    }
+
     const supabase = crearClienteNavegador();
     try {
-      await guardarCurso(supabase, curso!);
+      await guardarCurso(supabase, { ...curso, titulo: curso.titulo.trim() });
       // Releer el armazon para que el resto de la app (classroom incluido)
       // vea el cambio sin recargar la pagina.
       establecerArmazon(await cargarArmazon(supabase));
@@ -342,7 +370,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
           </button>
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="truncate font-display text-xl font-bold text-foreground sm:text-2xl">
-              {curso.titulo}
+              {curso.titulo.trim() || "Sin título"}
             </h1>
             {dirty && (
               <Badge variant="outline" className="border-primary/40 text-primary">
@@ -375,20 +403,63 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
         </div>
       </div>
 
-      {/* Portada del módulo. No estaba: solo se podía poner al crearlo, así que
-          equivocarse era definitivo. Es además la imagen que el alumno ve
-          primero, en la ficha del curso. */}
-      <div className="mb-6 rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
-        <Label className="mb-2 block">Portada del módulo</Label>
-        <SubirImagen
-          valor={curso.portadaUrl}
-          onCambio={actualizarPortadaCurso}
-          proporcion={16 / 9}
-          anchoSalida={1280}
-          destino={{ tipo: "academia", comunidadId: community.id, uso: "portada" }}
-          etiqueta="Subir la portada del módulo"
-          ayuda="16:9, 1280 × 720. Se estira a una franja ancha con un degradado oscuro abajo para el título, así que deja lo importante en el centro."
-        />
+      {/* Los datos del módulo. Ninguno de estos campos estaba aquí: se
+          escribían en el diálogo de creación y ya no se podían tocar, así que
+          una errata en el título quedaba para siempre. Y los cuatro son lo que
+          el alumno ve en la ficha del módulo. */}
+      <div className="mb-6 space-y-4 rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
+        <div className="space-y-1.5">
+          <Label htmlFor="curso-titulo">Título del módulo</Label>
+          <Input
+            id="curso-titulo"
+            value={curso.titulo}
+            onChange={(e) => renombrarCurso(e.target.value)}
+            placeholder="Ej. Lanzamiento Digital Pro"
+          />
+          <p className="text-xs text-muted-foreground">
+            Cambiarlo no rompe ningún enlace: la dirección del módulo no sale
+            del título.
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="curso-descripcion">Descripción</Label>
+          <Textarea
+            id="curso-descripcion"
+            value={curso.descripcion}
+            onChange={(e) => actualizarDescripcionCurso(e.target.value)}
+            placeholder="De qué trata el módulo…"
+            className="min-h-20"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="curso-precio">Precio referencial (USD)</Label>
+          <Input
+            id="curso-precio"
+            type="number"
+            min={0}
+            value={curso.precioReferencial}
+            onChange={(e) => actualizarPrecioCurso(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Solo se enseña a quien todavía no tiene acceso. Klaze no cobra nada
+            con esto.
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Portada del módulo</Label>
+          <SubirImagen
+            valor={curso.portadaUrl}
+            onCambio={actualizarPortadaCurso}
+            proporcion={16 / 9}
+            anchoSalida={1280}
+            destino={{ tipo: "academia", comunidadId: community.id, uso: "portada" }}
+            etiqueta="Subir la portada del módulo"
+            ayuda="16:9, 1280 × 720. Se estira a una franja ancha con un degradado oscuro abajo para el título, así que deja lo importante en el centro."
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_28rem]">
