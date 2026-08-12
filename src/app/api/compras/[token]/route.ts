@@ -9,6 +9,7 @@ import {
   registrar,
   topeAlcanzado,
 } from "@/lib/compras";
+import { detalleParaRegistro, registrarFallo } from "@/lib/error-servidor";
 
 /**
  * El enlace de compra: da acceso a quien acaba de comprar, sin que nadie toque
@@ -107,7 +108,13 @@ export async function POST(
 
     return NextResponse.json({ ok: true, enviado: r.enviado });
   } catch (e) {
-    const detalle = e instanceof Error ? e.message : "Error desconocido";
+    // El detalle entero va al registro --- lo lee el dueño del canal en su
+    // panel, autenticado, y es lo que necesita para saber por qué alguien no
+    // entró. Lo que NO puede es viajar en la respuesta: aquí quien la recibe es
+    // cualquiera que haga el POST, sin sesión, y un error de Postgres trae
+    // nombres de columna y de restricción.
+    const detalle = detalleParaRegistro(e);
+    registrarFallo("api/compras", e);
     await registrar(admin, canal.id, {
       email,
       accion: "alta",
@@ -115,6 +122,9 @@ export async function POST(
       detalle,
       cuerpo: crudo,
     });
-    return NextResponse.json({ ok: false, error: detalle }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: "No se pudo completar el alta" },
+      { status: 500 }
+    );
   }
 }

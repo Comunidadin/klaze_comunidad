@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { variableServidor } from "@/lib/entorno-servidor";
 import { darAcceso } from "@/lib/dar-acceso";
 import { TOPES, consumir } from "@/lib/limites";
+import { fallo } from "@/lib/error-servidor";
 
 /**
  * Genera el enlace de acceso de una invitación y lo manda por correo.
@@ -131,7 +132,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (e) {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "No se pudo dar el acceso" },
+      { error: fallo("api/invitaciones", e, "No se pudo dar el acceso") },
       { status: 500 }
     );
   }

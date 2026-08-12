@@ -111,10 +111,21 @@ test("el dueno de B no ve el avance de los alumnos de A", async () => {
 });
 
 test("el dueno de B no puede suspender a un alumno de A", async () => {
-  await cambiarEstadoAlumno(e.duenoB.cliente, e.alumnoA.id, e.comunidadA, "suspendido");
+  // Antes esta prueba esperaba que la llamada NO lanzara: RLS filtra en vez de
+  // lanzar, asi que la escritura no afectaba a ninguna fila y se comprobaba
+  // solo el efecto. El aislamiento estaba bien --- lo que estaba mal es que la
+  // funcion lo diera por bueno, y el panel dijera "suspendido" sin haber
+  // suspendido a nadie. El peor resultado posible para un boton que existe
+  // precisamente para cortar el acceso: crees que alguien esta fuera y sigue
+  // dentro.
+  //
+  // Ahora `cambiarEstadoAlumno` mira las filas afectadas y lanza, como los
+  // demas escritores del archivo. Se comprueban las dos cosas: que avisa, y que
+  // el aislamiento sigue en pie.
+  await expect(
+    cambiarEstadoAlumno(e.duenoB.cliente, e.alumnoA.id, e.comunidadA, "suspendido")
+  ).rejects.toThrow(/sin permiso/i);
 
-  // RLS no lanza: filtra. La escritura no afecta a ninguna fila, asi que hay
-  // que comprobarlo por el efecto y no por el error.
   const { data } = await e.alumnoA.cliente.from("cursos").select("id");
   expect((data ?? []).length).toBeGreaterThan(0);
 });

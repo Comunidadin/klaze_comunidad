@@ -154,11 +154,20 @@ export async function cambiarEstadoAlumno(
   comunidadId: string,
   estado: EstadoAlumno
 ): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("inscripciones")
     .update({ estado })
     .eq("usuario_id", usuarioId)
-    .eq("comunidad_id", comunidadId);
+    .eq("comunidad_id", comunidadId)
+    .select("id");
 
   if (error) throw new Error(`No se pudo cambiar el estado: ${error.message}`);
+  // RLS filtra, no lanza. Era el único escritor de este archivo sin esta
+  // comprobación, doce líneas por debajo de `cambiarAccesoAlumno`, que sí la
+  // tiene. Sin ella, suspender a alguien que no es de tu academia volvía sin
+  // error y el panel decía que sí: el peor resultado posible para un botón que
+  // existe precisamente para cortar el acceso.
+  if (!data || data.length === 0) {
+    throw new Error("No se pudo cambiar el estado: sin permiso sobre esa academia");
+  }
 }

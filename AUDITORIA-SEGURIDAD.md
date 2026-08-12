@@ -4,8 +4,8 @@
 **Alcance:** todo el proyecto en `main` @ `585450e`, más el estado real de la base alojada.
 **Método:** lectura de código, consultas de solo lectura contra Postgres (`pg_policies`, `pg_class`, `information_schema`, `storage.buckets`), `git log -S` sobre todo el historial, `bun run build` + grep del bundle, `bun audit`.
 
-**Estado:** los 3 ALTO y los 5 MEDIO están arreglados y probados (12 de agosto).
-Quedan los 4 BAJO. Cada hallazgo lleva su nota de cierre.
+**Estado:** los 12 hallazgos están arreglados y probados (12 de agosto).
+Cada uno lleva su nota de cierre. 256 pruebas verdes, lint y build limpios.
 
 ---
 
@@ -16,9 +16,9 @@ Quedan los 4 BAJO. Cada hallazgo lleva su nota de cierre.
 | **CRÍTICO** | 0 | — |
 | **ALTO** | 3 | **arreglados** el 12/08 |
 | **MEDIO** | 5 | **arreglados** el 12/08 |
-| **BAJO** | 4 | pendientes |
+| **BAJO** | 4 | **arreglados** el 12/08 |
 
-> **Los ocho hallazgos ALTO y MEDIO están arreglados y probados** (migración `20260812160439_topes_de_uso`,
+> **Los doce hallazgos están arreglados y probados** (migración `20260812160439_topes_de_uso`,
 > `src/lib/limites.ts`, 13 pruebas nuevas). Cada uno lleva abajo su nota de cierre.
 > Lo que se descubrió al arreglarlos y no estaba en el reporte original: la
 > comprobación del tope de los canales **no era atómica**, así que un envío en
@@ -382,6 +382,18 @@ Es el único escritor del archivo sin la comprobación de cero filas que sí tie
 
 Sin consecuencia de seguridad —el rechazo significa que no es su academia— pero rompe la convención del propio proyecto y hace que suspender mienta. Se arregla con un `.select("id")` y un `throw` si vuelve vacío.
 
+> ### Cerrado - 12 de agosto
+>
+> `.select("id")` y `throw` si vuelve vacio, como los demas escritores del
+> archivo.
+>
+> Lo interesante fue la prueba: **ya existia una que codificaba el fallo
+> silencioso**. "el dueno de B no puede suspender a un alumno de A" llamaba a la
+> funcion, daba por bueno que no lanzara, y comprobaba solo que el alumno
+> siguiera viendo sus cursos. El aislamiento estaba bien; lo que estaba mal es
+> que la funcion lo diera por bueno. Reescrita para exigir las dos cosas: que
+> avise, y que el aislamiento siga en pie.
+
 ### BAJO-2 · Dependencias con avisos altos, todas fuera del tiempo de ejecución
 
 `bun audit`: 25 avisos (12 altos, 12 moderados, 1 bajo). Revisé las cadenas una a una y **ninguna llega al Worker desplegado**:
@@ -396,13 +408,65 @@ Sin consecuencia de seguridad —el rechazo significa que no es su academia— p
 
 `bun update` recoge lo que se pueda sin romper nada. No es urgente.
 
+> ### Cerrado - 12 de agosto
+>
+> `bun update`: **de 25 avisos a 11** (de 12 altos + 12 moderados + 1 bajo, a 9
+> altos + 2 moderados). El salto grande vino de `shadcn` 4.13.1 -> 4.17.0, que
+> arrastraba nueve de las cadenas.
+>
+> Los 11 que quedan vienen de `next`, `eslint`, `wrangler`,
+> `@tailwindcss/postcss` y `@opennextjs/cloudflare`, y no tienen version
+> compatible arreglada dentro de su rango. Ninguno llega al Worker desplegado:
+> son compilacion y desarrollo. Salir de ahi exige `bun update --latest`, o sea
+> saltos de version mayor del propio framework, que no se hace por 11 avisos que
+> no tocan produccion.
+>
+> **Un error mio por el camino, y lo dejo escrito porque la leccion vale.**
+> Quite `shadcn` de las dependencias pensando que era solo una CLI: busque su
+> nombre en `package.json` y en los scripts, no lo encontre usado, y lo elimine.
+> El build se rompio. `src/app/globals.css:3` hace `@import
+> "shadcn/tailwind.css"` --- no se importa desde TypeScript, se importa desde
+> CSS, y ahi no mire. Restaurado. La mejora de 25 a 11 se sostiene igual, porque
+> venia de actualizarlo y no de quitarlo.
+
 ### BAJO-3 · `/api/academias` devuelve el mensaje de error interno
 
 **Dónde:** `src/app/api/academias/route.ts:84`. El `catch` devuelve `e.message` en el 500, que puede llevar texto de Postgres (nombres de restricción, de columna). Solo lo alcanza un superadmin autenticado, así que el impacto es mínimo, pero es información de la base saliendo por la puerta de una respuesta HTTP. Registrar el detalle y devolver un texto genérico.
 
+> ### Cerrado - 12 de agosto (y era peor de lo que decia este hallazgo)
+>
+> Al ir a arreglarlo aparecieron **cinco** sitios, no uno. Y el que importaba no
+> era `/api/academias` --- ese solo lo alcanza un superadmin --- sino los dos
+> enlaces de venta: `/api/compras/[token]:110` y `/api/plataforma/[token]:209`
+> devolvian `e.message` a **quien hiciera el POST**. Ahi no hay sesion, solo el
+> token, asi que los errores de Postgres --- con nombres de columna, de tabla y
+> de restriccion --- viajaban a un desconocido. Con eso se dibuja el esquema
+> desde fuera sin acceso a nada.
+>
+> `src/lib/error-servidor.ts` centraliza el patron: `fallo()` registra y
+> devuelve el texto publico, `detalleParaRegistro()` da el mensaje entero para
+> `recepciones_canal`. **El detalle no se pierde**: sigue yendo al registro que
+> el dueno lee en su panel, que es donde lo necesita. Lo que ya no hace es salir
+> por HTTP.
+>
+> Un archivo compartido y no cinco `catch` corregidos a mano, porque asi es mas
+> corto hacerlo bien que hacerlo mal --- la unica forma de que se siga haciendo
+> bien.
+
 ### BAJO-4 · `planes` con `using (true)`
 
 Es la única política sin condición de todo el proyecto. Es correcta: `planes` es el catálogo de tarifas, lo mismo para todo el mundo, y solo `SELECT` para `authenticated`. Lo dejo anotado para que no salte como sorpresa en la próxima auditoría.
+
+> ### Cerrado - 12 de agosto (sin tocar la politica)
+>
+> No habia nada que arreglar, asi que en vez de arreglarla se le puso nombre:
+> `auditoria.test.ts` A5 comprueba que `planes` sigue siendo **la unica** con
+> `using (true)`, y que sigue siendo solo de lectura.
+>
+> El riesgo real de esta linea no es la linea: es que se copie a otra tabla
+> donde no da igual. `using (true)` en un SELECT es un catalogo; en un INSERT o
+> un UPDATE es que cualquiera con sesion reescribe tus precios. Si aparece una
+> segunda, la prueba se pone roja y alguien tiene que justificarla.
 
 ---
 
@@ -450,10 +514,10 @@ Mover el token del path a una cabecera es un cambio de pocas líneas en dos ruta
 
 ---
 
-**Los cinco MEDIO tambien estan hechos** (12 de agosto). Queda por decidir una
-sola cosa, y es de calendario, no de codigo: pasar la CSP de `Report-Only` a
-bloquear, despues de una semana mirando la consola en una academia con clases
-reales. Ver el cierre de MEDIO-4.
+**Los cinco MEDIO y los cuatro BAJO tambien estan hechos** (12 de agosto).
+Queda por decidir una sola cosa, y es de calendario, no de codigo: pasar la CSP
+de `Report-Only` a bloquear, despues de una semana mirando la consola en una
+academia con clases reales. Ver el cierre de MEDIO-4.
 
 Y sigue pendiente lo unico que no depende de codigo: **rotar las cinco
 credenciales**, el **Site URL de Supabase** y **restringir el dominio en

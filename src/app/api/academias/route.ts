@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { variableServidor } from "@/lib/entorno-servidor";
 import { crearAcademia } from "@/lib/academia";
+import { fallo } from "@/lib/error-servidor";
 
 /**
  * Da de alta una academia. Segundo y último trozo de servidor del proyecto:
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, ...r });
   } catch (e) {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "No se pudo crear la academia" },
+      { error: fallo("api/academias", e, "No se pudo crear la academia") },
       { status: 500 }
     );
   }

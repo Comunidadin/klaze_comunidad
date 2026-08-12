@@ -153,3 +153,35 @@ test("A4. el esquema `privado` no es alcanzable desde el API", async () => {
   // politicas, pero `anon` no debe tener nada.
   expect(permisos[0].anon).toBe(false);
 });
+
+test("A5. `planes` es la unica politica sin condicion", async () => {
+  // `using (true)` deja pasar TODAS las filas de una tabla. En `planes` es
+  // correcto --- es el catalogo de tarifas, lo mismo para todo el mundo, y solo
+  // de lectura para `authenticated` --- pero es la clase de linea que se copia y
+  // pega a otra tabla donde no da igual.
+  //
+  // Asi que en vez de arreglarla, se le pone nombre: si aparece una segunda,
+  // esta prueba se pone roja y alguien tiene que justificarla.
+  const SIN_CONDICION_A_PROPOSITO = ["planes"];
+
+  const abiertas = await sql`
+    select tablename, policyname, cmd
+    from pg_policies
+    where schemaname = 'public'
+      and (coalesce(qual, '') = 'true' or coalesce(with_check, '') = 'true')
+    order by 1, 2
+  `;
+
+  const inesperadas = abiertas
+    .filter((p: { tablename: string }) => !SIN_CONDICION_A_PROPOSITO.includes(p.tablename))
+    .map((p: { tablename: string; policyname: string }) => `${p.tablename}: ${p.policyname}`);
+  expect(inesperadas).toEqual([]);
+
+  // Y la de `planes` sigue siendo solo de lectura: `using (true)` en un SELECT
+  // es un catalogo; en un INSERT o un UPDATE seria que cualquiera con sesion
+  // reescribe tus precios.
+  const dePlanes = abiertas.filter((p: { tablename: string }) => p.tablename === "planes");
+  for (const p of dePlanes as { cmd: string }[]) {
+    expect(p.cmd).toBe("SELECT");
+  }
+});

@@ -223,3 +223,26 @@ test("la baja de un correo desconocido no revienta", async () => {
   expect(r.status).toBe(200);
   expect((await r.json()).motivo).toBe("sin_cuenta");
 });
+
+test("un fallo interno no le cuenta nada al que hizo el POST", async () => {
+  if (saltada()) return;
+
+  // Aqui quien recibe la respuesta es CUALQUIERA que haga el POST --- no hay
+  // sesion, solo el token --- asi que devolver `e.message` mandaba errores de
+  // Postgres, con nombres de columna y de restriccion, a un desconocido. Con
+  // eso se dibuja el esquema desde fuera sin acceso a nada.
+  //
+  // El detalle no se pierde: sigue yendo a `recepciones_canal`, que es lo que
+  // el dueno lee en su panel cuando quiere saber por que alguien no entro.
+  //
+  // Se provoca el fallo con un correo que pasa `esEmailValido` pero revienta al
+  // crear la cuenta: un dominio con puntos consecutivos.
+  const r = await fetch(`${BASE}/api/compras/${token}`, json({ email: "x@a..b" }));
+
+  if (r.status === 500) {
+    const cuerpo = (await r.json()) as { error?: string };
+    expect(cuerpo.error).toBe("No se pudo completar el alta");
+    // Nada de lo que delata a la base por dentro.
+    expect(cuerpo.error).not.toMatch(/constraint|column|relation|violates|duplicate key/i);
+  }
+});

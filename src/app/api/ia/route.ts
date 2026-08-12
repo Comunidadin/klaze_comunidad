@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { variableServidor } from "@/lib/entorno-servidor";
+import { fallo } from "@/lib/error-servidor";
 
 /**
  * Preguntas sobre una clase, respondidas por un modelo con el guion delante.
@@ -219,7 +220,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (e) {
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "El asistente falló" },
+      { error: fallo("api/ia", e, "El asistente falló. Vuelve a intentarlo.") },
       { status: 502 }
     );
   }
