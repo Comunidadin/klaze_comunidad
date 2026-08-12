@@ -86,6 +86,7 @@ export function ModuloDetalle({ comunidadSlug, cursoSlug, moduloId }: ModuloDeta
         icono={Lock}
         titulo="Este módulo todavía no está abierto"
         descripcion={`${textoDeApertura(curso.abreEl, new Date())}. Aquí encontrarás las clases en cuanto puedas entrar.`}
+        accion={{ label: "Volver a los módulos", href: volver }}
       />
     );
   }
