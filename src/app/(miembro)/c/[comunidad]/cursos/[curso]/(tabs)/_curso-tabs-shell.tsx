@@ -6,6 +6,7 @@ import { useCommunity } from "@/lib/hooks/use-community";
 import { useCourses } from "@/lib/hooks/use-courses";
 import { EmptyState } from "@/components/shared/empty-state";
 import { CoursePortada } from "@/components/course/course-portada";
+import { textoDeApertura } from "@/lib/goteo";
 
 export interface CursoTabsShellProps {
   comunidadSlug: string;
@@ -39,6 +40,21 @@ export function CursoTabsShell({ comunidadSlug, cursoSlug, children }: CursoTabs
         icono={SearchX}
         titulo="Módulo no encontrado"
         descripcion="El módulo que buscas no existe o fue eliminado."
+        accion={{ label: "Volver a módulos", href: `/c/${comunidadSlug}/cursos` }}
+        className="mx-auto max-w-lg"
+      />
+    );
+  }
+
+  // El caso concreto gana al genérico: sin esto, un alumno con goteo por
+  // fecha caería en «No tienes acceso» con el precio de compra — y este
+  // alumno ya pagó, solo tiene que esperar a que se abra.
+  if (curso.acceso === "candado-fecha" && curso.abreEl) {
+    return (
+      <EmptyState
+        icono={Lock}
+        titulo="Este módulo todavía no está abierto"
+        descripcion={`${textoDeApertura(curso.abreEl, new Date())}. Vuelve cuando se abra para ver sus clases.`}
         accion={{ label: "Volver a módulos", href: `/c/${comunidadSlug}/cursos` }}
         className="mx-auto max-w-lg"
       />

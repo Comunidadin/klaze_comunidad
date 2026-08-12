@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useAppStore } from "@/lib/store";
 import { useSession } from "@/lib/hooks/use-session";
+import { useAhora } from "@/lib/hooks/use-ahora";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { cargarArmazon } from "@/lib/supabase/consultas";
 import { marcarLeccion } from "@/lib/supabase/progreso";
@@ -73,6 +74,11 @@ export function cursosVisiblesParaMiembro(
 export function useCourses(comunidadId: string): { cursos: CourseConAcceso[] } {
   const armazon = useAppStore((s) => s.armazon);
   const { user } = useSession();
+  // El reloj entra por `useAhora` y no por `new Date()` dentro del memo: sin
+  // una dependencia que cambie con el tiempo, la cuenta atrás se queda
+  // congelada y el módulo sigue bloqueado después de haber abierto. Justo a
+  // quien deja la pestaña abierta esperando.
+  const ahoraMs = useAhora();
 
   // Derivar con useMemo, nunca dentro del selector: crear arrays nuevos ahí
   // rompe el invariante de `useSyncExternalStore` en React 19.
@@ -80,7 +86,7 @@ export function useCourses(comunidadId: string): { cursos: CourseConAcceso[] } {
     const cursos = cursosVisiblesParaMiembro(comunidadId, armazon?.cursos ?? []);
     const nivelUsuario = user ? nivelPorPuntos(user.puntos) : 0;
     const completadasIds = new Set(armazon?.progreso ?? []);
-    const ahora = new Date();
+    const ahora = new Date(ahoraMs);
     const entradaEl = armazon?.entradaEl ?? null;
 
     const cursosConAcceso: CourseConAcceso[] = cursos.map((curso) => {
@@ -111,7 +117,7 @@ export function useCourses(comunidadId: string): { cursos: CourseConAcceso[] } {
     });
 
     return { cursos: cursosConAcceso };
-  }, [armazon, comunidadId, user]);
+  }, [armazon, comunidadId, user, ahoraMs]);
 }
 
 export interface UseLessonResult {
