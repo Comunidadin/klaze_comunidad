@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { crearAcademia } from "@/lib/academia";
 import { enviarCorreo } from "@/lib/correo";
 import { slugLibre } from "@/lib/slug";
+import { escapar } from "@/lib/plantillas";
 import {
   academiasDe,
   canalPorToken,
@@ -75,6 +76,13 @@ export async function POST(
 
   const origen = new URL(request.url).origin;
 
+  // Estos correos se arman a mano con plantillas de texto, así que lo que entra
+  // en un atributo se escapa aquí. No es adorno: `email` sale del cuerpo del
+  // webhook, y `esEmailValido` deja pasar `<` y `>` —solo prohíbe espacios y un
+  // segundo `@`—, así que `<b>x</b>@evil.com` es un correo válido para el
+  // validador y HTML para el cliente de correo.
+  const entrada = escapar(`${origen}/login`);
+
   try {
     // Lo primero: ¿ya tiene academia esta persona?
     //
@@ -104,7 +112,7 @@ export async function POST(
         asunto: `Tu academia ${yaSuyas[0].nombre} ya está activa`,
         html: `
           <p>Tu academia vuelve a estar activa. Tus alumnos ya pueden entrar.</p>
-          <p>Entra en <a href="${origen}/login">${origen}/login</a> con tu
+          <p>Entra en <a href="${entrada}">${entrada}</a> con tu
              contraseña de siempre.</p>`,
       });
 
@@ -125,6 +133,7 @@ export async function POST(
 
     const empresa = empresaDelCuerpo(campos);
     const slug = await slugLibre(admin, empresa);
+    const suEntrada = escapar(`${origen}/login/${slug}`);
 
     // `crearAcademia` ya monta cuenta, perfil, rol, comunidad y la inscripción
     // del propio creador —sin ella, "Ver como alumno" le enseña una academia
@@ -157,13 +166,13 @@ export async function POST(
           asunto: `Tu academia ${empresa} ya está lista`,
           html: `
             <p>Ya puedes empezar a subir tus clases.</p>
-            <p>Entra en <a href="${origen}/login">${origen}/login</a> con:</p>
+            <p>Entra en <a href="${entrada}">${entrada}</a> con:</p>
             <p>
-              Correo: <strong>${email}</strong><br>
-              Contraseña: <strong style="font-family:monospace">${r.passwordTemporal}</strong>
+              Correo: <strong>${escapar(email)}</strong><br>
+              Contraseña: <strong style="font-family:monospace">${escapar(r.passwordTemporal)}</strong>
             </p>
             <p>Tus alumnos entrarán por
-               <a href="${origen}/login/${slug}">${origen}/login/${slug}</a>.</p>
+               <a href="${suEntrada}">${suEntrada}</a>.</p>
             <p style="color:#666;font-size:13px">
               Puedes cambiar la contraseña desde tu perfil, y el nombre y la
               dirección de tu academia desde Configuración.
@@ -177,9 +186,9 @@ export async function POST(
           html: `
             <p>Ya puedes empezar a subir tus clases.</p>
             <p>Ya tenías cuenta en Klaze, así que entra en
-               <a href="${origen}/login">${origen}/login</a> con tu contraseña de siempre.</p>
+               <a href="${entrada}">${entrada}</a> con tu contraseña de siempre.</p>
             <p>Tus alumnos entrarán por
-               <a href="${origen}/login/${slug}">${origen}/login/${slug}</a>.</p>`,
+               <a href="${suEntrada}">${suEntrada}</a>.</p>`,
         });
 
     await registrar(admin, canal.id, {

@@ -4,7 +4,8 @@
 **Alcance:** todo el proyecto en `main` @ `585450e`, más el estado real de la base alojada.
 **Método:** lectura de código, consultas de solo lectura contra Postgres (`pg_policies`, `pg_class`, `information_schema`, `storage.buckets`), `git log -S` sobre todo el historial, `bun run build` + grep del bundle, `bun audit`.
 
-**No se ha modificado nada.** Este documento describe; no arregla.
+**Estado:** los 3 ALTO y los 5 MEDIO están arreglados y probados (12 de agosto).
+Quedan los 4 BAJO. Cada hallazgo lleva su nota de cierre.
 
 ---
 
@@ -14,10 +15,10 @@
 |---|---|---|
 | **CRÍTICO** | 0 | — |
 | **ALTO** | 3 | **arreglados** el 12/08 |
-| **MEDIO** | 5 | pendientes |
+| **MEDIO** | 5 | **arreglados** el 12/08 |
 | **BAJO** | 4 | pendientes |
 
-> **Los tres ALTO están arreglados y probados** (migración `20260812160439_topes_de_uso`,
+> **Los ocho hallazgos ALTO y MEDIO están arreglados y probados** (migración `20260812160439_topes_de_uso`,
 > `src/lib/limites.ts`, 13 pruebas nuevas). Cada uno lleva abajo su nota de cierre.
 > Lo que se descubrió al arreglarlos y no estaba en el reporte original: la
 > comprobación del tope de los canales **no era atómica**, así que un envío en
@@ -211,6 +212,26 @@ alter table public.comunidades
 
 y escapar igualmente en `bloqueAcceso` y `bloqueRecuperacion`. Lo mismo aplica a `src/app/api/plataforma/[token]/route.ts:166,182`, donde `${slug}` va sin escapar; ahí el valor lo genera `slugLibre()` y hoy es seguro, pero el patrón no debería depender de eso.
 
+> ### Cerrado - 12 de agosto
+>
+> Las dos mitades, porque una sola no bastaba. La restriccion
+> `comunidades_slug_formato` en la base (migracion `20260812163342`), y el
+> escapado en `bloqueAcceso` y `bloqueRecuperacion`. Se escapa **aunque la base
+> ya lo impida**: lo que entra en un atributo se escapa, sin averiguar cada vez
+> de donde venia. Averiguarlo es lo que se hace mal el dia que cambia el origen.
+>
+> **Y apareció uno mas que el reporte no habia visto.** Los correos de
+> `/api/plataforma` se arman a mano y metian `email` sin escapar en
+> `<strong>${email}</strong>`. Ese correo sale del cuerpo del webhook, y
+> `esEmailValido` deja pasar `<` y `>` --- solo prohibe espacios y un segundo
+> `@` ---, asi que `<b>x</b>@evil.com` es valido para el validador y HTML para
+> el cliente de correo. Escapados los cinco puntos de interpolacion.
+>
+> `tests/rls/endurecimiento.test.ts` M1 y M1b prueban los dos caminos: crear una
+> academia con slug malo, y **renombrar** la tuya antes de invitar a nadie ---
+> que es el camino real del ataque, porque el trigger del slug solo frena cuando
+> ya hay alumnos.
+
 ---
 
 ### MEDIO-2 · Cuatro políticas dicen `to public` en vez de `to authenticated`, y `anon` tiene permisos completos sobre todas las tablas
@@ -234,6 +255,27 @@ Y por separado: el rol `anon` tiene `SELECT, INSERT, UPDATE, DELETE, TRUNCATE` s
 
 **Cómo se arregla.** Recrear las cuatro con `to authenticated`, y añadir a `tests/rls/auditoria.test.ts` una comprobación de que ninguna política de `public` tiene el rol `public` — el mismo sitio donde ya vigilas las tablas sin política de escritura.
 
+> ### Cerrado - 12 de agosto
+>
+> Migracion `20260812163344`. Las cuatro politicas recreadas con el mismo cuerpo
+> y `to authenticated`, y ademas **revocados todos los permisos de `anon` sobre
+> `public`** --- las 23 tablas y sus secuencias.
+>
+> Lo que de verdad cierra esto es la tercera linea: `alter default privileges in
+> schema public revoke all on tables from anon`. Sin ella, la proxima `create
+> table` volveria a conceder todo a `anon` y habria que acordarse de revocarlo
+> cada vez. Acordarse no es un mecanismo.
+>
+> **Comprobado antes de tocar nada:** ninguna pagina publica lee tablas. El
+> login no consulta `comunidades` --- solo pasa el slug a `/api/recuperar` --- y
+> la invitacion tampoco. No habia lectura anonima que romper. `storage.objects`
+> no se toca: las imagenes publicas tienen que seguir viendose sin sesion.
+>
+> Cuatro pruebas: que no queda ninguna politica con rol `public`, que `anon` no
+> tiene ni un permiso, que **una tabla recien creada tampoco los hereda**, y que
+> las condiciones de las cuatro politicas quedaron identicas --- recrear
+> politicas es donde se rompe el acceso de todo el mundo sin enterarse.
+
 ---
 
 ### MEDIO-3 · Se admiten SVG en un bucket público
@@ -246,6 +288,17 @@ Y por separado: el rol `anon` tiene `SELECT, INSERT, UPDATE, DELETE, TRUNCATE` s
 
 **Cómo se arregla.** Quitar `image/svg+xml` de `TIPOS` y de `allowed_mime_types` del bucket. Nada de la interfaz necesita SVG subido por el usuario: `SubirImagen` ya convierte a WebP en el navegador antes de subir.
 
+> ### Cerrado - 12 de agosto
+>
+> Fuera de las dos listas: del bucket (migracion `20260812163345`, que es la que
+> manda porque no depende de que el navegador se porte bien) y de `TIPOS` en
+> `subir-imagen.tsx`, para que el aviso salga al elegir el archivo y no despues
+> de subirlo.
+>
+> No rompio nada, y se comprobo antes: no habia ningun SVG guardado, y
+> `SubirImagen` recorta y convierte a WebP antes de subir, asi que ningun camino
+> real de la aplicacion subia uno.
+
 ---
 
 ### MEDIO-4 · No hay cabeceras de seguridad
@@ -257,6 +310,31 @@ Y por separado: el rol `anon` tiene `SELECT, INSERT, UPDATE, DELETE, TRUNCATE` s
 **Qué podría hacer un atacante.** Sin CSP, cualquier XSS que aparezca en el futuro se ejecuta sin ningún freno — y el proyecto renderiza contenido escrito por creadores en varios sitios. Sin `frame-ancestors`, tu panel se puede meter en un iframe en la web de otro y superponerle botones invisibles, lo que basta para conseguir clics en acciones destructivas (eliminar módulo, suspender alumno) de un dueño que cree estar en otra página.
 
 **Cómo se arregla.** Un bloque `headers()` en `next.config.ts`. `frame-ancestors 'none'`, `nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` y HSTS se pueden poner hoy sin romper nada. La CSP pide más cuidado: los embeds de clase y las imágenes de dominios arbitrarios necesitan `img-src *` y `frame-src *`, así que empieza con `Content-Security-Policy-Report-Only` y mírala una semana antes de hacerla efectiva.
+
+> ### Cerrado - 12 de agosto (la CSP, en modo aviso)
+>
+> Seis cabeceras en `next.config.ts`, verificadas contra el servidor. Cinco
+> bloquean desde ya: `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`,
+> `Permissions-Policy` (camara, microfono, geolocalizacion y pago apagados) y
+> HSTS a un ano.
+>
+> **La CSP va en `Report-Only`, y es lo unico de esta tanda que queda a medias
+> a proposito.** Una clase puede insertar el formulario de cualquier servicio y
+> ensenar imagenes de cualquier dominio; una CSP estrecha rompe clases **en
+> silencio** --- el alumno ve un hueco en blanco y nadie se entera hasta que se
+> queja. En modo aviso el navegador la comprueba y la anota en su consola sin
+> bloquear.
+>
+> Aun asi aprieta lo que si se puede cerrar sin riesgo: `object-src 'none'`,
+> `base-uri 'self'` (que un `<base>` inyectado no redirija todas las rutas
+> relativas a otro dominio) y `form-action 'self'` (que un formulario inyectado
+> no publique credenciales fuera).
+>
+> **Lo que queda por hacer, y es tuyo:** abre la consola del navegador en tu
+> academia durante una semana normal --- con clases que tengan embeds e
+> imagenes --- y mira los avisos de CSP. Si no aparece ninguno, se cambia
+> `Content-Security-Policy-Report-Only` por `Content-Security-Policy` y pasa a
+> bloquear. `tests/rls/cabeceras.test.ts` C3 se da la vuelta ese dia.
 
 ---
 
@@ -275,6 +353,22 @@ sandbox="allow-scripts allow-forms allow-popups allow-same-origin allow-presenta
 **Qué podría hacer un atacante.** Hoy, que yo haya podido encontrar, nada: para aprovecharlo haría falta un punto donde se refleje HTML controlado en tu propio origen, y no lo hay — `bloques-clase.tsx` pinta desde el documento estructurado y nunca desde HTML. Lo reporto porque el comentario **afirma una protección que no existe**, y eso es exactamente lo que hace que dentro de seis meses alguien construya encima confiando en ella.
 
 **Cómo se arregla.** O quitas `allow-same-origin` (y compruebas qué embeds dejan de funcionar: Calendly y Google Forms suelen necesitarlo), o rechazas en `urlDeEmbed` las URLs de tu propio dominio, o corriges el comentario. Lo peor es dejarlo como está.
+
+> ### Cerrado - 12 de agosto (la segunda opcion, no la del comentario)
+>
+> Se rechazan las direcciones del propio dominio, que es la que quita el riesgo
+> sin quitarle nada a nadie: `urlDeEmbed` las devuelve `null` al guardar, con
+> una pista que explica por que, y `EmbedDeClase` se niega a pintarlas tambien
+> al mostrar --- los bloques guardados antes de esta regla siguen en la base, y
+> una regla que solo se aplica al escribir no alcanza a lo que ya esta escrito.
+>
+> `allow-same-origin` se queda: para una pagina de Calendly o Google Forms
+> significa que corre en SU origen, que es lo normal y no le da acceso a nada de
+> aqui --- sin ese permiso ni siquiera podrian usar sus cookies y la mitad
+> dejaria de cargar. El problema era solo enmarcar una direccion nuestra, y ese
+> caso ya no existe.
+>
+> Y el comentario ahora dice lo que hace el codigo.
 
 ---
 
@@ -356,9 +450,14 @@ Mover el token del path a una cabecera es un cambio de pocas líneas en dos ruta
 
 ---
 
-**Después:** MEDIO-1 (el `check` del slug más el escapado) son diez líneas y cierran la única inyección real del reporte. MEDIO-2 y MEDIO-3 son de una línea cada uno. MEDIO-4 conviene empezarlo en modo `Report-Only`.
+**Los cinco MEDIO tambien estan hechos** (12 de agosto). Queda por decidir una
+sola cosa, y es de calendario, no de codigo: pasar la CSP de `Report-Only` a
+bloquear, despues de una semana mirando la consola en una academia con clases
+reales. Ver el cierre de MEDIO-4.
 
-**Ninguno de estos cambios se ha aplicado.** Dime por cuál empiezo.
+Y sigue pendiente lo unico que no depende de codigo: **rotar las cinco
+credenciales**, el **Site URL de Supabase** y **restringir el dominio en
+Vimeo**.
 
 ---
 

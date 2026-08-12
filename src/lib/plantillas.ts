@@ -99,8 +99,12 @@ export const DESCRIPCIONES: Record<TipoPlantilla, { titulo: string; cuando: stri
  * se comería el resto del párrafo. Y los valores, porque `{{nombre}}` viene del
  * formulario de otra aplicación: quien se registre como `<script>…` no puede
  * acabar ejecutando nada en el buzón de nadie.
+ *
+ * Se exporta para los correos que todavía se arman a mano con plantillas de
+ * texto —los de `/api/plataforma`, que no pasan por `componerCorreo`— y no
+ * pueden quedarse fuera de esta regla solo por escribirse en otro archivo.
  */
-function escapar(texto: string): string {
+export function escapar(texto: string): string {
   return texto
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -186,7 +190,17 @@ export function bloqueAcceso(o: {
   /** `null` si esa persona ya tenía cuenta: no se le cambia la contraseña. */
   password: string | null;
 }): string {
-  const entrar = `<p>Entra en <a href="${o.loginUrl}">${o.loginUrl}</a></p>`;
+  // La URL se escapa aunque la arme Klaze, y no es paranoia de manual: lleva
+  // dentro el identificador de la academia, que hasta hoy se podía guardar con
+  // cualquier carácter haciendo un `PATCH` directo a Supabase. Con unas
+  // comillas ahí, el dueño inyectaba HTML en el bloque que este correo presenta
+  // como el de confianza.
+  //
+  // La base ya no lo permite (`comunidades_slug_formato`), y aun así se escapa:
+  // lo que entra en un atributo se escapa, sin averiguar cada vez de dónde
+  // venía. Averiguarlo es justo lo que se hace mal el día que cambia el origen.
+  const url = escapar(o.loginUrl);
+  const entrar = `<p>Entra en <a href="${url}">${url}</a></p>`;
 
   if (!o.password) {
     return (
@@ -207,7 +221,7 @@ export function bloqueAcceso(o: {
 /** El botón de «elegir contraseña nueva», con su aviso de caducidad. */
 export function bloqueRecuperacion(enlace: string): string {
   return (
-    `<p><a href="${enlace}">Elegir contraseña nueva</a></p>` +
+    `<p><a href="${escapar(enlace)}">Elegir contraseña nueva</a></p>` +
     `\n<p ${GRIS}>El enlace caduca en una hora.</p>`
   );
 }

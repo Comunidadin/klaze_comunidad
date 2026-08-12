@@ -20,8 +20,21 @@ function esEnlaceExterno(url: string | undefined): boolean {
   return Boolean(url) && !url!.includes("/storage/v1/object/public/publico/");
 }
 
-/** Lo que el bucket acepta. Se comprueba aquí para dar un error legible. */
-const TIPOS = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+/**
+ * Lo que el bucket acepta. Se comprueba aquí para dar un error legible —la
+ * comprobación de verdad la hace el bucket, que no depende de que el navegador
+ * se porte bien.
+ *
+ * **Sin SVG, y a propósito.** Un SVG no es una imagen: es un documento XML que
+ * puede llevar `<script>` dentro, y el bucket `publico` lo serviría con su tipo
+ * real. No robaría la sesión de nadie —vive en el dominio de Supabase, otro
+ * origen—, pero sí permitiría alojar una página que ejecuta código en un
+ * dominio que los alumnos reconocen como del sitio.
+ *
+ * No se pierde nada: aquí se recorta y se convierte a WebP antes de subir, así
+ * que ningún camino real subía un SVG.
+ */
+const TIPOS = ["image/png", "image/jpeg", "image/webp"];
 const MAX_BYTES = 5 * 1024 * 1024;
 
 export interface SubirImagenProps {

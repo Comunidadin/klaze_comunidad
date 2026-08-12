@@ -105,3 +105,60 @@ test("el enlace normal de Typeform si vale", () => {
     "https://form.typeform.com/to/AbC12dEf"
   );
 });
+
+/**
+ * En el navegador, insertar una direccion de la propia Klaze no se permite.
+ *
+ * El marco lleva `allow-scripts` y `allow-same-origin`. Con contenido de otro
+ * dominio eso es lo normal y no le da acceso a nada de aqui --- sin
+ * `allow-same-origin` ni Calendly ni Google Forms cargarian. Con una direccion
+ * NUESTRA, en cambio, "su origen" y "el nuestro" pasan a ser el mismo, y el
+ * aislamiento del marco desaparece.
+ *
+ * Estas pruebas corren en bun, donde no hay `window`, asi que se finge: es la
+ * unica forma de probar una decision que solo el navegador puede tomar.
+ */
+function conNavegadorEn<T>(host: string, f: () => T): T {
+  const previo = (globalThis as { window?: unknown }).window;
+  (globalThis as { window?: unknown }).window = { location: { host } };
+  try {
+    return f();
+  } finally {
+    if (previo === undefined) delete (globalThis as { window?: unknown }).window;
+    else (globalThis as { window?: unknown }).window = previo;
+  }
+}
+
+test("una direccion de la propia Klaze no se puede insertar", () => {
+  conNavegadorEn("klaze.automatizacioncomunidad.workers.dev", () => {
+    expect(
+      urlDeEmbed("https://klaze.automatizacioncomunidad.workers.dev/admin/cursos")
+    ).toBeNull();
+    expect(
+      urlDeEmbed(
+        '<iframe src="https://klaze.automatizacioncomunidad.workers.dev/perfil"></iframe>'
+      )
+    ).toBeNull();
+  });
+});
+
+test("y se explica por que, en vez de decir solo que no vale", () => {
+  const pista = conNavegadorEn("klaze.automatizacioncomunidad.workers.dev", () =>
+    pistaDeEmbed("https://klaze.automatizacioncomunidad.workers.dev/c/x/cursos")
+  );
+  expect(pista).toContain("la propia Klaze");
+});
+
+test("un embed de fuera sigue entrando igual", () => {
+  // Una regla que ademas rompe el caso bueno no es una regla, es una averia.
+  conNavegadorEn("klaze.automatizacioncomunidad.workers.dev", () => {
+    expect(urlDeEmbed("https://calendly.com/joffre/30min")).toBe(
+      "https://calendly.com/joffre/30min"
+    );
+    // Y un dominio que solo TERMINA parecido tampoco se confunde con el
+    // nuestro: la comparacion es del host entero, no de un trozo.
+    expect(urlDeEmbed("https://no-klaze.automatizacioncomunidad.workers.dev/x")).toBe(
+      "https://no-klaze.automatizacioncomunidad.workers.dev/x"
+    );
+  });
+});

@@ -38,6 +38,26 @@ const CONVERSIONES: { patron: RegExp; a: (m: RegExpMatchArray) => string }[] = [
  * `null` es una respuesta útil: la pantalla lo usa para decir "esto no parece
  * un embed" en vez de guardar algo que luego aparece en blanco.
  */
+/**
+ * `true` si la dirección apunta a la propia Klaze.
+ *
+ * El marco de un embed lleva `allow-scripts` y `allow-same-origin`, que juntos
+ * son inofensivos mientras lo de dentro sea de OTRO dominio: entonces corre en
+ * su origen y no puede tocar la página que lo contiene. Con una dirección
+ * nuestra deja de serlo — un documento del mismo origen con esos dos permisos
+ * puede alcanzar la página de fuera, y el aislamiento del marco desaparece.
+ *
+ * Insertar una página de Klaze dentro de una clase no sirve para nada legítimo,
+ * así que se rechaza y no se pierde ningún caso de uso.
+ *
+ * En el servidor no hay `window` y devuelve `false`: aquí eso es correcto,
+ * porque quien decide es el editor, que corre en el navegador y sí lo sabe.
+ */
+function esNuestroOrigen(url: URL): boolean {
+  if (typeof window === "undefined") return false;
+  return url.host === window.location.host;
+}
+
 export function urlDeEmbed(pegado: string): string | null {
   const texto = pegado.trim();
   if (!texto) return null;
@@ -56,12 +76,23 @@ export function urlDeEmbed(pegado: string): string | null {
     return null;
   }
 
+  if (esNuestroOrigen(url)) return null;
+
   for (const { patron, a } of CONVERSIONES) {
     const m = url.href.match(patron);
     if (m) return a(m);
   }
 
   return url.href;
+}
+
+/** La versión pública de la comprobación, para quien pinta el marco. */
+export function esEmbedDeFuera(href: string): boolean {
+  try {
+    return !esNuestroOrigen(new URL(href));
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -81,6 +112,14 @@ export function urlDeEmbed(pegado: string): string | null {
  * dónde.
  */
 export function pistaDeEmbed(pegado: string): string | null {
+  if (typeof window !== "undefined" && pegado.includes(window.location.host)) {
+    return (
+      "Esa dirección es de la propia Klaze, y una clase no se puede insertar " +
+      "dentro de otra: el marco dejaría de estar aislado. Si querías enlazar a " +
+      "otra clase, pega el enlace en un bloque de texto."
+    );
+  }
+
   if (/data-tf-(?:live|widget|popup|sidetab|popover)/i.test(pegado)) {
     return (
       "Ese código de Typeform lleva un identificador que solo entiende su " +

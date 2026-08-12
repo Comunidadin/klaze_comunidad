@@ -2,6 +2,7 @@
 
 import { Fragment } from "react";
 import { VimeoPlayer } from "@/components/course/vimeo-player";
+import { esEmbedDeFuera } from "@/lib/embed";
 import { cn } from "@/lib/utils";
 import type { BloqueClase } from "@/lib/types";
 
@@ -129,6 +130,11 @@ export function TextoDeClase({ doc }: { doc: unknown }) {
  */
 export function EmbedDeClase({ url, alto }: { url: string; alto?: number }) {
   if (!/^https?:\/\//i.test(url)) return null;
+  // Se comprueba también al pintar, y no solo al guardar: los bloques guardados
+  // antes de que `urlDeEmbed` rechazara nuestro propio dominio siguen en la
+  // base, y una regla que solo se aplica al escribir no alcanza a lo que ya
+  // está escrito.
+  if (!esEmbedDeFuera(url)) return null;
 
   return (
     <div className="overflow-hidden rounded-xl ring-1 ring-foreground/10">
@@ -137,9 +143,18 @@ export function EmbedDeClase({ url, alto }: { url: string; alto?: number }) {
         height={alto ?? 480}
         className="w-full"
         loading="lazy"
-        // Lo mínimo para que un formulario o un calendario funcionen. Sin
-        // `allow-same-origin` respecto a NUESTRO origen: lo de dentro no puede
-        // leer la sesión de quien mira.
+        // Lo mínimo para que un formulario o un calendario funcionen.
+        //
+        // `allow-same-origin` está, y hay que leerlo con cuidado: significa que
+        // lo de dentro corre en SU propio origen, no en el nuestro. Para una
+        // página de Calendly o de Google Forms eso es lo normal y no le da
+        // acceso a nada de aquí — sin ese permiso ni siquiera podrían usar sus
+        // cookies y la mitad dejaría de cargar.
+        //
+        // Lo que sí sería un problema es enmarcar una dirección NUESTRA: ahí
+        // «su origen» y «el nuestro» serían el mismo, y junto con
+        // `allow-scripts` el aislamiento del marco desaparecería. Por eso la
+        // línea de arriba, y por eso `urlDeEmbed` las rechaza al guardar.
         sandbox="allow-scripts allow-forms allow-popups allow-same-origin allow-presentation"
         referrerPolicy="no-referrer"
         title="Contenido insertado"
