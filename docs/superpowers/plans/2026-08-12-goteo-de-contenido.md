@@ -524,9 +524,13 @@ test("por fecha: antes devuelve el instante, despues null", () => {
 });
 
 test("el texto cambia segun lo que falte", () => {
-  expect(textoDeApertura(new Date("2026-08-12T14:30:00Z"), AHORA)).toBe("Se abre en 2 horas");
+  // 2h30m se dice «3 horas», no «2»: ver el docstring de `textoDeApertura`.
+  expect(textoDeApertura(new Date("2026-08-12T14:30:00Z"), AHORA)).toBe("Se abre en 3 horas");
   expect(textoDeApertura(new Date("2026-08-12T12:30:00Z"), AHORA)).toBe("Se abre en 30 minutos");
-  expect(textoDeApertura(new Date("2026-08-13T10:00:00Z"), AHORA)).toBe("Se abre mañana");
+  // 22 horas siguen siendo horas: no hay tramo de «mañana».
+  expect(textoDeApertura(new Date("2026-08-13T10:00:00Z"), AHORA)).toBe("Se abre en 22 horas");
+  // A más de un día se pasa a la fecha. `toContain` y no igualdad exacta
+  // porque el nombre del día lo pone `Intl` en la zona de quien ejecuta.
   expect(textoDeApertura(new Date("2026-08-20T10:00:00Z"), AHORA)).toContain("Se abre el ");
 });
 
@@ -614,21 +618,34 @@ export function fechaDeApertura(
   return null;
 }
 
-/** «Se abre en 2 horas», «Se abre mañana», «Se abre el martes 19 de agosto». */
+/**
+ * «Se abre en 2 horas», «Se abre mañana», «Se abre el martes 19 de agosto».
+ *
+ * Se redondea hacia ARRIBA, y no al valor más cercano. Es una cuenta atrás
+ * hacia algo que se abre: decirle a alguien «en 2 horas» cuando faltan 2h30m
+ * hace que vuelva a las dos horas y se encuentre la puerta cerrada. Al revés
+ * —«en 3 horas» cuando faltan 2h30m— vuelve tarde y ya está abierto, que no le
+ * cuesta nada a nadie. Nunca prometer antes de tiempo.
+ *
+ * No hay un tramo de «mañana», y se quitó a propósito. Decidir qué es mañana
+ * exige o bien un umbral en horas —y algo a 36 horas no es mañana, es pasado—
+ * o bien comparar días de calendario, que depende de la zona horaria de quien
+ * ejecute: la misma prueba pasaría en Quito y fallaría en Samoa. Con tres
+ * tramos por tiempo transcurrido no hay ambigüedad, y «el jueves 14 de agosto»
+ * dice lo mismo que «mañana» y además dice cuál.
+ */
 export function textoDeApertura(abreEl: Date, ahora: Date): string {
   const falta = abreEl.getTime() - ahora.getTime();
 
   if (falta < UNA_HORA) {
-    const minutos = Math.max(1, Math.round(falta / 60_000));
+    const minutos = Math.max(1, Math.ceil(falta / 60_000));
     return `Se abre en ${minutos} ${minutos === 1 ? "minuto" : "minutos"}`;
   }
 
   if (falta < UN_DIA) {
-    const horas = Math.round(falta / UNA_HORA);
+    const horas = Math.ceil(falta / UNA_HORA);
     return `Se abre en ${horas} ${horas === 1 ? "hora" : "horas"}`;
   }
-
-  if (falta < 2 * UN_DIA) return "Se abre mañana";
 
   return `Se abre el ${fechaLarga(abreEl)}`;
 }
