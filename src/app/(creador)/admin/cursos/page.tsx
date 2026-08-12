@@ -143,6 +143,9 @@ export default function AdminCursosPage() {
       // Al final de la lista: quien crea un módulo lo está añadiendo al final
       // de su temario, no al principio.
       orden: cursos.length + 1,
+      goteoModo: "ninguno",
+      goteoDias: null,
+      goteoDesde: null,
     };
 
     const supabase = crearClienteNavegador();

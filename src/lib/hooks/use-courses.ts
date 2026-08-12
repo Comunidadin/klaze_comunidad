@@ -1,18 +1,28 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useAppStore } from "@/lib/store";
 import { useSession } from "@/lib/hooks/use-session";
+import { useAhora } from "@/lib/hooks/use-ahora";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { cargarArmazon } from "@/lib/supabase/consultas";
 import { marcarLeccion } from "@/lib/supabase/progreso";
 import { nivelPorPuntos } from "@/lib/levels";
+import { fechaDeApertura } from "@/lib/goteo";
 import type { Course, Lesson } from "@/lib/types";
 
-export type AccesoCurso = "si" | "candado-nivel" | "sin-acceso";
+export type AccesoCurso = "si" | "candado-nivel" | "candado-fecha" | "sin-acceso";
 
 export type CourseConAcceso = Course & {
   acceso: AccesoCurso;
+  /**
+   * Instante en que se abre, o `null` si ya está abierto.
+   *
+   * Se calcula aquí y no en la tarjeta para que el cálculo ocurra una vez por
+   * módulo y no una por render, y para que la tarjeta solo tenga que
+   * formatearlo.
+   */
+  abreEl: Date | null;
   progresoPct: number;
 };
 
@@ -63,14 +73,37 @@ export function cursosVisiblesParaMiembro(
  */
 export function useCourses(comunidadId: string): { cursos: CourseConAcceso[] } {
   const armazon = useAppStore((s) => s.armazon);
+  const establecerArmazon = useAppStore((s) => s.establecerArmazon);
   const { user } = useSession();
+  // El reloj entra por `useAhora` y no por `new Date()` dentro del memo: sin
+  // una dependencia que cambie con el tiempo, la cuenta atrás se queda
+  // congelada y el módulo sigue bloqueado después de haber abierto. Justo a
+  // quien deja la pestaña abierta esperando.
+  const ahoraMs = useAhora();
 
   // Derivar con useMemo, nunca dentro del selector: crear arrays nuevos ahí
   // rompe el invariante de `useSyncExternalStore` en React 19.
-  return useMemo(() => {
+  const cursos = useMemo(() => {
     const cursos = cursosVisiblesParaMiembro(comunidadId, armazon?.cursos ?? []);
     const nivelUsuario = user ? nivelPorPuntos(user.puntos) : 0;
     const completadasIds = new Set(armazon?.progreso ?? []);
+    const ahora = new Date(ahoraMs);
+    const entradaEl = armazon?.entradaEl ?? null;
+
+    // El dueño de la academia no tiene candado, ni por fecha ni por nivel: esto
+    // replica la rama del dueño de las políticas de Postgres ("modulos: via su
+    // curso" / "lecciones: via su modulo" en
+    // 20260812193847_goteo_de_contenido.sql), que le entrega el módulo entero
+    // sin mirar `goteo_modo` ni `nivel_requerido`. No es una excepción de
+    // pantalla: sin este espejo, el navegador quedaba MÁS restrictivo que la
+    // base — Postgres ya le entregaba el contenido y solo la pantalla se lo
+    // escondía, justo al revés de lo que promete el editor ("Tú lo ves
+    // siempre, para poder prepararlo").
+    const esPropietario =
+      !!user &&
+      !!armazon?.comunidad &&
+      armazon.comunidad.id === comunidadId &&
+      armazon.comunidad.ownerId === user.id;
 
     const cursosConAcceso: CourseConAcceso[] = cursos.map((curso) => {
       const lecciones = leccionesDeCurso(curso);
@@ -82,17 +115,74 @@ export function useCourses(comunidadId: string): { cursos: CourseConAcceso[] } {
       const progresoPct =
         lecciones.length === 0 ? 0 : Math.round((completadas / lecciones.length) * 100);
 
+      const abreEl = esPropietario ? null : fechaDeApertura(curso, entradaEl, ahora);
+
+      // El orden importa: primero «no tienes acceso», que es lo más fuerte;
+      // luego «eres el dueño», que anula los dos candados de abajo; luego el
+      // nivel, que depende de lo que haga el alumno; y por último la fecha, que
+      // depende solo de esperar. Si un módulo estuviera bajo dos candados,
+      // decirle «sube de nivel» es más accionable que «espera».
       const acceso: AccesoCurso = !user
         ? "sin-acceso"
-        : curso.nivelRequerido === null || nivelUsuario >= curso.nivelRequerido
+        : esPropietario
           ? "si"
-          : "candado-nivel";
+          : curso.nivelRequerido !== null && nivelUsuario < curso.nivelRequerido
+            ? "candado-nivel"
+            : abreEl
+              ? "candado-fecha"
+              : "si";
 
-      return { ...curso, acceso, progresoPct };
+      return { ...curso, acceso, abreEl, progresoPct };
     });
 
-    return { cursos: cursosConAcceso };
-  }, [armazon, comunidadId, user]);
+    return cursosConAcceso;
+  }, [armazon, comunidadId, user, ahoraMs]);
+
+  // Recarga el armazón cuando un módulo pasa de cerrado a abierto.
+  //
+  // Sin esto, `useAhora` sí mueve `abreEl` a `null` y la tarjeta se desbloquea,
+  // pero el armazón se cargó UNA VEZ al entrar y sigue trayendo el curso con
+  // "0 submódulos · 0 clases" — el candado que ya no debería estar ahí sigue
+  // vacío. Justo a quien deja la pestaña abierta esperando, la persona más
+  // enganchada, es a quien le pasa esto.
+  //
+  // Vive aquí y no en cada pantalla que consume `useCourses` porque son varias
+  // (la lista de módulos, la ficha del curso, el detalle de un submódulo) y
+  // todas comparten el mismo síntoma; un solo sitio evita que alguna se quede
+  // sin el arreglo.
+  //
+  // El `ref` (no un `useState`) guarda qué módulos estaban bloqueados en el
+  // render anterior, y por eso no dispara el efecto de nuevo: escribirlo aquí
+  // no cambia ninguna dependencia de este `useMemo`, así que no hay bucle. Lo
+  // que sí lo cambiaría es guardar la recarga en `armazon` sin que la
+  // transición vuelva a ocurrir — y no ocurre: en el siguiente render el curso
+  // ya no está en el conjunto de bloqueados, así que no se detecta como "recién
+  // abierto" otra vez.
+  const bloqueadosPrevios = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    let vivo = true;
+    const bloqueadosAhora = new Set(
+      cursos.filter((c) => c.abreEl !== null).map((c) => c.id)
+    );
+    const seAbrioAlguno = Array.from(bloqueadosPrevios.current).some(
+      (id) => !bloqueadosAhora.has(id)
+    );
+    bloqueadosPrevios.current = bloqueadosAhora;
+
+    if (seAbrioAlguno) {
+      // Async y con `.then()` fijando el estado, nunca un `setState` directo
+      // dentro del efecto — mismo patrón que `useFeed`/`useEspacios`.
+      void cargarArmazon(crearClienteNavegador()).then((nuevo) => {
+        if (vivo) establecerArmazon(nuevo);
+      });
+    }
+
+    return () => {
+      vivo = false;
+    };
+  }, [cursos, establecerArmazon]);
+
+  return { cursos };
 }
 
 export interface UseLessonResult {

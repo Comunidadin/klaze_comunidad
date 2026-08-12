@@ -16,7 +16,7 @@ Aplican a todas las tareas.
 
 - **Vocabulario partido.** En el código `curso` = **módulo** en la interfaz, `modulo` = **submódulo**, `leccion` = **clase**. La copy nueva usa las palabras de la interfaz; los identificadores, las del código.
 - **Toda la interfaz y la copy, en español.**
-- **Ningún componente ni página consulta Supabase directamente**: todo dato pasa por un hook de `src/lib/hooks/`, que llama a un módulo de `src/lib/supabase/`.
+- **Los datos que se PINTAN pasan por un hook** de `src/lib/hooks/`, que llama a un módulo de `src/lib/supabase/`. Los formularios del panel del creador escriben directo llamando a `src/lib/supabase/…` — es lo que ya hace `_curso-editor.tsx` con `guardarCurso` y `cargarArmazon` (líneas 17-19), y esta tarea sigue esa práctica en vez de inventar un hook para una cuenta que se usa en un solo sitio.
 - **RLS no lanza: filtra.** Un `insert`/`update` rechazado vuelve sin error y sin filas. Todo escritor comprueba `data.length === 0` y lanza.
 - **Toda función `security definer` lleva `set search_path = ''`** y referencia tablas con esquema explícito. Lo verifica `tests/rls/auditoria.test.ts` (A3).
 - **RLS activado y `grant` explícito** en toda tabla nueva, en su misma migración. Aquí no se crean tablas.
@@ -524,9 +524,13 @@ test("por fecha: antes devuelve el instante, despues null", () => {
 });
 
 test("el texto cambia segun lo que falte", () => {
-  expect(textoDeApertura(new Date("2026-08-12T14:30:00Z"), AHORA)).toBe("Se abre en 2 horas");
+  // 2h30m se dice «3 horas», no «2»: ver el docstring de `textoDeApertura`.
+  expect(textoDeApertura(new Date("2026-08-12T14:30:00Z"), AHORA)).toBe("Se abre en 3 horas");
   expect(textoDeApertura(new Date("2026-08-12T12:30:00Z"), AHORA)).toBe("Se abre en 30 minutos");
-  expect(textoDeApertura(new Date("2026-08-13T10:00:00Z"), AHORA)).toBe("Se abre mañana");
+  // 22 horas siguen siendo horas: no hay tramo de «mañana».
+  expect(textoDeApertura(new Date("2026-08-13T10:00:00Z"), AHORA)).toBe("Se abre en 22 horas");
+  // A más de un día se pasa a la fecha. `toContain` y no igualdad exacta
+  // porque el nombre del día lo pone `Intl` en la zona de quien ejecuta.
   expect(textoDeApertura(new Date("2026-08-20T10:00:00Z"), AHORA)).toContain("Se abre el ");
 });
 
@@ -614,21 +618,34 @@ export function fechaDeApertura(
   return null;
 }
 
-/** «Se abre en 2 horas», «Se abre mañana», «Se abre el martes 19 de agosto». */
+/**
+ * «Se abre en 2 horas», «Se abre mañana», «Se abre el martes 19 de agosto».
+ *
+ * Se redondea hacia ARRIBA, y no al valor más cercano. Es una cuenta atrás
+ * hacia algo que se abre: decirle a alguien «en 2 horas» cuando faltan 2h30m
+ * hace que vuelva a las dos horas y se encuentre la puerta cerrada. Al revés
+ * —«en 3 horas» cuando faltan 2h30m— vuelve tarde y ya está abierto, que no le
+ * cuesta nada a nadie. Nunca prometer antes de tiempo.
+ *
+ * No hay un tramo de «mañana», y se quitó a propósito. Decidir qué es mañana
+ * exige o bien un umbral en horas —y algo a 36 horas no es mañana, es pasado—
+ * o bien comparar días de calendario, que depende de la zona horaria de quien
+ * ejecute: la misma prueba pasaría en Quito y fallaría en Samoa. Con tres
+ * tramos por tiempo transcurrido no hay ambigüedad, y «el jueves 14 de agosto»
+ * dice lo mismo que «mañana» y además dice cuál.
+ */
 export function textoDeApertura(abreEl: Date, ahora: Date): string {
   const falta = abreEl.getTime() - ahora.getTime();
 
   if (falta < UNA_HORA) {
-    const minutos = Math.max(1, Math.round(falta / 60_000));
+    const minutos = Math.max(1, Math.ceil(falta / 60_000));
     return `Se abre en ${minutos} ${minutos === 1 ? "minuto" : "minutos"}`;
   }
 
   if (falta < UN_DIA) {
-    const horas = Math.round(falta / UNA_HORA);
+    const horas = Math.ceil(falta / UNA_HORA);
     return `Se abre en ${horas} ${horas === 1 ? "hora" : "horas"}`;
   }
-
-  if (falta < 2 * UN_DIA) return "Se abre mañana";
 
   return `Se abre el ${fechaLarga(abreEl)}`;
 }
@@ -974,19 +991,26 @@ En `src/app/(creador)/admin/cursos/[curso]/_curso-editor.tsx`, junto a las demá
 
 Y justo después del bloque del precio (el `</div>` que cierra `curso-precio`, línea ~448), el bloque nuevo:
 
+Con el `Select` de shadcn que ya vive en `src/components/ui/select.tsx`, y no
+con un `<select>` normal: así se ve igual que el resto del panel y funciona en
+modo oscuro sin clases escritas a mano.
+
 ```tsx
         <div className="space-y-1.5">
           <Label htmlFor="curso-goteo">Cuándo se abre</Label>
-          <select
-            id="curso-goteo"
+          <Select
             value={curso.goteoModo}
-            onChange={(e) => actualizarModoGoteo(e.target.value as GoteoModo)}
-            className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            onValueChange={(v) => actualizarModoGoteo(v as GoteoModo)}
           >
-            <option value="ninguno">Al comprar</option>
-            <option value="dias">A los … días de entrar a la academia</option>
-            <option value="fecha">En una fecha concreta</option>
-          </select>
+            <SelectTrigger id="curso-goteo" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ninguno">Al comprar</SelectItem>
+              <SelectItem value="dias">A los … días de entrar a la academia</SelectItem>
+              <SelectItem value="fecha">En una fecha concreta</SelectItem>
+            </SelectContent>
+          </Select>
 
           {curso.goteoModo === "dias" && (
             <Input
@@ -1035,7 +1059,18 @@ function paraCampoLocal(iso: string): string {
 }
 ```
 
-Importar en la cabecera: `import type { GoteoModo } from "@/lib/goteo";`
+Importar en la cabecera:
+
+```ts
+import type { GoteoModo } from "@/lib/goteo";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+```
 
 - [ ] **Paso 3: Añadir el aviso antes de guardar**
 

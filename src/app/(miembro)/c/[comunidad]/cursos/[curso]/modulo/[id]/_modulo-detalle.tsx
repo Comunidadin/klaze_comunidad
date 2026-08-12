@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { CheckCircle2, ChevronLeft, Clock, Play, SearchX } from "lucide-react";
+import { CheckCircle2, ChevronLeft, Clock, Lock, Play, SearchX } from "lucide-react";
 import { useCommunity } from "@/lib/hooks/use-community";
 import { useCourses } from "@/lib/hooks/use-courses";
 import { useHydrated } from "@/lib/hooks/use-session";
@@ -18,6 +18,7 @@ import {
   formatDuracion,
 } from "@/components/course/course-utils";
 import { cn } from "@/lib/utils";
+import { textoDeApertura } from "@/lib/goteo";
 
 /**
  * Referencia estable para el caso "sin progreso". Devolver `[]` dentro del
@@ -74,6 +75,21 @@ export function ModuloDetalle({ comunidadSlug, cursoSlug, moduloId }: ModuloDeta
   if (!hydrated) return <ModuloSkeleton />;
 
   const volver = `/c/${comunidadSlug}/cursos`;
+
+  // Quien tenga la clase en un marcador cae aquí con la base devolviendo cero
+  // submódulos. Sin esto vería una lista vacía sin explicación — el mismo error
+  // que las academias suspendidas: «vacío» y «todavía no» se parecen en la
+  // pantalla y no se parecen en nada para quien lo vive.
+  if (curso && curso.acceso === "candado-fecha" && curso.abreEl) {
+    return (
+      <EmptyState
+        icono={Lock}
+        titulo="Este módulo todavía no está abierto"
+        descripcion={`${textoDeApertura(curso.abreEl, new Date())}. Aquí encontrarás las clases en cuanto puedas entrar.`}
+        accion={{ label: "Volver a los módulos", href: volver }}
+      />
+    );
+  }
 
   // El acceso lo decide la base; aquí solo se explica. Un curso que no cubre tu
   // acceso llega sin módulos, así que `modulo` sale `undefined` igual que si el

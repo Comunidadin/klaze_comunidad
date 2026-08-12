@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -17,6 +17,7 @@ import {
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { cargarArmazon } from "@/lib/supabase/consultas";
 import { guardarCurso } from "@/lib/supabase/guardar-curso";
+import { contarBloqueadosPorGoteo } from "@/lib/supabase/alumnos";
 import { useHydrated } from "@/lib/hooks/use-session";
 import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { useAdminCourse } from "@/lib/hooks/use-admin-courses";
@@ -42,9 +43,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { Course, CourseModule, Lesson } from "@/lib/types";
 import { tipoDeClase } from "@/lib/types";
+import { avisoDeCierre, fechaDeApertura, type ConfigGoteo, type GoteoModo } from "@/lib/goteo";
 
 export interface CursoEditorProps {
   cursoId: string;
@@ -101,6 +110,22 @@ function nuevaLeccion(id: string): Lesson {
 }
 
 /**
+ * ISO → el formato que pide `datetime-local`, en la zona del navegador.
+ *
+ * `toISOString()` daría UTC y el creador vería una hora distinta de la que
+ * escribió. `sv-SE` se usa porque su formato es `YYYY-MM-DD HH:mm`, a un
+ * espacio de distancia del que necesita el campo.
+ */
+function paraCampoLocal(iso: string): string {
+  return new Intl.DateTimeFormat("sv-SE", {
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit",
+  })
+    .format(new Date(iso))
+    .replace(" ", "T");
+}
+
+/**
  * `/admin/cursos/[curso]`: editor de estructura de un curso — módulos y
  * lecciones reordenables en la columna izquierda, `LessonEditor` de la
  * lección seleccionada en la derecha. Trabaja sobre una copia local
@@ -129,6 +154,21 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
   }
   const [confirmarBorrarCurso, setConfirmarBorrarCurso] = useState(false);
 
+  // La configuración de goteo y el `publicado` con los que se cargó el
+  // módulo (o con los que se guardó por última vez), para que el aviso de
+  // "esto cierra el módulo" solo salte cuando de verdad hay algo nuevo que
+  // cierre contenido — ver `guardar()`. `publicado` va aquí también porque
+  // publicar es tan "cierre" como configurar el goteo: un módulo en borrador
+  // no le cierra nada a nadie, y el instante en que se publica es justo
+  // cuando empieza a hacerlo. Un `ref` y no estado: no participa en el
+  // render, solo en la comparación de `guardar`.
+  const alCargar = useRef<ConfigGoteo & { publicado: boolean }>({
+    goteoModo: "ninguno",
+    goteoDias: null,
+    goteoDesde: null,
+    publicado: false,
+  });
+
   // Siembra la copia local de edición la primera vez que `cursoOriginal`
   // resuelve para este `cursoId` — ver docstring de arriba. Ajustar estado
   // durante el render (no en un efecto) evita un frame con `curso: null`
@@ -137,6 +177,12 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
     setCursoIdCargado(cursoOriginal.id);
     setCurso({ ...cursoOriginal, modulos: modulosOrdenados(cursoOriginal) });
     setDirty(false);
+    alCargar.current = {
+      goteoModo: cursoOriginal.goteoModo,
+      goteoDias: cursoOriginal.goteoDias,
+      goteoDesde: cursoOriginal.goteoDesde,
+      publicado: cursoOriginal.publicado,
+    };
   }
 
   const todasLecciones = curso ? leccionesOrdenadas(curso) : [];
@@ -224,6 +270,34 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
     actualizarCurso((c) => ({
       ...c,
       precioReferencial: Math.max(0, Number(valor) || 0),
+    }));
+  }
+
+  /**
+   * Cambiar el modo limpia el campo del otro modo. Sin esto quedaría un
+   * `goteoDias` de 7 bajo un modo `fecha`, que la restricción de la base
+   * rechaza con un error que nadie sabría leer.
+   */
+  function actualizarModoGoteo(goteoModo: GoteoModo) {
+    actualizarCurso((c) => ({
+      ...c,
+      goteoModo,
+      goteoDias: goteoModo === "dias" ? (c.goteoDias ?? 7) : null,
+      goteoDesde: goteoModo === "fecha" ? c.goteoDesde : null,
+    }));
+  }
+
+  function actualizarDiasGoteo(valor: string) {
+    actualizarCurso((c) => ({ ...c, goteoDias: Math.max(1, Number(valor) || 1) }));
+  }
+
+  function actualizarFechaGoteo(valor: string) {
+    // `datetime-local` da "2026-09-15T14:00" sin zona. `new Date` lo interpreta
+    // en la del navegador, que es la que el creador tiene en la cabeza cuando
+    // escribe "las 9 de la mañana".
+    actualizarCurso((c) => ({
+      ...c,
+      goteoDesde: valor ? new Date(valor).toISOString() : null,
     }));
   }
 
@@ -325,12 +399,80 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
       return;
     }
 
+    // Mismo espíritu que la validación del título: atajar aquí lo que la
+    // restricción `cursos_goteo_coherente` de la base rechazaría de todos
+    // modos, para no enseñar su mensaje crudo de Postgres.
+    if (curso.goteoModo === "fecha" && !curso.goteoDesde) {
+      toast.error("Elige la fecha y la hora en que se abre el módulo.");
+      return;
+    }
+    if (curso.goteoModo === "dias" && (!curso.goteoDias || curso.goteoDias < 1)) {
+      toast.error("Los días tienen que ser un número mayor que cero.");
+      return;
+    }
+
     const supabase = crearClienteNavegador();
+
     try {
+      // El aviso solo aparece cuando de verdad cierra algo:
+      // - `curso.publicado`, porque un módulo en Borrador no lo ve ningún
+      //   alumno todavía — el goteo no le cierra nada a nadie y el aviso
+      //   sería falso.
+      // - `hayQueAvisar`, para que no salte en cada guardado mientras nada
+      //   nuevo cierre contenido (el precio, la portada, una clase nueva…):
+      //   un aviso que grita siempre deja de leerse, y el día que de verdad
+      //   cierre algo el creador ya le da a Aceptar sin mirar.
+      // Va dentro del `try` y no antes: si esta consulta lanza, tiene que
+      // caer en el mismo `catch` que ya avisa al creador, no salir como un
+      // rechazo sin manejar.
+      const cambioElGoteo =
+        curso.goteoModo !== alCargar.current.goteoModo ||
+        curso.goteoDias !== alCargar.current.goteoDias ||
+        curso.goteoDesde !== alCargar.current.goteoDesde;
+
+      // Publicar es tan «cierre» como configurar el goteo: un módulo en
+      // borrador no se lo cierra a nadie, y el instante en que se publica es
+      // justo cuando empieza a hacerlo. Sin esta segunda mitad, configurar el
+      // goteo en borrador y publicar después se cuela sin decir nada.
+      const seAcabaDePublicar = curso.publicado && !alCargar.current.publicado;
+      const hayQueAvisar = cambioElGoteo || seAcabaDePublicar;
+
+      // `community` no puede ser nulo aquí en la práctica (el componente ya
+      // devolvió el estado vacío antes de definir esta función), pero
+      // TypeScript no propaga esa comprobación dentro de una función anidada.
+      if (curso.goteoModo !== "ninguno" && curso.publicado && hayQueAvisar && community) {
+        const ahora = new Date();
+        const { bloqueados, total, entradaMasReciente } = await contarBloqueadosPorGoteo(
+          supabase,
+          community.id,
+          curso.id,
+          curso,
+          ahora,
+          community.ownerId
+        );
+        if (bloqueados > 0) {
+          const vuelveEl = entradaMasReciente
+            ? fechaDeApertura(curso, entradaMasReciente, ahora)
+            : null;
+          const seguir = window.confirm(
+            avisoDeCierre({ titulo: curso.titulo, bloqueados, total, vuelveEl })
+          );
+          if (!seguir) return;
+        }
+      }
+
       await guardarCurso(supabase, { ...curso, titulo: curso.titulo.trim() });
       // Releer el armazon para que el resto de la app (classroom incluido)
       // vea el cambio sin recargar la pagina.
       establecerArmazon(await cargarArmazon(supabase));
+      // Para que un segundo guardado seguido, con el goteo y el publicado ya
+      // en su sitio, no vuelva a preguntar.
+      alCargar.current = {
+        goteoModo: curso.goteoModo,
+        goteoDias: curso.goteoDias,
+        goteoDesde: curso.goteoDesde,
+        publicado: curso.publicado,
+      };
       setDirty(false);
       toast.success("Cambios guardados");
     } catch (e) {
@@ -444,6 +586,48 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
           <p className="text-xs text-muted-foreground">
             Solo se enseña a quien todavía no tiene acceso. Klaze no cobra nada
             con esto.
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="curso-goteo">Cuándo se abre</Label>
+          <Select
+            value={curso.goteoModo}
+            onValueChange={(v) => actualizarModoGoteo(v as GoteoModo)}
+          >
+            <SelectTrigger id="curso-goteo" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ninguno">Al comprar</SelectItem>
+              <SelectItem value="dias">A los … días de entrar a la academia</SelectItem>
+              <SelectItem value="fecha">En una fecha concreta</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {curso.goteoModo === "dias" && (
+            <Input
+              type="number"
+              min={1}
+              value={curso.goteoDias ?? 7}
+              onChange={(e) => actualizarDiasGoteo(e.target.value)}
+              aria-label="Días desde que el alumno entra a la academia"
+            />
+          )}
+
+          {curso.goteoModo === "fecha" && (
+            <Input
+              type="datetime-local"
+              value={curso.goteoDesde ? paraCampoLocal(curso.goteoDesde) : ""}
+              onChange={(e) => actualizarFechaGoteo(e.target.value)}
+              aria-label="Fecha y hora en que se abre el módulo"
+            />
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            {curso.goteoModo === "ninguno"
+              ? "Tus alumnos lo ven en cuanto reciben acceso."
+              : "Mientras esté cerrado, tus alumnos ven el módulo con un candado y la fecha en que se abre. Tú lo ves siempre, para poder prepararlo."}
           </p>
         </div>
 

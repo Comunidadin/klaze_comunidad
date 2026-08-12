@@ -70,3 +70,40 @@ test("un alumno sin acceso al curso no puede comentar", async () => {
     comentarLeccion(e.alumnoB.cliente, leccionId, "colado", null)
   ).rejects.toThrow();
 });
+
+test("con el goteo activo, un alumno con acceso al curso no puede leer ni escribir comentarios", async () => {
+  // El goteo esconde la clase entera, y los comentarios tienen que esconderse
+  // con ella: comprobaban `cubre_curso` pero no `curso_disponible`, asi que
+  // alguien con un leccion_id guardado de antes podia seguir leyendo y
+  // escribiendo aunque el modulo estuviera cerrado.
+  await admin
+    .from("cursos")
+    .update({
+      goteo_modo: "fecha",
+      goteo_dias: null,
+      goteo_desde: new Date(Date.now() + 86_400_000).toISOString(),
+    })
+    .eq("id", e.cursoAPublicado);
+
+  // Los comentarios de las pruebas anteriores ya existen, y el goteo los
+  // esconde igual que esconde la clase.
+  const lista = await leerComentarios(e.alumnoA.cliente, leccionId);
+  expect(lista).toEqual([]);
+
+  await expect(
+    comentarLeccion(e.alumnoA.cliente, leccionId, "colado antes de tiempo", null)
+  ).rejects.toThrow();
+
+  // El dueno los sigue viendo: es su rama de las politicas, la que no mira
+  // `curso_disponible`.
+  const listaDueno = await leerComentarios(e.duenoA.cliente, leccionId);
+  expect(listaDueno.length).toBeGreaterThan(0);
+
+  await admin
+    .from("cursos")
+    .update({ goteo_modo: "ninguno", goteo_dias: null, goteo_desde: null })
+    .eq("id", e.cursoAPublicado);
+
+  const listaTrasAbrir = await leerComentarios(e.alumnoA.cliente, leccionId);
+  expect(listaTrasAbrir.length).toBeGreaterThan(0);
+});

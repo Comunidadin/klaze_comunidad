@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { fechaDeApertura, type ConfigGoteo } from "@/lib/goteo";
 
 export type EstadoAlumno = "invitado" | "activo" | "suspendido";
 
@@ -170,4 +171,67 @@ export async function cambiarEstadoAlumno(
   if (!data || data.length === 0) {
     throw new Error("No se pudo cambiar el estado: sin permiso sobre esa academia");
   }
+}
+
+/**
+ * A cuántos alumnos les cerraría el módulo esta configuración de goteo.
+ *
+ * Existe porque la regla se aplica a todos sin excepciones: alguien que ya
+ * tenía el módulo abierto puede perderlo al encender el goteo. Enseñar el
+ * número ANTES de guardar convierte eso en una decisión informada en vez de en
+ * un correo de un alumno preguntando qué pasó.
+ *
+ * Cuenta solo a quien de verdad tiene acceso a ese módulo: con
+ * `todos_los_cursos`, o con su fila en `inscripcion_cursos`.
+ *
+ * `propietarioId` se recibe por parámetro en vez de calcularse aquí adentro:
+ * la función ya recibe `comunidadId`, y el dueño está inscrito en su propia
+ * academia (`src/lib/academia.ts`) como cualquier alumno — así que sin
+ * excluirlo, el conteo lo incluye en "bloqueados" aunque a él la base nunca le
+ * cierra nada (`privado.curso_disponible` tiene una rama propia para el
+ * dueño). El aviso diría "cierra a 4 de tus 4 alumnos" cuando los afectados
+ * son 3.
+ *
+ * Vive en este archivo y no en uno propio porque es una consulta sobre
+ * `inscripciones`, que es de lo que trata este archivo.
+ */
+export async function contarBloqueadosPorGoteo(
+  supabase: SupabaseClient,
+  comunidadId: string,
+  cursoId: string,
+  config: ConfigGoteo,
+  ahora: Date,
+  propietarioId: string
+): Promise<{ bloqueados: number; total: number; entradaMasReciente: string | null }> {
+  const { data, error } = await supabase
+    .from("inscripciones")
+    .select("usuario_id, creado_el, todos_los_cursos, inscripcion_cursos(curso_id)")
+    .eq("comunidad_id", comunidadId)
+    .eq("estado", "activo");
+
+  if (error) throw new Error(`No se pudieron leer los alumnos: ${error.message}`);
+
+  const conAcceso = (data ?? [])
+    .filter((i) => i.usuario_id !== propietarioId)
+    .filter(
+      (i) =>
+        i.todos_los_cursos ||
+        ((i.inscripcion_cursos ?? []) as { curso_id: string }[]).some(
+          (c) => c.curso_id === cursoId
+        )
+    );
+
+  // Se reutiliza `fechaDeApertura`, la misma que pinta la tarjeta del alumno:
+  // si el aviso calculara por su cuenta, diría un número y la pantalla del
+  // alumno mostraría otro.
+  const bloqueados = conAcceso.filter(
+    (i) => fechaDeApertura(config, i.creado_el, ahora) !== null
+  );
+
+  const entradaMasReciente = bloqueados
+    .map((i) => i.creado_el as string)
+    .sort()
+    .at(-1) ?? null;
+
+  return { bloqueados: bloqueados.length, total: conAcceso.length, entradaMasReciente };
 }

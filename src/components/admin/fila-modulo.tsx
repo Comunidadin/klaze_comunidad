@@ -17,6 +17,8 @@ import {
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { cargarArmazon } from "@/lib/supabase/consultas";
 import { cambiarPublicadoCurso, guardarCurso } from "@/lib/supabase/guardar-curso";
+import { contarBloqueadosPorGoteo } from "@/lib/supabase/alumnos";
+import { avisoDeCierre, fechaDeApertura, notaDeGoteo } from "@/lib/goteo";
 import { useAppStore } from "@/lib/store";
 import { modulosOrdenados } from "@/components/course/course-utils";
 import { DialogoEliminarModulo } from "@/components/admin/eliminar-modulo";
@@ -51,6 +53,7 @@ export interface FilaModuloProps {
 
 export function FilaModulo({ curso, primero, ultimo, onMover }: FilaModuloProps) {
   const establecerArmazon = useAppStore((s) => s.establecerArmazon);
+  const propietarioId = useAppStore((s) => s.armazon?.perfil.id ?? "");
   const router = useRouter();
 
   const [abierto, setAbierto] = useState(false);
@@ -59,12 +62,44 @@ export function FilaModulo({ curso, primero, ultimo, onMover }: FilaModuloProps)
 
   const submodulos = modulosOrdenados(curso);
   const numClases = curso.modulos.reduce((n, m) => n + m.lecciones.length, 0);
+  // Se ve desde la lista y no solo dentro del editor: con ocho módulos, tener
+  // que abrirlos uno a uno para reconstruir el calendario recién montado es
+  // justo cuando se cuelan los huecos y los solapes.
+  const nota = notaDeGoteo(curso);
 
   async function alternarPublicado() {
+    const vaAPublicar = !curso.publicado;
     setOcupado(true);
     const supabase = crearClienteNavegador();
     try {
-      await cambiarPublicadoCurso(supabase, curso.id, !curso.publicado);
+      // Publicar es el momento en que el goteo empieza a cerrar contenido de
+      // verdad: antes de esta fila estaba en Borrador y nadie lo veía. Esta
+      // es la puerta más rápida para publicar —y por eso la más usada— así
+      // que sin este aviso sería la única que no dice nada. Va dentro del
+      // `try`, no antes: si la consulta falla, tiene que caer en el mismo
+      // `catch` que ya avisa, no salir como un rechazo sin manejar.
+      if (vaAPublicar && curso.goteoModo !== "ninguno") {
+        const ahora = new Date();
+        const { bloqueados, total, entradaMasReciente } = await contarBloqueadosPorGoteo(
+          supabase,
+          curso.comunidadId,
+          curso.id,
+          curso,
+          ahora,
+          propietarioId
+        );
+        if (bloqueados > 0) {
+          const vuelveEl = entradaMasReciente
+            ? fechaDeApertura(curso, entradaMasReciente, ahora)
+            : null;
+          const seguir = window.confirm(
+            avisoDeCierre({ titulo: curso.titulo, bloqueados, total, vuelveEl })
+          );
+          if (!seguir) return;
+        }
+      }
+
+      await cambiarPublicadoCurso(supabase, curso.id, vaAPublicar);
       establecerArmazon(await cargarArmazon(supabase));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo cambiar el estado");
@@ -155,6 +190,7 @@ export function FilaModulo({ curso, primero, ultimo, onMover }: FilaModuloProps)
               {submodulos.length === 1 ? "submódulo" : "submódulos"} · {numClases}{" "}
               {numClases === 1 ? "clase" : "clases"} · {curso.numAlumnos}{" "}
               {curso.numAlumnos === 1 ? "alumno" : "alumnos"}
+              {nota && <span className="text-primary"> · {nota}</span>}
             </span>
           </span>
         </button>

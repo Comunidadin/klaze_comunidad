@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Community, Course, Lesson, User, UserRole } from "@/lib/types";
+import type { GoteoModo } from "@/lib/goteo";
 import { nivelPorPuntos } from "@/lib/levels";
 
 export interface Armazon {
@@ -13,6 +14,15 @@ export interface Armazon {
    * usuario aquí: si llega, es tuya.
    */
   progreso: string[];
+  /**
+   * Cuándo entró esta persona a la academia, en ISO, o `null` si no está
+   * inscrita.
+   *
+   * Es el reloj del goteo por días. Viaja en el armazón porque la tarjeta de
+   * un módulo cerrado tiene que poder decir «se abre el martes», y sin esta
+   * fecha solo podría decir «cerrado».
+   */
+  entradaEl: string | null;
 }
 
 /**
@@ -89,6 +99,22 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
     }
   }
 
+  // La fecha de entrada de esta persona a la academia, que es el reloj del
+  // goteo por días. Se pregunta aquí y no en el bloque de arriba porque el
+  // dueño también está inscrito en la suya —`crearAcademia` le inscribe para
+  // que «Ver como alumno» le enseñe algo— y así el camino es el mismo para los
+  // dos.
+  let entradaEl: string | null = null;
+  if (c) {
+    const { data: mia } = await supabase
+      .from("inscripciones")
+      .select("creado_el")
+      .eq("usuario_id", usuario.id)
+      .eq("comunidad_id", c.id)
+      .maybeSingle();
+    entradaEl = mia?.creado_el ?? null;
+  }
+
   const { data: progresoFilas } = await supabase.from("progreso").select("leccion_id");
 
   // Filtrado por la academia elegida, y por el mismo motivo: sin el `.eq()` un
@@ -100,6 +126,7 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
         .select(
           `id, comunidad_id, slug, titulo, descripcion, portada_url,
      precio_referencial, nivel_requerido, publicado, orden,
+     goteo_modo, goteo_dias, goteo_desde,
      modulos ( id, titulo, orden, portada_url, publicado,
        lecciones ( id, titulo, orden, duracion_min, recursos, portada_url, bloques, ia_habilitada, ia_contexto ) )`
         )
@@ -154,6 +181,9 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
     nivelRequerido: f.nivel_requerido,
     publicado: f.publicado,
     orden: f.orden ?? 0,
+    goteoModo: (f.goteo_modo ?? "ninguno") as GoteoModo,
+    goteoDias: f.goteo_dias ?? null,
+    goteoDesde: f.goteo_desde ?? null,
     secciones: [],
     modulos: (f.modulos ?? [])
       .slice()
@@ -191,5 +221,5 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
     (p) => p.leccion_id
   );
 
-  return { perfil, comunidad, cursos, progreso };
+  return { perfil, comunidad, cursos, progreso, entradaEl };
 }
