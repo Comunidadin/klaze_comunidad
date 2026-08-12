@@ -71,9 +71,20 @@ export function fechaDeApertura(
  * ejecute: la misma prueba pasaría en Quito y fallaría en Samoa. Con tres
  * tramos por tiempo transcurrido no hay ambigüedad, y «el jueves 14 de agosto»
  * dice lo mismo que «mañana» y además dice cuál.
+ *
+ * Si el instante ya pasó lo dice y pide recargar: quien llega aquí con una
+ * fecha vencida tiene el armazón viejo, y la base ya le está entregando el
+ * contenido.
  */
 export function textoDeApertura(abreEl: Date, ahora: Date): string {
   const falta = abreEl.getTime() - ahora.getTime();
+
+  // Ya pasó el momento. Ocurre de verdad: el instante de apertura se calcula
+  // una vez y la tarjeta se repinta con la hora actual, así que a quien deja
+  // la pestaña abierta esperando se le cumple el plazo sin que nada se
+  // recalcule. Sin esta línea vería «Se abre en 1 minuto» para siempre —
+  // justo la persona que más pendiente está.
+  if (falta <= 0) return "Ya está abierto — recarga la página";
 
   if (falta < UNA_HORA) {
     const minutos = Math.max(1, Math.ceil(falta / 60_000));

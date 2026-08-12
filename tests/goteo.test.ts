@@ -74,3 +74,25 @@ test("la nota de la lista resume la configuracion", () => {
   expect(notaDeGoteo({ goteoModo: "fecha", goteoDias: null, goteoDesde: "2026-09-15T14:00:00Z" }))
     .toContain("Se abre el ");
 });
+
+test("si el instante ya paso, lo dice en vez de contar hacia atras", () => {
+  // Le pasa a quien deja la pestaña abierta esperando: `abreEl` se calculó
+  // una vez y la hora actual lo adelantó. Antes decía «Se abre en 1 minuto»
+  // indefinidamente.
+  expect(textoDeApertura(new Date("2026-08-12T11:00:00Z"), AHORA)).toBe(
+    "Ya está abierto — recarga la página"
+  );
+  expect(textoDeApertura(new Date("2026-08-12T12:00:00Z"), AHORA)).toBe(
+    "Ya está abierto — recarga la página"
+  );
+});
+
+test("el modo fecha abre en el instante exacto, igual que el de dias", () => {
+  // Simetría con la prueba del límite de `dias`: las dos ramas usan `<=`, y
+  // si una se cambiara a `<` sin la otra, el mismo módulo abriría en momentos
+  // distintos según cómo lo hubiera configurado el creador.
+  const justo: ConfigGoteo = {
+    goteoModo: "fecha", goteoDias: null, goteoDesde: "2026-08-12T12:00:00Z",
+  };
+  expect(fechaDeApertura(justo, null, AHORA)).toBeNull();
+});
