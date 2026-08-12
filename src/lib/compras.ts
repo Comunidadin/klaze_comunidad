@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { variableServidor } from "@/lib/entorno-servidor";
 import { esEmailValido } from "@/lib/validation";
+import { TOPE_DIARIO, consumir } from "@/lib/limites";
 
 /**
  * Lo que comparten las dos puertas de un enlace de compra: leer el cuerpo que
@@ -12,8 +13,12 @@ import { esEmailValido } from "@/lib/validation";
  * se acepta lo que llegue y se busca el correo dentro.
  */
 
-/** Cuántas recepciones admite un canal al día. */
-export const TOPE_DIARIO = 200;
+/**
+ * El tope de cada tipo de canal vive en `limites.ts` —el panel lo enseña y ese
+ * componente corre en el navegador—, y se reexporta aquí para que quien
+ * trabaja con enlaces de venta lo encuentre donde espera.
+ */
+export { TOPE_DIARIO } from "@/lib/limites";
 
 export type TipoCanal = "academia" | "plataforma";
 
@@ -295,23 +300,26 @@ export async function registrar(
 }
 
 /**
- * `true` si este canal ya pasó su tope de hoy.
+ * Consume un uso del canal y devuelve `true` si ya pasó su tope de hoy.
  *
  * La dirección es pública: sin tope, quien la tenga da de alta miles de cuentas
  * y agota la cuota de correo del dueño de la plataforma.
+ *
+ * **Consume, no solo mira**, y ese cambio no es de estilo. Antes contaba filas
+ * de `recepciones_canal` y luego el trabajo ocurría y el registro se escribía
+ * al final: entre la cuenta y el registro había una ventana en la que veinte
+ * peticiones simultáneas leían todas el mismo número y pasaban todas. Con un
+ * tope de 200 eso era una molestia; con el de 5 del canal de plataforma, un
+ * envío en paralelo lo saltaba entero y creaba veinte academias.
+ *
+ * `consumir_limite` hace la suma y la comparación en una sola sentencia, así
+ * que esa ventana no existe. El precio es que un reintento del formulario
+ * también cuenta — aceptable, porque ya contaba: todas las ramas de estas
+ * rutas registran, incluidas las que rechazan.
  */
 export async function topeAlcanzado(
   admin: SupabaseClient,
-  canalId: string
+  canal: Pick<Canal, "id" | "tipo">
 ): Promise<boolean> {
-  const inicio = new Date();
-  inicio.setUTCHours(0, 0, 0, 0);
-
-  const { count } = await admin
-    .from("recepciones_canal")
-    .select("id", { count: "exact", head: true })
-    .eq("canal_id", canalId)
-    .gte("recibida_el", inicio.toISOString());
-
-  return (count ?? 0) >= TOPE_DIARIO;
+  return !(await consumir(admin, "canal", canal.id, TOPE_DIARIO[canal.tipo]));
 }

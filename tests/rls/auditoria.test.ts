@@ -26,6 +26,13 @@ test("A1. toda tabla de `public` tiene RLS activado", async () => {
 test("A2. toda tabla de `public` tiene al menos una politica", async () => {
   // RLS activado sin politicas deja la tabla ilegible para todo el mundo.
   // Suele ser un olvido, no una decision.
+  //
+  // Salvo en `limites_uso`, donde SI es la decision: es el contador de topes, y
+  // lo unico que lo hace un tope es que la persona limitada no pueda tocarlo.
+  // No se le da la vuelta a la comprobacion, se le pone nombre --- y A2c de
+  // abajo verifica que ese cero sigue siendo cero.
+  const SIN_POLITICA_A_PROPOSITO = ["limites_uso"];
+
   const sinPolitica = await sql`
     select t.tablename from pg_tables t
     where t.schemaname = 'public'
@@ -35,7 +42,45 @@ test("A2. toda tabla de `public` tiene al menos una politica", async () => {
       )
     order by 1
   `;
-  expect(sinPolitica.map((r: { tablename: string }) => r.tablename)).toEqual([]);
+  const inesperadas = sinPolitica
+    .map((r: { tablename: string }) => r.tablename)
+    .filter((t: string) => !SIN_POLITICA_A_PROPOSITO.includes(t));
+  expect(inesperadas).toEqual([]);
+});
+
+test("A2c. `limites_uso` sigue siendo inalcanzable desde el navegador", async () => {
+  // La proteccion de esta tabla es una ausencia --- cero politicas y cero
+  // permisos --- y una ausencia no se ve al leer el codigo. Esta prueba la
+  // convierte en algo que se rompe si alguien la deshace.
+  //
+  // Lo que impide: que quien esta siendo limitado ponga su propio contador a
+  // cero. Sin eso, el tope de `/api/recuperar` seria un adorno y volveriamos a
+  // ALTO-1 de la auditoria del 12 de agosto.
+  const politicas = await sql`
+    select policyname from pg_policies
+    where schemaname = 'public' and tablename = 'limites_uso'
+  `;
+  expect(politicas.map((r: { policyname: string }) => r.policyname)).toEqual([]);
+
+  // Y sin permisos: Supabase concede todo por defecto a cada tabla nueva de
+  // `public`, asi que esto se quita a mano y hay que vigilar que siga quitado.
+  const permisos = await sql`
+    select grantee, privilege_type
+    from information_schema.role_table_grants
+    where table_schema = 'public' and table_name = 'limites_uso'
+      and grantee in ('anon', 'authenticated')
+  `;
+  expect(permisos).toEqual([]);
+
+  // La funcion que si escribe, tampoco se puede llamar desde el navegador.
+  const puede = await sql`
+    select has_function_privilege('authenticated',
+      'public.consumir_limite(text,text,integer)', 'EXECUTE') as auth,
+      has_function_privilege('anon',
+      'public.consumir_limite(text,text,integer)', 'EXECUTE') as anon
+  `;
+  expect(puede[0].auth).toBe(false);
+  expect(puede[0].anon).toBe(false);
 });
 
 test("A2b. ninguna tabla se queda solo con politica de lectura", async () => {
@@ -54,6 +99,10 @@ test("A2b. ninguna tabla se queda solo con politica de lectura", async () => {
   // - `recepciones_canal`: es el registro de lo que llego por los enlaces de
   //   compra. Un registro que su dueno puede editar o borrar no sirve para
   //   averiguar por que alguien no entro.
+  //
+  // `limites_uso` no aparece aqui porque no tiene NINGUNA politica, ni de
+  // lectura: no llega a esta comprobacion, que solo mira las tablas que tienen
+  // alguna. La vigila A2c, justo debajo.
   const EXCEPCIONES = ["uso_ia", "recepciones_canal"];
 
   const soloLectura = await sql`

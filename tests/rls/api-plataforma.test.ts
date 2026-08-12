@@ -1,4 +1,5 @@
-import { expect, test, beforeAll, afterAll } from "bun:test";
+import { expect, test, beforeAll, beforeEach, afterAll } from "bun:test";
+import { SQL } from "bun";
 import { admin, limpiarUsuarios } from "./ayudas";
 import { montarEscenario, desmontar, type Escenario } from "./escenario";
 
@@ -16,6 +17,18 @@ import { montarEscenario, desmontar, type Escenario } from "./escenario";
 const BASE = "http://localhost:3000";
 const CREADOR = "creador-apiplat@prueba.klaze";
 const SEGUNDO = "segundo-apiplat@prueba.klaze";
+
+/**
+ * El contador del tope se reinicia antes de cada prueba, y eso mismo es un
+ * dato: el canal de plataforma admite **cinco** recepciones al día, y este
+ * archivo hace más que eso. Cada recepción aquí crea una academia entera, así
+ * que el número es deliberadamente pequeño —lo que un atacante con la URL
+ * puede fabricar antes de que alguien lo vea.
+ *
+ * Reiniciarlo aquí y no subir el tope: el número tiene que seguir siendo el de
+ * producción, o la prueba dejaría de decir nada sobre producción.
+ */
+const sql = new SQL(process.env.SUPABASE_DB_URL!, { max: 1 });
 
 let e: Escenario;
 let hayServidor = false;
@@ -82,7 +95,14 @@ beforeAll(async () => {
   tokenAcademia = otro.token;
 });
 
+beforeEach(async () => {
+  if (hayServidor) {
+    await sql`delete from public.limites_uso where ambito = 'canal'`;
+  }
+});
+
 afterAll(async () => {
+  await sql.end();
   if (!hayServidor) return;
   await borrarCreador(CREADOR);
   await borrarCreador(SEGUNDO);

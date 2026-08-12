@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ChevronDown, ChevronRight, Link2, RefreshCw, Trash2, Zap } from "lucide-react";
 import { useCanalesPlataforma } from "@/lib/hooks/use-canales-venta";
+import { TOPE_DIARIO } from "@/lib/limites";
 import type { CanalVenta } from "@/lib/supabase/canales-venta";
 import type { Plan } from "@/lib/types";
 import {
@@ -167,7 +168,13 @@ export function SuperEnlaces({ planes }: { planes: Plan[] }) {
             Quien tenga este enlace puede crear academias.
           </strong>{" "}
           Es el más delicado de la plataforma: trátalo como una contraseña y
-          pégalo solo en tu herramienta de ventas.
+          pégalo solo en tu herramienta de ventas. Admite{" "}
+          <strong className="text-foreground">
+            {TOPE_DIARIO.plataforma} altas al día
+          </strong>
+          , para que un enlace filtrado no te llene la plataforma antes de que
+          lo veas. Si crees que se ha escapado, usa «Regenerar»: el anterior
+          deja de servir al instante y conservas el historial de este.
         </p>
 
         <Separator />

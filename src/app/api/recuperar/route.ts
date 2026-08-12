@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { variableServidor } from "@/lib/entorno-servidor";
 import { enviarCorreo } from "@/lib/correo";
+import { TOPES, consumir, ipDe } from "@/lib/limites";
+import { esEmailValido } from "@/lib/validation";
 import {
   PLANTILLAS_POR_DEFECTO,
   bloqueRecuperacion,
@@ -25,6 +27,12 @@ import {
  * **Responde lo mismo exista o no la cuenta.** Si dijera "ese correo no está
  * registrado", cualquiera podría averiguar quién tiene cuenta preguntando uno
  * a uno.
+ *
+ * **Y responde lo mismo cuando se pasa del tope**, que es lo mismo llevado un
+ * paso más allá: un 429 aquí diría "has llegado al límite de ESE correo", o
+ * sea, "ese correo existe". Quien se pasa del tope recibe `{ok:true}` y no
+ * recibe correo, igual que quien escribe una dirección inventada. Desde fuera
+ * las tres respuestas son idénticas y no hay nada que deducir.
  */
 export async function POST(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -54,6 +62,27 @@ export async function POST(request: NextRequest) {
   const admin = createClient(url, secreta, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+
+  // Los dos topes, y el orden entre ellos importa.
+  //
+  // Primero el de la IP: es el que corta el bucle, y hacerlo antes evita que
+  // un atacante llene `limites_uso` con una fila por cada correo inventado que
+  // se le ocurra. Después el formato, para no gastar cupo con basura. Y solo
+  // al final el del correo, que es el que protege a una persona concreta de
+  // que le llenen el buzón.
+  //
+  // `ok:true` en los tres casos: ver el docstring.
+  const ok = { ok: true };
+
+  if (!(await consumir(admin, "recuperar_ip", ipDe(request), TOPES.recuperarIp))) {
+    return NextResponse.json(ok);
+  }
+
+  if (!esEmailValido(email)) return NextResponse.json(ok);
+
+  if (!(await consumir(admin, "recuperar_email", email, TOPES.recuperarEmail))) {
+    return NextResponse.json(ok);
+  }
 
   // El identificador lo manda `/login/{academia}`, que ya sabe de cuál es;
   // `/login` a secas no lo manda y se queda con el texto por defecto.

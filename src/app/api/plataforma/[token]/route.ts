@@ -62,7 +62,7 @@ export async function POST(
     return NextResponse.json({ ok: false, motivo: "sin_email" });
   }
 
-  if (await topeAlcanzado(admin, canal.id)) {
+  if (await topeAlcanzado(admin, canal)) {
     await registrar(admin, canal.id, {
       email,
       accion: "alta",

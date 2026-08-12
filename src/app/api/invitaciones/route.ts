@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { variableServidor } from "@/lib/entorno-servidor";
 import { darAcceso } from "@/lib/dar-acceso";
+import { TOPES, consumir } from "@/lib/limites";
 
 /**
  * Genera el enlace de acceso de una invitación y lo manda por correo.
@@ -86,6 +87,31 @@ export async function POST(request: NextRequest) {
 
   if (!comunidad || comunidad.propietario_id !== quien.user.id) {
     return NextResponse.json({ error: "No es tu academia" }, { status: 403 });
+  }
+
+  // El tope va DESPUÉS de comprobar que es su academia, y no antes: al revés,
+  // cualquiera con sesión podría gastar el cupo de una academia ajena con solo
+  // conocer su id, y convertir el freno al abuso en la herramienta del abuso.
+  //
+  // Cuenta también cuando solo se copia el enlace, aunque no salga correo:
+  // `darAcceso` crea la cuenta de Supabase igual, y son esas cuentas —no solo
+  // los correos— lo que un creador podría fabricar a miles. Copiar el enlace
+  // de la misma persona varias veces sale casi gratis: la cuenta ya existe a
+  // partir de la primera.
+  if (
+    !(await consumir(admin, "invitaciones", comunidadId, TOPES.invitaciones))
+  ) {
+    // Aquí sí se dice con todas las letras, al contrario que en `/api/recuperar`:
+    // quien llama es el dueño autenticado de esta academia, así que no hay nada
+    // que ocultarle y sí mucho que explicarle.
+    return NextResponse.json(
+      {
+        error:
+          `Has llegado a las ${TOPES.invitaciones} invitaciones de hoy. ` +
+          `Mañana se renueva. Si necesitas más, escríbenos.`,
+      },
+      { status: 429 }
+    );
   }
 
   const origen = new URL(request.url).origin;
