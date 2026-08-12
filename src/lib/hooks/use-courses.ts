@@ -7,12 +7,21 @@ import { crearClienteNavegador } from "@/lib/supabase/client";
 import { cargarArmazon } from "@/lib/supabase/consultas";
 import { marcarLeccion } from "@/lib/supabase/progreso";
 import { nivelPorPuntos } from "@/lib/levels";
+import { fechaDeApertura } from "@/lib/goteo";
 import type { Course, Lesson } from "@/lib/types";
 
-export type AccesoCurso = "si" | "candado-nivel" | "sin-acceso";
+export type AccesoCurso = "si" | "candado-nivel" | "candado-fecha" | "sin-acceso";
 
 export type CourseConAcceso = Course & {
   acceso: AccesoCurso;
+  /**
+   * Instante en que se abre, o `null` si ya está abierto.
+   *
+   * Se calcula aquí y no en la tarjeta para que el cálculo ocurra una vez por
+   * módulo y no una por render, y para que la tarjeta solo tenga que
+   * formatearlo.
+   */
+  abreEl: Date | null;
   progresoPct: number;
 };
 
@@ -71,6 +80,8 @@ export function useCourses(comunidadId: string): { cursos: CourseConAcceso[] } {
     const cursos = cursosVisiblesParaMiembro(comunidadId, armazon?.cursos ?? []);
     const nivelUsuario = user ? nivelPorPuntos(user.puntos) : 0;
     const completadasIds = new Set(armazon?.progreso ?? []);
+    const ahora = new Date();
+    const entradaEl = armazon?.entradaEl ?? null;
 
     const cursosConAcceso: CourseConAcceso[] = cursos.map((curso) => {
       const lecciones = leccionesDeCurso(curso);
@@ -82,13 +93,21 @@ export function useCourses(comunidadId: string): { cursos: CourseConAcceso[] } {
       const progresoPct =
         lecciones.length === 0 ? 0 : Math.round((completadas / lecciones.length) * 100);
 
+      const abreEl = fechaDeApertura(curso, entradaEl, ahora);
+
+      // El orden importa: primero «no tienes acceso», que es lo más fuerte;
+      // luego el nivel, que depende de lo que haga el alumno; y por último la
+      // fecha, que depende solo de esperar. Si un módulo estuviera bajo dos
+      // candados, decirle «sube de nivel» es más accionable que «espera».
       const acceso: AccesoCurso = !user
         ? "sin-acceso"
-        : curso.nivelRequerido === null || nivelUsuario >= curso.nivelRequerido
-          ? "si"
-          : "candado-nivel";
+        : curso.nivelRequerido !== null && nivelUsuario < curso.nivelRequerido
+          ? "candado-nivel"
+          : abreEl
+            ? "candado-fecha"
+            : "si";
 
-      return { ...curso, acceso, progresoPct };
+      return { ...curso, acceso, abreEl, progresoPct };
     });
 
     return { cursos: cursosConAcceso };

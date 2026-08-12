@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { estadisticasCurso, formatDuracion } from "@/components/course/course-utils";
 import { CoursePortada } from "@/components/course/course-portada";
 import type { CourseConAcceso } from "@/lib/hooks/use-courses";
+import { textoDeApertura } from "@/lib/goteo";
 
 export interface CourseCardProps {
   curso: CourseConAcceso;
@@ -119,6 +120,13 @@ export function CourseCard({ curso, comunidadSlug, nombreNivelRequerido }: Cours
               <p className="max-w-[14rem] text-xs font-medium text-balance text-foreground">
                 Se desbloquea en nivel {curso.nivelRequerido}
                 {nombreNivelRequerido ? ` — ${nombreNivelRequerido}` : ""}
+              </p>
+            ) : curso.acceso === "candado-fecha" && curso.abreEl ? (
+              // Un candado sin fecha es una puerta cerrada sin cartel, y la
+              // fecha es justo lo que hace que el goteo retenga en vez de
+              // frustrar.
+              <p className="max-w-[14rem] text-xs font-medium text-balance text-foreground">
+                {textoDeApertura(curso.abreEl, new Date())}
               </p>
             ) : (
               <>
