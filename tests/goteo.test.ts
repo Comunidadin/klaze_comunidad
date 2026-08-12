@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import {
   avisoDeCierre,
   fechaDeApertura,
+  fechaLarga,
   textoDeApertura,
   notaDeGoteo,
   type ConfigGoteo,
@@ -109,4 +110,29 @@ test("el aviso de cierre dice alumno en singular y alumnos en plural", () => {
     "Esto cierra «Fundamentos» a 3 de tus 5 alumnos ahora mismo. " +
       "Volverán a verlo cuando cumplan el plazo. ¿Lo guardo igualmente?"
   );
+});
+
+test("el aviso de cierre dice cuando vuelve, cuando se le pasa la fecha", () => {
+  // Sin `vuelveEl` el aviso decía "cuando cumplan el plazo" y nada más — un
+  // susto sin fecha. Con él, dice cuándo vuelve el que entró más tarde.
+  const vuelveEl = new Date("2026-08-20T00:00:00Z");
+  expect(
+    avisoDeCierre({ titulo: "Fundamentos", bloqueados: 3, total: 5, vuelveEl })
+  ).toBe(
+    "Esto cierra «Fundamentos» a 3 de tus 5 alumnos ahora mismo. " +
+      "Volverán a verlo cuando cumplan el plazo. " +
+      `El que entró más tarde lo recupera el ${fechaLarga(vuelveEl)}. ` +
+      "¿Lo guardo igualmente?"
+  );
+});
+
+test("el aviso de cierre no rompe cuando no hay fecha que dar (null o ausente)", () => {
+  const sinFecha = avisoDeCierre({ titulo: "Fundamentos", bloqueados: 2, total: 5 });
+  const conNull = avisoDeCierre({
+    titulo: "Fundamentos",
+    bloqueados: 2,
+    total: 5,
+    vuelveEl: null,
+  });
+  expect(sinFecha).toBe(conNull);
 });

@@ -120,20 +120,31 @@ export function notaDeGoteo(config: ConfigGoteo): string | null {
  * sitios que lo usan, porque es copy derivada de la cuenta de bloqueados, y
  * la copy que se escribe dos veces es la que se desincroniza la segunda vez
  * que alguien la retoca.
+ *
+ * `vuelveEl` es opcional y a propósito: sin bloqueados no hay fecha que dar
+ * (el llamador ni siquiera muestra el aviso en ese caso), y algún día podría
+ * no poder calcularse. Cuando llega, convierte «cuando cumplan el plazo» —que
+ * no dice nada— en una fecha concreta: es la diferencia entre un aviso y un
+ * susto.
  */
 export function avisoDeCierre(o: {
   titulo: string;
   bloqueados: number;
   total: number;
+  vuelveEl?: Date | null;
 }): string {
+  const cuando = o.vuelveEl
+    ? ` El que entró más tarde lo recupera el ${fechaLarga(o.vuelveEl)}.`
+    : "";
   return (
     `Esto cierra «${o.titulo}» a ${o.bloqueados} de tus ${o.total} ` +
     `${o.total === 1 ? "alumno" : "alumnos"} ahora mismo. ` +
-    `Volverán a verlo cuando cumplan el plazo. ¿Lo guardo igualmente?`
+    `Volverán a verlo cuando cumplan el plazo.${cuando} ¿Lo guardo igualmente?`
   );
 }
 
-function fechaLarga(fecha: Date): string {
+/** Exportada para que `avisoDeCierre` y `textoDeApertura` formateen igual. */
+export function fechaLarga(fecha: Date): string {
   return new Intl.DateTimeFormat("es", {
     weekday: "long",
     day: "numeric",

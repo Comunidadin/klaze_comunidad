@@ -53,7 +53,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { Course, CourseModule, Lesson } from "@/lib/types";
 import { tipoDeClase } from "@/lib/types";
-import { avisoDeCierre, type ConfigGoteo, type GoteoModo } from "@/lib/goteo";
+import { avisoDeCierre, fechaDeApertura, type ConfigGoteo, type GoteoModo } from "@/lib/goteo";
 
 export interface CursoEditorProps {
   cursoId: string;
@@ -441,16 +441,21 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
       // devolvió el estado vacío antes de definir esta función), pero
       // TypeScript no propaga esa comprobación dentro de una función anidada.
       if (curso.goteoModo !== "ninguno" && curso.publicado && hayQueAvisar && community) {
-        const { bloqueados, total } = await contarBloqueadosPorGoteo(
+        const ahora = new Date();
+        const { bloqueados, total, entradaMasReciente } = await contarBloqueadosPorGoteo(
           supabase,
           community.id,
           curso.id,
           curso,
-          new Date()
+          ahora,
+          community.ownerId
         );
         if (bloqueados > 0) {
+          const vuelveEl = entradaMasReciente
+            ? fechaDeApertura(curso, entradaMasReciente, ahora)
+            : null;
           const seguir = window.confirm(
-            avisoDeCierre({ titulo: curso.titulo, bloqueados, total })
+            avisoDeCierre({ titulo: curso.titulo, bloqueados, total, vuelveEl })
           );
           if (!seguir) return;
         }

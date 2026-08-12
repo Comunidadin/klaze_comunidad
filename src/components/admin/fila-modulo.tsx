@@ -18,7 +18,7 @@ import { crearClienteNavegador } from "@/lib/supabase/client";
 import { cargarArmazon } from "@/lib/supabase/consultas";
 import { cambiarPublicadoCurso, guardarCurso } from "@/lib/supabase/guardar-curso";
 import { contarBloqueadosPorGoteo } from "@/lib/supabase/alumnos";
-import { avisoDeCierre, notaDeGoteo } from "@/lib/goteo";
+import { avisoDeCierre, fechaDeApertura, notaDeGoteo } from "@/lib/goteo";
 import { useAppStore } from "@/lib/store";
 import { modulosOrdenados } from "@/components/course/course-utils";
 import { DialogoEliminarModulo } from "@/components/admin/eliminar-modulo";
@@ -53,6 +53,7 @@ export interface FilaModuloProps {
 
 export function FilaModulo({ curso, primero, ultimo, onMover }: FilaModuloProps) {
   const establecerArmazon = useAppStore((s) => s.establecerArmazon);
+  const propietarioId = useAppStore((s) => s.armazon?.perfil.id ?? "");
   const router = useRouter();
 
   const [abierto, setAbierto] = useState(false);
@@ -78,16 +79,21 @@ export function FilaModulo({ curso, primero, ultimo, onMover }: FilaModuloProps)
       // `try`, no antes: si la consulta falla, tiene que caer en el mismo
       // `catch` que ya avisa, no salir como un rechazo sin manejar.
       if (vaAPublicar && curso.goteoModo !== "ninguno") {
-        const { bloqueados, total } = await contarBloqueadosPorGoteo(
+        const ahora = new Date();
+        const { bloqueados, total, entradaMasReciente } = await contarBloqueadosPorGoteo(
           supabase,
           curso.comunidadId,
           curso.id,
           curso,
-          new Date()
+          ahora,
+          propietarioId
         );
         if (bloqueados > 0) {
+          const vuelveEl = entradaMasReciente
+            ? fechaDeApertura(curso, entradaMasReciente, ahora)
+            : null;
           const seguir = window.confirm(
-            avisoDeCierre({ titulo: curso.titulo, bloqueados, total })
+            avisoDeCierre({ titulo: curso.titulo, bloqueados, total, vuelveEl })
           );
           if (!seguir) return;
         }
