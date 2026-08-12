@@ -112,6 +112,27 @@ export function notaDeGoteo(config: ConfigGoteo): string | null {
   return null;
 }
 
+/**
+ * El texto del aviso que se muestra antes de guardar un cambio que le cierra
+ * contenido a alumnos que ya tenían acceso — el mismo `confirm()` que dispara
+ * el editor al configurar el goteo y la fila de la lista al publicar un
+ * módulo que ya lo tiene. Vive aquí, en vez de escribirse a mano en los dos
+ * sitios que lo usan, porque es copy derivada de la cuenta de bloqueados, y
+ * la copy que se escribe dos veces es la que se desincroniza la segunda vez
+ * que alguien la retoca.
+ */
+export function avisoDeCierre(o: {
+  titulo: string;
+  bloqueados: number;
+  total: number;
+}): string {
+  return (
+    `Esto cierra «${o.titulo}» a ${o.bloqueados} de tus ${o.total} ` +
+    `${o.total === 1 ? "alumno" : "alumnos"} ahora mismo. ` +
+    `Volverán a verlo cuando cumplan el plazo. ¿Lo guardo igualmente?`
+  );
+}
+
 function fechaLarga(fecha: Date): string {
   return new Intl.DateTimeFormat("es", {
     weekday: "long",

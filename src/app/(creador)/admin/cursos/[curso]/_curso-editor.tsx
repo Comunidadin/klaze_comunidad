@@ -53,7 +53,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { Course, CourseModule, Lesson } from "@/lib/types";
 import { tipoDeClase } from "@/lib/types";
-import type { ConfigGoteo, GoteoModo } from "@/lib/goteo";
+import { avisoDeCierre, type ConfigGoteo, type GoteoModo } from "@/lib/goteo";
 
 export interface CursoEditorProps {
   cursoId: string;
@@ -154,14 +154,19 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
   }
   const [confirmarBorrarCurso, setConfirmarBorrarCurso] = useState(false);
 
-  // La configuración de goteo con la que se cargó (o con la que se guardó por
-  // última vez), para que el aviso de "esto cierra el módulo" solo salte
-  // cuando el goteo de verdad cambió — ver `guardar()`. Un `ref` y no estado:
-  // no participa en el render, solo en la comparación de `guardar`.
-  const goteoAlCargar = useRef<ConfigGoteo>({
+  // La configuración de goteo y el `publicado` con los que se cargó el
+  // módulo (o con los que se guardó por última vez), para que el aviso de
+  // "esto cierra el módulo" solo salte cuando de verdad hay algo nuevo que
+  // cierre contenido — ver `guardar()`. `publicado` va aquí también porque
+  // publicar es tan "cierre" como configurar el goteo: un módulo en borrador
+  // no le cierra nada a nadie, y el instante en que se publica es justo
+  // cuando empieza a hacerlo. Un `ref` y no estado: no participa en el
+  // render, solo en la comparación de `guardar`.
+  const alCargar = useRef<ConfigGoteo & { publicado: boolean }>({
     goteoModo: "ninguno",
     goteoDias: null,
     goteoDesde: null,
+    publicado: false,
   });
 
   // Siembra la copia local de edición la primera vez que `cursoOriginal`
@@ -172,10 +177,11 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
     setCursoIdCargado(cursoOriginal.id);
     setCurso({ ...cursoOriginal, modulos: modulosOrdenados(cursoOriginal) });
     setDirty(false);
-    goteoAlCargar.current = {
+    alCargar.current = {
       goteoModo: cursoOriginal.goteoModo,
       goteoDias: cursoOriginal.goteoDias,
       goteoDesde: cursoOriginal.goteoDesde,
+      publicado: cursoOriginal.publicado,
     };
   }
 
@@ -412,22 +418,29 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
       // - `curso.publicado`, porque un módulo en Borrador no lo ve ningún
       //   alumno todavía — el goteo no le cierra nada a nadie y el aviso
       //   sería falso.
-      // - `cambioElGoteo`, para que no salte en cada guardado mientras el
-      //   goteo siga igual (el precio, la portada, una clase nueva…): un
-      //   aviso que grita siempre deja de leerse, y el día que de verdad
+      // - `hayQueAvisar`, para que no salte en cada guardado mientras nada
+      //   nuevo cierre contenido (el precio, la portada, una clase nueva…):
+      //   un aviso que grita siempre deja de leerse, y el día que de verdad
       //   cierre algo el creador ya le da a Aceptar sin mirar.
       // Va dentro del `try` y no antes: si esta consulta lanza, tiene que
       // caer en el mismo `catch` que ya avisa al creador, no salir como un
       // rechazo sin manejar.
       const cambioElGoteo =
-        curso.goteoModo !== goteoAlCargar.current.goteoModo ||
-        curso.goteoDias !== goteoAlCargar.current.goteoDias ||
-        curso.goteoDesde !== goteoAlCargar.current.goteoDesde;
+        curso.goteoModo !== alCargar.current.goteoModo ||
+        curso.goteoDias !== alCargar.current.goteoDias ||
+        curso.goteoDesde !== alCargar.current.goteoDesde;
+
+      // Publicar es tan «cierre» como configurar el goteo: un módulo en
+      // borrador no se lo cierra a nadie, y el instante en que se publica es
+      // justo cuando empieza a hacerlo. Sin esta segunda mitad, configurar el
+      // goteo en borrador y publicar después se cuela sin decir nada.
+      const seAcabaDePublicar = curso.publicado && !alCargar.current.publicado;
+      const hayQueAvisar = cambioElGoteo || seAcabaDePublicar;
 
       // `community` no puede ser nulo aquí en la práctica (el componente ya
       // devolvió el estado vacío antes de definir esta función), pero
       // TypeScript no propaga esa comprobación dentro de una función anidada.
-      if (curso.goteoModo !== "ninguno" && curso.publicado && cambioElGoteo && community) {
+      if (curso.goteoModo !== "ninguno" && curso.publicado && hayQueAvisar && community) {
         const { bloqueados, total } = await contarBloqueadosPorGoteo(
           supabase,
           community.id,
@@ -437,9 +450,7 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
         );
         if (bloqueados > 0) {
           const seguir = window.confirm(
-            `Esto cierra «${curso.titulo}» a ${bloqueados} de tus ${total} ` +
-              `${total === 1 ? "alumno" : "alumnos"} ahora mismo. ` +
-              `Volverán a verlo cuando cumplan el plazo. ¿Lo guardo igualmente?`
+            avisoDeCierre({ titulo: curso.titulo, bloqueados, total })
           );
           if (!seguir) return;
         }
@@ -449,12 +460,13 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
       // Releer el armazon para que el resto de la app (classroom incluido)
       // vea el cambio sin recargar la pagina.
       establecerArmazon(await cargarArmazon(supabase));
-      // Para que un segundo guardado seguido, con el goteo ya en su sitio, no
-      // vuelva a preguntar.
-      goteoAlCargar.current = {
+      // Para que un segundo guardado seguido, con el goteo y el publicado ya
+      // en su sitio, no vuelva a preguntar.
+      alCargar.current = {
         goteoModo: curso.goteoModo,
         goteoDias: curso.goteoDias,
         goteoDesde: curso.goteoDesde,
+        publicado: curso.publicado,
       };
       setDirty(false);
       toast.success("Cambios guardados");

@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import {
+  avisoDeCierre,
   fechaDeApertura,
   textoDeApertura,
   notaDeGoteo,
@@ -95,4 +96,17 @@ test("el modo fecha abre en el instante exacto, igual que el de dias", () => {
     goteoModo: "fecha", goteoDias: null, goteoDesde: "2026-08-12T12:00:00Z",
   };
   expect(fechaDeApertura(justo, null, AHORA)).toBeNull();
+});
+
+test("el aviso de cierre dice alumno en singular y alumnos en plural", () => {
+  // Mismo texto para el editor y para la fila de la lista: si se escribiera
+  // dos veces, el singular es justo el detalle que se olvida en la segunda.
+  expect(avisoDeCierre({ titulo: "Fundamentos", bloqueados: 1, total: 1 })).toBe(
+    "Esto cierra «Fundamentos» a 1 de tus 1 alumno ahora mismo. " +
+      "Volverán a verlo cuando cumplan el plazo. ¿Lo guardo igualmente?"
+  );
+  expect(avisoDeCierre({ titulo: "Fundamentos", bloqueados: 3, total: 5 })).toBe(
+    "Esto cierra «Fundamentos» a 3 de tus 5 alumnos ahora mismo. " +
+      "Volverán a verlo cuando cumplan el plazo. ¿Lo guardo igualmente?"
+  );
 });

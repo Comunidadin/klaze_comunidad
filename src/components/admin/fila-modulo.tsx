@@ -17,7 +17,8 @@ import {
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { cargarArmazon } from "@/lib/supabase/consultas";
 import { cambiarPublicadoCurso, guardarCurso } from "@/lib/supabase/guardar-curso";
-import { notaDeGoteo } from "@/lib/goteo";
+import { contarBloqueadosPorGoteo } from "@/lib/supabase/alumnos";
+import { avisoDeCierre, notaDeGoteo } from "@/lib/goteo";
 import { useAppStore } from "@/lib/store";
 import { modulosOrdenados } from "@/components/course/course-utils";
 import { DialogoEliminarModulo } from "@/components/admin/eliminar-modulo";
@@ -66,10 +67,33 @@ export function FilaModulo({ curso, primero, ultimo, onMover }: FilaModuloProps)
   const nota = notaDeGoteo(curso);
 
   async function alternarPublicado() {
+    const vaAPublicar = !curso.publicado;
     setOcupado(true);
     const supabase = crearClienteNavegador();
     try {
-      await cambiarPublicadoCurso(supabase, curso.id, !curso.publicado);
+      // Publicar es el momento en que el goteo empieza a cerrar contenido de
+      // verdad: antes de esta fila estaba en Borrador y nadie lo veía. Esta
+      // es la puerta más rápida para publicar —y por eso la más usada— así
+      // que sin este aviso sería la única que no dice nada. Va dentro del
+      // `try`, no antes: si la consulta falla, tiene que caer en el mismo
+      // `catch` que ya avisa, no salir como un rechazo sin manejar.
+      if (vaAPublicar && curso.goteoModo !== "ninguno") {
+        const { bloqueados, total } = await contarBloqueadosPorGoteo(
+          supabase,
+          curso.comunidadId,
+          curso.id,
+          curso,
+          new Date()
+        );
+        if (bloqueados > 0) {
+          const seguir = window.confirm(
+            avisoDeCierre({ titulo: curso.titulo, bloqueados, total })
+          );
+          if (!seguir) return;
+        }
+      }
+
+      await cambiarPublicadoCurso(supabase, curso.id, vaAPublicar);
       establecerArmazon(await cargarArmazon(supabase));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo cambiar el estado");
