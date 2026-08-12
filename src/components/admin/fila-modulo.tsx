@@ -17,6 +17,7 @@ import {
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { cargarArmazon } from "@/lib/supabase/consultas";
 import { cambiarPublicadoCurso, guardarCurso } from "@/lib/supabase/guardar-curso";
+import { notaDeGoteo } from "@/lib/goteo";
 import { useAppStore } from "@/lib/store";
 import { modulosOrdenados } from "@/components/course/course-utils";
 import { DialogoEliminarModulo } from "@/components/admin/eliminar-modulo";
@@ -59,6 +60,10 @@ export function FilaModulo({ curso, primero, ultimo, onMover }: FilaModuloProps)
 
   const submodulos = modulosOrdenados(curso);
   const numClases = curso.modulos.reduce((n, m) => n + m.lecciones.length, 0);
+  // Se ve desde la lista y no solo dentro del editor: con ocho módulos, tener
+  // que abrirlos uno a uno para reconstruir el calendario recién montado es
+  // justo cuando se cuelan los huecos y los solapes.
+  const nota = notaDeGoteo(curso);
 
   async function alternarPublicado() {
     setOcupado(true);
@@ -155,6 +160,7 @@ export function FilaModulo({ curso, primero, ultimo, onMover }: FilaModuloProps)
               {submodulos.length === 1 ? "submódulo" : "submódulos"} · {numClases}{" "}
               {numClases === 1 ? "clase" : "clases"} · {curso.numAlumnos}{" "}
               {curso.numAlumnos === 1 ? "alumno" : "alumnos"}
+              {nota && <span className="text-primary"> · {nota}</span>}
             </span>
           </span>
         </button>

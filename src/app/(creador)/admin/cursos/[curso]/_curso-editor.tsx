@@ -17,6 +17,7 @@ import {
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { cargarArmazon } from "@/lib/supabase/consultas";
 import { guardarCurso } from "@/lib/supabase/guardar-curso";
+import { contarBloqueadosPorGoteo } from "@/lib/supabase/alumnos";
 import { useHydrated } from "@/lib/hooks/use-session";
 import { useMyCommunity } from "@/lib/hooks/use-my-community";
 import { useAdminCourse } from "@/lib/hooks/use-admin-courses";
@@ -42,9 +43,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { Course, CourseModule, Lesson } from "@/lib/types";
 import { tipoDeClase } from "@/lib/types";
+import type { GoteoModo } from "@/lib/goteo";
 
 export interface CursoEditorProps {
   cursoId: string;
@@ -98,6 +107,22 @@ function nuevaLeccion(id: string): Lesson {
     iaHabilitada: false,
     recursos: [],
   };
+}
+
+/**
+ * ISO → el formato que pide `datetime-local`, en la zona del navegador.
+ *
+ * `toISOString()` daría UTC y el creador vería una hora distinta de la que
+ * escribió. `sv-SE` se usa porque su formato es `YYYY-MM-DD HH:mm`, a un
+ * espacio de distancia del que necesita el campo.
+ */
+function paraCampoLocal(iso: string): string {
+  return new Intl.DateTimeFormat("sv-SE", {
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit",
+  })
+    .format(new Date(iso))
+    .replace(" ", "T");
 }
 
 /**
@@ -227,6 +252,34 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
     }));
   }
 
+  /**
+   * Cambiar el modo limpia el campo del otro modo. Sin esto quedaría un
+   * `goteoDias` de 7 bajo un modo `fecha`, que la restricción de la base
+   * rechaza con un error que nadie sabría leer.
+   */
+  function actualizarModoGoteo(goteoModo: GoteoModo) {
+    actualizarCurso((c) => ({
+      ...c,
+      goteoModo,
+      goteoDias: goteoModo === "dias" ? (c.goteoDias ?? 7) : null,
+      goteoDesde: goteoModo === "fecha" ? c.goteoDesde : null,
+    }));
+  }
+
+  function actualizarDiasGoteo(valor: string) {
+    actualizarCurso((c) => ({ ...c, goteoDias: Math.max(1, Number(valor) || 1) }));
+  }
+
+  function actualizarFechaGoteo(valor: string) {
+    // `datetime-local` da "2026-09-15T14:00" sin zona. `new Date` lo interpreta
+    // en la del navegador, que es la que el creador tiene en la cabeza cuando
+    // escribe "las 9 de la mañana".
+    actualizarCurso((c) => ({
+      ...c,
+      goteoDesde: valor ? new Date(valor).toISOString() : null,
+    }));
+  }
+
   function actualizarPortadaModulo(moduloId: string, portadaUrl: string) {
     actualizarCurso((c) => ({
       ...c,
@@ -326,6 +379,31 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
     }
 
     const supabase = crearClienteNavegador();
+
+    // El aviso solo aparece cuando de verdad cierra algo. La regla se aplica a
+    // todos sin excepciones, así que esto es lo que convierte esa decisión en
+    // informada en vez de en una sorpresa que llega por correo de un alumno.
+    // `community` no puede ser nulo aquí en la práctica (el componente ya
+    // devolvió el estado vacío antes de definir esta función), pero TypeScript
+    // no propaga esa comprobación dentro de una función anidada.
+    if (curso.goteoModo !== "ninguno" && community) {
+      const { bloqueados, total } = await contarBloqueadosPorGoteo(
+        supabase,
+        community.id,
+        curso.id,
+        curso,
+        new Date()
+      );
+      if (bloqueados > 0) {
+        const seguir = window.confirm(
+          `Esto cierra «${curso.titulo}» a ${bloqueados} de tus ${total} ` +
+            `${total === 1 ? "alumno" : "alumnos"} ahora mismo. ` +
+            `Volverán a verlo cuando cumplan el plazo. ¿Lo guardo igualmente?`
+        );
+        if (!seguir) return;
+      }
+    }
+
     try {
       await guardarCurso(supabase, { ...curso, titulo: curso.titulo.trim() });
       // Releer el armazon para que el resto de la app (classroom incluido)
@@ -444,6 +522,48 @@ export function CursoEditor({ cursoId }: CursoEditorProps) {
           <p className="text-xs text-muted-foreground">
             Solo se enseña a quien todavía no tiene acceso. Klaze no cobra nada
             con esto.
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="curso-goteo">Cuándo se abre</Label>
+          <Select
+            value={curso.goteoModo}
+            onValueChange={(v) => actualizarModoGoteo(v as GoteoModo)}
+          >
+            <SelectTrigger id="curso-goteo" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ninguno">Al comprar</SelectItem>
+              <SelectItem value="dias">A los … días de entrar a la academia</SelectItem>
+              <SelectItem value="fecha">En una fecha concreta</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {curso.goteoModo === "dias" && (
+            <Input
+              type="number"
+              min={1}
+              value={curso.goteoDias ?? 7}
+              onChange={(e) => actualizarDiasGoteo(e.target.value)}
+              aria-label="Días desde que el alumno entra a la academia"
+            />
+          )}
+
+          {curso.goteoModo === "fecha" && (
+            <Input
+              type="datetime-local"
+              value={curso.goteoDesde ? paraCampoLocal(curso.goteoDesde) : ""}
+              onChange={(e) => actualizarFechaGoteo(e.target.value)}
+              aria-label="Fecha y hora en que se abre el módulo"
+            />
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            {curso.goteoModo === "ninguno"
+              ? "Tus alumnos lo ven en cuanto reciben acceso."
+              : "Mientras esté cerrado, tus alumnos ven el módulo con un candado y la fecha en que se abre. Tú lo ves siempre, para poder prepararlo."}
           </p>
         </div>
 
