@@ -18,6 +18,14 @@ afterAll(async () => {
   await desmontar(e);
 });
 
+/** El curso del escenario tal como lo devuelve el armazón del dueño. */
+async function leerCursoDelDueno() {
+  const { cursos } = await cargarArmazon(e.duenoA.cliente);
+  const curso = cursos.find((c) => c.id === e.cursoAPublicado);
+  if (!curso) throw new Error("El escenario no trajo el curso publicado");
+  return curso;
+}
+
 function cursoDePrueba(comunidadId: string, slug: string): Course {
   return {
     id: crypto.randomUUID(),
@@ -308,4 +316,34 @@ test("una clase con video, texto y embed conserva sus piezas y su orden", async 
   // podria acabar debajo del formulario sin que nada fallara.
   expect(piezas?.map((b) => b.tipo)).toEqual(["video", "texto", "embed"]);
   expect(piezas?.[2]).toMatchObject({ url: "https://typeform.com/to/x", alto: 640 });
+});
+
+test("el goteo se guarda y se vuelve a leer igual", async () => {
+  // Un campo que se guarda pero no se lee —o al reves— es de los fallos que no
+  // dan error: el creador configura el goteo, recarga y se le ha ido.
+  const curso = await leerCursoDelDueno();
+
+  await guardarCurso(e.duenoA.cliente, {
+    ...curso,
+    goteoModo: "dias",
+    goteoDias: 7,
+    goteoDesde: null,
+  });
+
+  const { data } = await admin
+    .from("cursos")
+    .select("goteo_modo, goteo_dias, goteo_desde")
+    .eq("id", curso.id)
+    .single();
+
+  expect(data!.goteo_modo).toBe("dias");
+  expect(data!.goteo_dias).toBe(7);
+  expect(data!.goteo_desde).toBeNull();
+
+  await guardarCurso(e.duenoA.cliente, {
+    ...curso,
+    goteoModo: "ninguno",
+    goteoDias: null,
+    goteoDesde: null,
+  });
 });

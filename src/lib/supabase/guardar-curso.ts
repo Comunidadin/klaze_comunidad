@@ -33,6 +33,13 @@ export async function guardarCurso(
     nivel_requerido: curso.nivelRequerido,
     publicado: curso.publicado,
     orden: curso.orden,
+    goteo_modo: curso.goteoModo,
+    // Los dos van explícitos a `null` cuando no aplican, y no se omiten: un
+    // `upsert` que no menciona la columna deja el valor viejo, y quedaría un
+    // `goteo_dias` de 7 bajo un modo `fecha` — que la restricción de la base
+    // rechaza, con un error que nadie sabría leer.
+    goteo_dias: curso.goteoModo === "dias" ? curso.goteoDias : null,
+    goteo_desde: curso.goteoModo === "fecha" ? curso.goteoDesde : null,
   });
   if (errCurso) throw new Error(`No se pudo guardar el curso: ${errCurso.message}`);
 

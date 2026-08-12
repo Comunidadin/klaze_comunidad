@@ -1,3 +1,5 @@
+import type { GoteoModo } from "@/lib/goteo";
+
 export type UserRole = "alumno" | "creador" | "superadmin";
 
 export interface User {
@@ -79,6 +81,19 @@ export interface Course {
    * la devolviera Postgres, que no promete nada.
    */
   orden: number;
+  /**
+   * Cuándo se abre este módulo para un alumno.
+   *
+   * `ninguno` (lo que ya había) lo entrega al comprar. `dias` lo abre a los
+   * `goteoDias` de que esa persona entrara a la academia. `fecha` lo abre en
+   * `goteoDesde`, igual para todos.
+   *
+   * Estos tres campos son SOLO para pintar la cuenta atrás. El candado de
+   * verdad es `privado.curso_disponible` en Postgres.
+   */
+  goteoModo: GoteoModo;
+  goteoDias: number | null;
+  goteoDesde: string | null;
 }
 
 export interface CourseModule {
