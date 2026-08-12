@@ -16,7 +16,7 @@ Aplican a todas las tareas.
 
 - **Vocabulario partido.** En el código `curso` = **módulo** en la interfaz, `modulo` = **submódulo**, `leccion` = **clase**. La copy nueva usa las palabras de la interfaz; los identificadores, las del código.
 - **Toda la interfaz y la copy, en español.**
-- **Ningún componente ni página consulta Supabase directamente**: todo dato pasa por un hook de `src/lib/hooks/`, que llama a un módulo de `src/lib/supabase/`.
+- **Los datos que se PINTAN pasan por un hook** de `src/lib/hooks/`, que llama a un módulo de `src/lib/supabase/`. Los formularios del panel del creador escriben directo llamando a `src/lib/supabase/…` — es lo que ya hace `_curso-editor.tsx` con `guardarCurso` y `cargarArmazon` (líneas 17-19), y esta tarea sigue esa práctica en vez de inventar un hook para una cuenta que se usa en un solo sitio.
 - **RLS no lanza: filtra.** Un `insert`/`update` rechazado vuelve sin error y sin filas. Todo escritor comprueba `data.length === 0` y lanza.
 - **Toda función `security definer` lleva `set search_path = ''`** y referencia tablas con esquema explícito. Lo verifica `tests/rls/auditoria.test.ts` (A3).
 - **RLS activado y `grant` explícito** en toda tabla nueva, en su misma migración. Aquí no se crean tablas.
@@ -974,19 +974,26 @@ En `src/app/(creador)/admin/cursos/[curso]/_curso-editor.tsx`, junto a las demá
 
 Y justo después del bloque del precio (el `</div>` que cierra `curso-precio`, línea ~448), el bloque nuevo:
 
+Con el `Select` de shadcn que ya vive en `src/components/ui/select.tsx`, y no
+con un `<select>` normal: así se ve igual que el resto del panel y funciona en
+modo oscuro sin clases escritas a mano.
+
 ```tsx
         <div className="space-y-1.5">
           <Label htmlFor="curso-goteo">Cuándo se abre</Label>
-          <select
-            id="curso-goteo"
+          <Select
             value={curso.goteoModo}
-            onChange={(e) => actualizarModoGoteo(e.target.value as GoteoModo)}
-            className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            onValueChange={(v) => actualizarModoGoteo(v as GoteoModo)}
           >
-            <option value="ninguno">Al comprar</option>
-            <option value="dias">A los … días de entrar a la academia</option>
-            <option value="fecha">En una fecha concreta</option>
-          </select>
+            <SelectTrigger id="curso-goteo" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ninguno">Al comprar</SelectItem>
+              <SelectItem value="dias">A los … días de entrar a la academia</SelectItem>
+              <SelectItem value="fecha">En una fecha concreta</SelectItem>
+            </SelectContent>
+          </Select>
 
           {curso.goteoModo === "dias" && (
             <Input
@@ -1035,7 +1042,18 @@ function paraCampoLocal(iso: string): string {
 }
 ```
 
-Importar en la cabecera: `import type { GoteoModo } from "@/lib/goteo";`
+Importar en la cabecera:
+
+```ts
+import type { GoteoModo } from "@/lib/goteo";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+```
 
 - [ ] **Paso 3: Añadir el aviso antes de guardar**
 
