@@ -38,12 +38,15 @@ function cursoDePrueba(comunidadId: string, slug: string): Course {
     nivelRequerido: null,
     publicado: true,
     orden: 1,
-    secciones: [],
+    goteoModo: "ninguno",
+    goteoDias: null,
+    goteoDesde: null,
     modulos: [
       {
         id: crypto.randomUUID(),
         titulo: "Modulo 1",
         orden: 1,
+        publicado: true,
         lecciones: [
           {
             id: crypto.randomUUID(),
@@ -54,10 +57,17 @@ function cursoDePrueba(comunidadId: string, slug: string): Course {
               { id: crypto.randomUUID(), tipo: "video", vimeoId: "987654321" },
             ],
             recursos: [],
+            iaHabilitada: false,
           },
         ],
       },
-      { id: crypto.randomUUID(), titulo: "Modulo 2", orden: 2, lecciones: [] },
+      {
+        id: crypto.randomUUID(),
+        titulo: "Modulo 2",
+        orden: 2,
+        publicado: true,
+        lecciones: [],
+      },
     ],
   };
 }
@@ -116,6 +126,7 @@ test("quitar una leccion la borra sin tocar las demas", async () => {
       },
     ],
     recursos: [],
+    iaHabilitada: false,
   });
   await guardarCurso(e.duenoA.cliente, curso);
 
@@ -304,6 +315,7 @@ test("una clase con video, texto y embed conserva sus piezas y su orden", async 
       { id: crypto.randomUUID(), tipo: "embed", url: "https://typeform.com/to/x", alto: 640 },
     ],
     recursos: [],
+    iaHabilitada: false,
   });
 
   await guardarCurso(e.duenoA.cliente, curso);
@@ -340,10 +352,28 @@ test("el goteo se guarda y se vuelve a leer igual", async () => {
   expect(data!.goteo_dias).toBe(7);
   expect(data!.goteo_desde).toBeNull();
 
+  // La vuelta, que es la mitad que faltaba: leer por donde lee la app de
+  // verdad. Comprobarlo solo contra la tabla verifica que se escribió, no que
+  // se pueda recuperar --- y un campo que se guarda pero no se lee no da
+  // error: el creador lo configura, recarga y se le ha ido.
+  const { cursos } = await cargarArmazon(e.duenoA.cliente);
+  const releido = cursos.find((c) => c.id === curso.id);
+  expect(releido?.goteoModo).toBe("dias");
+  expect(releido?.goteoDias).toBe(7);
+  expect(releido?.goteoDesde).toBeNull();
+
   await guardarCurso(e.duenoA.cliente, {
     ...curso,
     goteoModo: "ninguno",
     goteoDias: null,
     goteoDesde: null,
   });
+});
+
+test("el armazon trae cuando entro el alumno a la academia", async () => {
+  // Es el reloj del goteo por dias: sin esta fecha, la tarjeta de un modulo
+  // cerrado solo puede decir "cerrado" en vez de "se abre el martes".
+  const armazon = await cargarArmazon(e.alumnoA.cliente);
+  expect(armazon.entradaEl).not.toBeNull();
+  expect(Number.isNaN(Date.parse(armazon.entradaEl!))).toBe(false);
 });
