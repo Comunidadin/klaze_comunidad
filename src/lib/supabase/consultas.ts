@@ -62,7 +62,7 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
   }
 
   const CAMPOS_COMUNIDAD =
-    "id, slug, nombre, descripcion, logo_url, color_acento, propietario_id, plan_id, estado, nombres_niveles, marca_auth, nombre_ia, avatar_ia, creado_el";
+    "id, slug, nombre, descripcion, logo_url, favicon_url, color_acento, propietario_id, plan_id, estado, nombres_niveles, marca_auth, nombre_ia, avatar_ia, creado_el";
 
   // Primero la que POSEES, y solo si no posees ninguna, la que estudias.
   //
@@ -153,6 +153,7 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
         nombre: c.nombre,
         descripcion: c.descripcion,
         logoUrl: c.logo_url,
+        faviconUrl: c.favicon_url ?? undefined,
         colorAcento: c.color_acento,
         ownerId: c.propietario_id,
         plan: c.plan_id as Community["plan"],

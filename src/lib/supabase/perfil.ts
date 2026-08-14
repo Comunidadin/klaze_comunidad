@@ -36,6 +36,7 @@ export type CambiosComunidad = Partial<
     | "nombre"
     | "slug"
     | "logoUrl"
+    | "faviconUrl"
     | "colorAcento"
     | "nombresNiveles"
     | "marcaAuth"
@@ -65,6 +66,9 @@ export async function guardarComunidad(
   // de Postgres, no un filtro de RLS.
   if (cambios.slug !== undefined) fila.slug = cambios.slug;
   if (cambios.logoUrl !== undefined) fila.logo_url = cambios.logoUrl;
+  // Vacío significa "quitar el favicon": se guarda null y la pestaña vuelve
+  // a caer al logo.
+  if (cambios.faviconUrl !== undefined) fila.favicon_url = cambios.faviconUrl || null;
   if (cambios.colorAcento !== undefined) fila.color_acento = cambios.colorAcento;
   if (cambios.nombresNiveles !== undefined) fila.nombres_niveles = cambios.nombresNiveles;
   if (cambios.marcaAuth !== undefined) fila.marca_auth = cambios.marcaAuth;

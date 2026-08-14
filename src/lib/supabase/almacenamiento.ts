@@ -9,7 +9,7 @@ const BUCKET = "publico";
  * `politicas_de_almacenamiento`).
  */
 export type DestinoImagen =
-  | { tipo: "academia"; comunidadId: string; uso: "logo" | "portada" | "modulo" | "auth" }
+  | { tipo: "academia"; comunidadId: string; uso: "logo" | "favicon" | "portada" | "modulo" | "auth" }
   | { tipo: "avatar"; usuarioId: string };
 
 function rutaDe(destino: DestinoImagen, extension: string): string {

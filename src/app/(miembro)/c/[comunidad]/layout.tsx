@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { MemberShell } from "@/components/shells/member-shell";
 import { estiloDeAcademia } from "@/lib/color-academia";
-import { leerMarcaServidor } from "@/lib/marca-servidor";
+import { iconoDeMarca, leerMarcaServidor } from "@/lib/marca-servidor";
 
 /**
  * Server Component: desenvuelve `params` (async en Next 16), delega la
@@ -29,9 +29,10 @@ export async function generateMetadata({
   const { comunidad } = await params;
   const marca = await leerMarcaServidor(comunidad);
   if (!marca?.nombre) return {};
+  const icono = iconoDeMarca(marca);
   return {
     title: marca.nombre,
-    ...(marca.logoUrl ? { icons: { icon: marca.logoUrl } } : {}),
+    ...(icono ? { icons: { icon: icono } } : {}),
   };
 }
 

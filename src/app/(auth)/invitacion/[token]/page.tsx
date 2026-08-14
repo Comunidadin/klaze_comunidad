@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { InvitationScreen } from "./_invitation-screen";
 import { estiloDeAcademia } from "@/lib/color-academia";
-import { leerMarcaInvitacion } from "@/lib/marca-servidor";
+import { iconoDeMarca, leerMarcaInvitacion } from "@/lib/marca-servidor";
 
 /**
  * Server Component: desenvuelve `params` (async en Next 16) y delega la
@@ -19,9 +19,10 @@ export async function generateMetadata({
   const { token } = await params;
   const marca = await leerMarcaInvitacion(token);
   if (!marca?.nombre) return {};
+  const icono = iconoDeMarca(marca);
   return {
     title: `Invitación a ${marca.nombre}`,
-    ...(marca.logoUrl ? { icons: { icon: marca.logoUrl } } : {}),
+    ...(icono ? { icons: { icon: icono } } : {}),
   };
 }
 

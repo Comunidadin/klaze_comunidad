@@ -19,7 +19,18 @@ import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/lib/supabase/env";
 export interface MarcaServidor {
   nombre: string;
   logoUrl: string | null;
+  /** Icono de pestaña propio. Sin él, `iconoDeMarca` cae al logo. */
+  faviconUrl: string | null;
   colorAcento: string | null;
+}
+
+/**
+ * El icono que va a la pestaña: el favicon si el creador subió uno, y si no
+ * el logo. Los tres layouts que pintan pestaña usan esto para no repetir el
+ * orden de preferencia.
+ */
+export function iconoDeMarca(marca: MarcaServidor): string | null {
+  return marca.faviconUrl ?? marca.logoUrl;
 }
 
 async function rpcPublica(
@@ -52,6 +63,7 @@ export async function leerMarcaServidor(slug: string): Promise<MarcaServidor | n
   return {
     nombre: (f.nombre as string) ?? "",
     logoUrl: (f.logo_url as string) ?? null,
+    faviconUrl: (f.favicon_url as string) ?? null,
     colorAcento: (f.color_acento as string) ?? null,
   };
 }
@@ -62,6 +74,7 @@ export async function leerMarcaInvitacion(token: string): Promise<MarcaServidor 
   return {
     nombre: (f.comunidad_nombre as string) ?? "",
     logoUrl: (f.comunidad_logo as string) ?? null,
+    faviconUrl: (f.comunidad_favicon as string) ?? null,
     colorAcento: (f.comunidad_color as string) ?? null,
   };
 }

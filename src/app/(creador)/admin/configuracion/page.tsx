@@ -203,6 +203,7 @@ function ConfiguracionForm({
   const [nombre, setNombre] = useState(community.nombre);
   const [slug, setSlug] = useState(community.slug);
   const [logoUrl, setLogoUrl] = useState(community.logoUrl);
+  const [faviconUrl, setFaviconUrl] = useState(community.faviconUrl ?? "");
   const [colorAcento, setColorAcento] = useState(community.colorAcento);
   const [nombreIa, setNombreIa] = useState(community.nombreIa ?? "");
   const [avatarIa, setAvatarIa] = useState(community.avatarIa ?? "");
@@ -229,6 +230,7 @@ function ConfiguracionForm({
         // valor anterior, y reenviar el mismo no cuenta como cambio.
         ...(slugLimpio !== community.slug ? { slug: slugLimpio } : {}),
         logoUrl: logoUrl.trim(),
+        faviconUrl: faviconUrl.trim(),
         colorAcento,
         nombreIa,
         avatarIa,
@@ -300,6 +302,19 @@ function ConfiguracionForm({
               destino={{ tipo: "academia", comunidadId: community.id, uso: "logo" }}
               etiqueta="Subir el logo de la academia"
               ayuda="Cuadrado, 512 × 512. PNG con fondo transparente si puedes: se ve pequeño, así que un logo con texto fino no se leerá. Sin logo mostramos la inicial de tu academia."
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Favicon</Label>
+            <SubirImagen
+              valor={faviconUrl}
+              onCambio={setFaviconUrl}
+              proporcion={1}
+              anchoSalida={128}
+              destino={{ tipo: "academia", comunidadId: community.id, uso: "favicon" }}
+              etiqueta="Subir el favicon de la academia"
+              ayuda="El icono de la pestaña del navegador. Se ve a 16 × 16, así que mejor un símbolo simple que un logo con texto. Si no subes ninguno, la pestaña usa tu logo."
             />
           </div>
 

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import LoginPage from "../page";
 import { estiloDeAcademia } from "@/lib/color-academia";
-import { leerMarcaServidor } from "@/lib/marca-servidor";
+import { iconoDeMarca, leerMarcaServidor } from "@/lib/marca-servidor";
 
 /**
  * La misma pantalla de entrada, pero sabiendo de qué academia se trata.
@@ -25,9 +25,10 @@ export async function generateMetadata({
   const { academia } = await params;
   const marca = await leerMarcaServidor(academia);
   if (!marca?.nombre) return {};
+  const icono = iconoDeMarca(marca);
   return {
     title: `Entrar — ${marca.nombre}`,
-    ...(marca.logoUrl ? { icons: { icon: marca.logoUrl } } : {}),
+    ...(icono ? { icons: { icon: icono } } : {}),
   };
 }
 

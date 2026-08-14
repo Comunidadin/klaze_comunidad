@@ -38,6 +38,8 @@ export interface Community {
   nombre: string;
   descripcion: string;
   logoUrl: string;
+  /** Icono de la pestaña del navegador. Sin él, la pestaña usa el logo. */
+  faviconUrl?: string;
   colorAcento: string; // hex, personalización por comunidad
   ownerId: string;
   plan: "starter" | "pro" | "scale";
