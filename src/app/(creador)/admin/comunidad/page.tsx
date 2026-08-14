@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
+  ChevronDown,
+  ChevronUp,
   Lock,
   LockOpen,
   MessagesSquare,
@@ -282,6 +284,28 @@ function EspaciosTab({
     );
   }
 
+  // Subir o bajar un espacio dentro de su sección. Flechas y no arrastrar:
+  // son listas de cuatro o cinco elementos, y el arrastre en móvil pelea con
+  // el scroll de la página.
+  function moverEspacio(seccionId: string, espacioId: string, direccion: -1 | 1) {
+    const seccion = secciones.find((s) => s.id === seccionId);
+    if (!seccion) return;
+    const indice = seccion.espacios.findIndex((e) => e.id === espacioId);
+    const destino = indice + direccion;
+    if (indice < 0 || destino < 0 || destino >= seccion.espacios.length) return;
+
+    const reordenados = [...seccion.espacios];
+    [reordenados[indice], reordenados[destino]] = [reordenados[destino], reordenados[indice]];
+
+    void persistir(
+      secciones.map((s) =>
+        s.id !== seccionId
+          ? s
+          : { ...s, espacios: reordenados.map((e, i) => ({ ...e, orden: i + 1 })) }
+      )
+    );
+  }
+
   // El candado se guarda al momento, sin blur: es un clic, no un campo de
   // texto. La política de `publicaciones` lo hace cumplir del lado de la base.
   function alternarSoloLectura(seccionId: string, espacioId: string) {
@@ -385,8 +409,8 @@ function EspaciosTab({
             {seccion.titulo}
           </h3>
 
-          <ul className="max-w-sm space-y-2">
-            {seccion.espacios.map((espacio) => {
+          <ul className="max-w-md space-y-2">
+            {seccion.espacios.map((espacio, indice) => {
               const esGeneral = espacio.id === ESPACIO_GENERAL;
               return (
                 <li
@@ -413,6 +437,28 @@ function EspaciosTab({
                     className="h-8"
                     aria-label={`Nombre del espacio ${espacio.nombre}`}
                   />
+                  <span className="flex shrink-0 flex-col">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="h-4"
+                      disabled={indice === 0}
+                      onClick={() => moverEspacio(seccion.id, espacio.id, -1)}
+                      aria-label={`Subir ${espacio.nombre}`}
+                    >
+                      <ChevronUp className="size-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="h-4"
+                      disabled={indice === seccion.espacios.length - 1}
+                      onClick={() => moverEspacio(seccion.id, espacio.id, 1)}
+                      aria-label={`Bajar ${espacio.nombre}`}
+                    >
+                      <ChevronDown className="size-3.5" />
+                    </Button>
+                  </span>
                   <Button
                     variant="ghost"
                     size="icon-sm"
@@ -451,7 +497,7 @@ function EspaciosTab({
             })}
           </ul>
 
-          <div className="mt-2 flex max-w-sm gap-2">
+          <div className="mt-2 flex max-w-md gap-2">
             <Input
               value={nuevoPorSeccion[seccion.id]?.icono ?? ""}
               onChange={(e) =>
