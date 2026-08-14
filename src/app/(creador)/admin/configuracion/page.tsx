@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { SubirImagen } from "@/components/shared/subir-imagen";
 import { Separator } from "@/components/ui/separator";
 import { CorreosDeLaAcademia } from "./_correos";
+import { paletaDeAcademia, type TonosTema } from "@/lib/color-academia";
 import type { Community } from "@/lib/types";
 
 function ConfiguracionSkeleton() {
@@ -103,6 +104,63 @@ function PreviewEncabezado({ nombre, logoUrl, colorAcento }: PreviewEncabezadoPr
       <p className="px-4 py-3 text-xs text-muted-foreground">
         Así se ve el encabezado y los acentos de color en el área de miembros.
       </p>
+    </div>
+  );
+}
+
+/**
+ * Lo que de verdad verán los alumnos: la paleta DERIVADA, no el hex crudo.
+ *
+ * El color elegido no entra tal cual a los botones — `estiloDeAcademia`
+ * conserva el tono e impone la luminosidad que garantiza que el texto se lea
+ * (spec 2026-08-14). Este preview enseña esa paleta ya corregida, en las dos
+ * caras, porque la corrección actúa distinto en cada tema: un amarillo se
+ * oscurece bastante en claro y apenas cambia en oscuro, y el creador tiene
+ * que verlo ANTES de guardar, no en el correo de un alumno.
+ *
+ * Los fondos y textos de las tarjetas van fijos en hex, no con tokens del
+ * tema: cada tarjeta ES su tema, independiente de cómo tenga el panel quien
+ * mira.
+ */
+function PreviewInterfaz({ colorAcento }: { colorAcento: string }) {
+  const paleta = paletaDeAcademia(colorAcento);
+  if (!paleta) return null;
+
+  const cara = (tonos: TonosTema, tema: "claro" | "oscuro") => {
+    const fondo = tema === "claro" ? "#fbfbfc" : "#16181c";
+    const texto = tema === "claro" ? "#1c1e21" : "#f2f3f5";
+    const textoBoton = tema === "claro" ? "#fcfcfc" : "#111827";
+    return (
+      <div
+        className="flex-1 space-y-2 rounded-lg p-3 ring-1 ring-foreground/10"
+        style={{ backgroundColor: fondo }}
+      >
+        <p className="text-xs" style={{ color: texto, opacity: 0.6 }}>
+          {tema === "claro" ? "Tema claro" : "Tema oscuro"}
+        </p>
+        <span
+          className="inline-block rounded-md px-3 py-1.5 text-sm font-medium"
+          style={{ backgroundColor: tonos.primary, color: textoBoton }}
+        >
+          Continuar
+        </span>
+        <p className="text-sm">
+          <span style={{ color: tonos.primary }}>Un enlace</span>
+          <span
+            className="ml-3 border-b-2 pb-0.5"
+            style={{ borderColor: tonos.primary, color: texto }}
+          >
+            Pestaña activa
+          </span>
+        </p>
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row">
+      {cara(paleta.claro, "claro")}
+      {cara(paleta.oscuro, "oscuro")}
     </div>
   );
 }
@@ -356,6 +414,12 @@ function ConfiguracionForm({
           <div className="space-y-1.5">
             <Label>Preview en vivo</Label>
             <PreviewEncabezado nombre={nombre} logoUrl={logoUrl} colorAcento={colorAcento} />
+            <PreviewInterfaz colorAcento={colorAcento} />
+            <p className="text-xs text-muted-foreground">
+              El tono es el tuyo; el brillo se ajusta solo para que el texto
+              siempre se lea. El color exacto sale en tu logo y en la portada de
+              tu entrada.
+            </p>
           </div>
 
           <Button onClick={() => void handleGuardar()} size="lg">
