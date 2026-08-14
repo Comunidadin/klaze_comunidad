@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { variableServidor } from "@/lib/entorno-servidor";
 import { crearAcademia } from "@/lib/academia";
+import { enviarCorreo } from "@/lib/correo";
+import { correoAltaAcademia } from "@/lib/plantillas";
 import { fallo } from "@/lib/error-servidor";
 
 /**
@@ -81,7 +83,32 @@ export async function POST(request: NextRequest) {
 
   try {
     const r = await crearAcademia(admin, { email, empresa, slug, planId });
-    return NextResponse.json({ ok: true, ...r });
+
+    // Nada que anunciar si la academia ya estaba: `crearAcademia` es idempotente
+    // por identificador y no ha tocado nada, así que un correo aquí le diría a
+    // alguien que acaba de recibir algo que ya tenía.
+    if (r.yaExistia) {
+      return NextResponse.json({ ok: true, ...r, enviado: false });
+    }
+
+    const { asunto, html } = correoAltaAcademia({
+      origen: new URL(request.url).origin,
+      empresa,
+      slug,
+      correo: email,
+      password: r.passwordTemporal,
+    });
+    const correo = await enviarCorreo({ para: email, asunto, html });
+
+    // `enviarCorreo` no lanza a propósito: la academia ya existe y el creador ya
+    // puede entrar. Se devuelve si salió para que la pantalla lo diga — con la
+    // contraseña delante, quien da de alta puede pasarla a mano.
+    return NextResponse.json({
+      ok: true,
+      ...r,
+      enviado: correo.enviado,
+      errorCorreo: correo.error,
+    });
   } catch (e) {
     return NextResponse.json(
       { error: fallo("api/academias", e, "No se pudo crear la academia") },

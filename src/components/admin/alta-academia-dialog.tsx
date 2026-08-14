@@ -41,6 +41,11 @@ function aSlug(texto: string): string {
  * Tiene dos caras: el formulario y, después, la contraseña temporal. La segunda
  * se enseña **una sola vez** —no se guarda en ningún sitio— así que el diálogo
  * no se cierra solo al terminar: quien da de alta tiene que verla y copiarla.
+ *
+ * El correo con esos mismos datos sale solo desde el servidor, pero la segunda
+ * cara sigue existiendo: `enviarCorreo` no lanza cuando Resend falla, y sin
+ * enseñar la contraseña aquí un correo que no salió dejaría al creador sin
+ * forma de entrar y a nadie enterado.
  */
 export function AltaAcademiaDialog({
   abierto,
@@ -59,6 +64,8 @@ export function AltaAcademiaDialog({
   const [credencial, setCredencial] = useState<{
     email: string;
     password: string;
+    /** Si el correo con estos datos llegó a salir. */
+    enviado: boolean;
   } | null>(null);
 
   // El slug se deriva del nombre hasta que alguien lo toca a mano. Después ya
@@ -131,11 +138,24 @@ export function AltaAcademiaDialog({
       }
 
       if (cuerpo.passwordTemporal) {
-        setCredencial({ email: email.trim(), password: cuerpo.passwordTemporal });
+        setCredencial({
+          email: email.trim(),
+          password: cuerpo.passwordTemporal,
+          enviado: cuerpo.enviado === true,
+        });
       } else {
-        toast.success(
-          `Academia creada. ${email.trim()} ya tenía cuenta: entra con su contraseña de siempre.`
-        );
+        // Sin contraseña que enseñar no hay segunda cara del diálogo, así que
+        // el aviso del correo tiene que caber en el propio mensaje: es la única
+        // señal de que salió o de que hay que escribirle a mano.
+        const yaTenia = `${email.trim()} ya tenía cuenta: entra con su contraseña de siempre.`;
+        if (cuerpo.enviado) {
+          toast.success(`Academia creada y correo enviado. ${yaTenia}`);
+        } else {
+          toast.warning(
+            `Academia creada, pero el correo no salió. Avísale tú: ${yaTenia}`,
+            { duration: 10000 }
+          );
+        }
         cerrar();
       }
     } catch (e) {
@@ -152,9 +172,12 @@ export function AltaAcademiaDialog({
           <>
             <DialogHeader>
               <DialogTitle>Academia creada</DialogTitle>
-              <DialogDescription>
-                Pásale estos datos al creador. La contraseña no se guarda en
-                ningún sitio y no volverás a verla.
+              <DialogDescription
+                className={credencial.enviado ? undefined : "text-destructive"}
+              >
+                {credencial.enviado
+                  ? `Le hemos mandado estos datos a ${credencial.email}. La contraseña no se guarda en ningún sitio y no volverás a verla: cópiala si quieres tenerla a mano.`
+                  : "El correo NO salió, así que pásale estos datos tú. La contraseña no se guarda en ningún sitio y no volverás a verla."}
               </DialogDescription>
             </DialogHeader>
 
@@ -189,8 +212,9 @@ export function AltaAcademiaDialog({
             <DialogHeader>
               <DialogTitle>Dar de alta una academia</DialogTitle>
               <DialogDescription>
-                Se crea la cuenta del creador y su academia. Al terminar verás
-                una contraseña temporal para pasarle.
+                Se crea la cuenta del creador y su academia, y le llega un correo
+                con su enlace de entrada y sus datos. Al terminar verás también
+                aquí la contraseña temporal.
               </DialogDescription>
             </DialogHeader>
 
