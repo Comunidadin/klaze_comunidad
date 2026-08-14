@@ -25,6 +25,9 @@ export function CargaConMarca({ slug }: { slug?: string }) {
       )}
       <div
         className="size-8 animate-spin rounded-full border-2 border-muted border-t-primary"
+        // El acento va inline: en plena carga, el `<style>` con la paleta de
+        // la academia puede no estar montado aún y el token seguiría en cian.
+        style={marca.colorAcento ? { borderTopColor: marca.colorAcento } : undefined}
         role="status"
         aria-label="Cargando"
       />

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useHydrated, useSession } from "@/lib/hooks/use-session";
 import { FullScreenLoader } from "@/components/shared/full-screen-loader";
+import { CargaConMarca } from "@/components/shared/carga-con-marca";
 
 /**
  * Guard del grupo `(miembro)`: cualquier usuario logueado puede entrar
@@ -32,7 +33,11 @@ export default function MiembroLayout({ children }: { children: React.ReactNode 
   }, [hydrated, user, router, pathname]);
 
   if (!hydrated || !user) {
-    return <FullScreenLoader />;
+    // En una ruta de academia, la espera lleva SU logo y SU color: el spinner
+    // cian de Klaze aquí desconcertaba («¿a dónde me metí?»). Fuera de /c
+    // (perfil, /academias) no se sabe de quién es la pantalla: neutro.
+    const slug = pathname?.startsWith("/c/") ? pathname.split("/")[2] : null;
+    return slug ? <CargaConMarca slug={slug} /> : <FullScreenLoader />;
   }
 
   return (

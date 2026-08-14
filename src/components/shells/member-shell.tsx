@@ -3,7 +3,18 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeftRight, LogOut, Search, SearchX, User as UserIcon } from "lucide-react";
+import {
+  ArrowLeftRight,
+  BookOpen,
+  Calendar,
+  LogOut,
+  MessagesSquare,
+  Search,
+  SearchX,
+  Trophy,
+  User as UserIcon,
+  Users,
+} from "lucide-react";
 import { useCommunity } from "@/lib/hooks/use-community";
 import { useSession } from "@/lib/hooks/use-session";
 import { useThemeToggle } from "@/components/shared/theme-toggle";
@@ -39,11 +50,11 @@ export interface MemberShellProps {
  * Avanzada", tiene el de su academia.
  */
 const NAV = [
-  { label: "Módulos", segmento: "/cursos" },
-  { label: "Comunidad", segmento: "/comunidad" },
-  { label: "Calendario", segmento: "/calendario" },
-  { label: "Miembros", segmento: "/miembros" },
-  { label: "Ranking", segmento: "/ranking" },
+  { label: "Módulos", segmento: "/cursos", Icono: BookOpen },
+  { label: "Comunidad", segmento: "/comunidad", Icono: MessagesSquare },
+  { label: "Calendario", segmento: "/calendario", Icono: Calendar },
+  { label: "Miembros", segmento: "/miembros", Icono: Users },
+  { label: "Ranking", segmento: "/ranking", Icono: Trophy },
 ] as const;
 
 /**
@@ -152,7 +163,7 @@ export function MemberShell({ communitySlug, children }: MemberShellProps) {
           {/* La navegación de la academia. Estas cuatro eran pestañas DENTRO de
               cada módulo; al subir la comunidad al nivel de la academia suben
               con ella, porque ya no dependen de en qué módulo estés. */}
-          <nav className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">
+          <nav className="hidden min-w-0 flex-1 items-center gap-0.5 overflow-x-auto md:flex">
             {NAV.map((item) => {
               const href = `/c/${community.slug}${item.segmento}`;
               // `startsWith` y no igualdad: `/comunidad/espacio/preguntas` tiene
@@ -243,7 +254,33 @@ export function MemberShell({ communitySlug, children }: MemberShellProps) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 py-8 pb-24 sm:px-6 md:pb-8">{children}</main>
+
+      {/* La barra de pestañas de movil: en el pulgar, no arriba. La superior
+          se esconde bajo `md:` — misma lista, dos formas. */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur supports-backdrop-filter:bg-card/85 md:hidden"
+        aria-label="Secciones de la academia"
+      >
+        {NAV.map(({ label, segmento, Icono }) => {
+          const href = `/c/${community.slug}${segmento}`;
+          const activo = pathname === href || (pathname?.startsWith(`${href}/`) ?? false);
+          return (
+            <Link
+              key={segmento}
+              href={href}
+              aria-current={activo ? "page" : undefined}
+              className={cn(
+                "flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
+                activo ? "text-primary" : "text-muted-foreground"
+              )}
+            >
+              <Icono className="size-5" />
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
 
       <Buscador
         comunidadId={community.id}

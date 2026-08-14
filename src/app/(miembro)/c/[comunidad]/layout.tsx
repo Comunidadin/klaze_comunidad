@@ -33,6 +33,10 @@ export async function generateMetadata({
   return {
     title: marca.nombre,
     ...(icono ? { icons: { icon: icono } } : {}),
+    // La academia como PWA: su manifest y su título de iOS. Android instala
+    // por el manifest; iOS lo ignora y usa `appleWebApp` + el icono de arriba.
+    manifest: `/c/${comunidad}/manifest.webmanifest`,
+    appleWebApp: { capable: true, title: marca.nombre },
   };
 }
 
