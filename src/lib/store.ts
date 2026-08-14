@@ -67,6 +67,16 @@ export interface AppState {
    */
   espaciosVistos: Record<string, string>;
   marcarEspacioVisto: (espacioId: string) => void;
+
+  /**
+   * La academia elegida en ESTE navegador, cuando se pertenece a varias.
+   *
+   * Preferencia de interfaz, como `espaciosVistos`: se persiste (es solo un
+   * id) y `cargarArmazon` la usa para decidir qué academia cargar. Si deja de
+   * estar en la lista —te echaron, se suspendió— se ignora sola.
+   */
+  academiaActivaId: string | null;
+  fijarAcademiaActiva: (id: string | null) => void;
 }
 
 /**
@@ -111,6 +121,9 @@ export const useAppStore = create<AppState>()(
           },
         }));
       },
+
+      academiaActivaId: null,
+      fijarAcademiaActiva: (id) => set({ academiaActivaId: id }),
     }),
     {
       name: "intercambio-v1",

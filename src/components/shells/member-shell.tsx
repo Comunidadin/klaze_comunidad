@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, Search, SearchX, User as UserIcon } from "lucide-react";
+import { ArrowLeftRight, LogOut, Search, SearchX, User as UserIcon } from "lucide-react";
 import { useCommunity } from "@/lib/hooks/use-community";
 import { useSession } from "@/lib/hooks/use-session";
 import { useThemeToggle } from "@/components/shared/theme-toggle";
@@ -11,6 +11,9 @@ import { LevelBadge } from "@/components/shared/level-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { AcademiaSuspendida } from "@/components/shared/academia-suspendida";
 import { Buscador } from "@/components/shared/buscador";
+import { crearClienteNavegador } from "@/lib/supabase/client";
+import { cargarArmazon, type AcademiaMia } from "@/lib/supabase/consultas";
+import { useAppStore } from "@/lib/store";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import {
@@ -55,6 +58,17 @@ export function MemberShell({ communitySlug, children }: MemberShellProps) {
   const pathname = usePathname();
   const { Icono: IconoTema, etiqueta: etiquetaTema, toggle: toggleTema } = useThemeToggle();
   const [buscadorAbierto, setBuscadorAbierto] = useState(false);
+  const misAcademias = useAppStore((s) => s.armazon?.misAcademias);
+  const fijarAcademiaActiva = useAppStore((s) => s.fijarAcademiaActiva);
+  const establecerArmazon = useAppStore((s) => s.establecerArmazon);
+
+  async function cambiarAcademia(academia: AcademiaMia) {
+    // Primero la preferencia, después el armazón nuevo, y por último navegar:
+    // así la pantalla de destino ya nace con los datos de la academia elegida.
+    fijarAcademiaActiva(academia.id);
+    establecerArmazon(await cargarArmazon(crearClienteNavegador(), academia.id));
+    router.push(`/c/${academia.slug}/cursos`);
+  }
 
   // ⌘K / Ctrl-K abre el buscador desde cualquier pantalla del área.
   useEffect(() => {
@@ -198,6 +212,25 @@ export function MemberShell({ communitySlug, children }: MemberShellProps) {
                 >
                   <IconoTema className="size-4" /> {etiquetaTema}
                 </DropdownMenuItem>
+                {misAcademias && misAcademias.length > 1 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">
+                      Cambiar de academia
+                    </DropdownMenuLabel>
+                    {misAcademias
+                      .filter((a) => a.id !== community.id)
+                      .map((a) => (
+                        <DropdownMenuItem
+                          key={a.id}
+                          onSelect={() => void cambiarAcademia(a)}
+                        >
+                          <ArrowLeftRight className="size-4" />
+                          <span className="truncate">{a.nombre}</span>
+                        </DropdownMenuItem>
+                      ))}
+                  </>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive" onSelect={handleLogout}>
                   <LogOut className="size-4" /> Cerrar sesión

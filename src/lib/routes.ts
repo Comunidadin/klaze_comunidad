@@ -27,6 +27,13 @@ export function homePorRol(user: User): string {
   }
   if (user.rol === "creador") return "/admin";
 
+  // Con varias academias y ninguna elegida aún en este navegador, se
+  // pregunta. Con una sola —o con la elección ya hecha— directo a clase.
+  const { academiaActivaId } = useAppStore.getState();
+  if ((armazon?.misAcademias?.length ?? 0) > 1 && !academiaActivaId) {
+    return "/academias";
+  }
+
   const slug = armazon?.comunidad?.slug;
   return slug ? `/c/${slug}/cursos` : "/login";
 }

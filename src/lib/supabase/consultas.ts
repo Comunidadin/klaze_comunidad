@@ -2,10 +2,28 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Community, Course, Lesson, User, UserRole } from "@/lib/types";
 import type { GoteoModo } from "@/lib/goteo";
 import { nivelPorPuntos } from "@/lib/levels";
+// Solo para leer `academiaActivaId` (preferencia de interfaz de este
+// navegador). El store importa de aquí únicamente el TIPO `Armazon`, así que
+// no hay ciclo en runtime.
+import { useAppStore } from "@/lib/store";
+
+/** Una academia mía, para el conmutador: lo justo para pintar la tarjeta. */
+export interface AcademiaMia {
+  id: string;
+  slug: string;
+  nombre: string;
+  logoUrl: string;
+  estado: "activa" | "suspendida";
+}
 
 export interface Armazon {
   perfil: User;
   comunidad: Community | null;
+  /**
+   * Todas las academias de esta persona — las que posee y las que estudia.
+   * Con una sola, el conmutador no aparece y todo es como siempre.
+   */
+  misAcademias: AcademiaMia[];
   cursos: Course[];
   /**
    * Ids de las lecciones que esta persona ha completado.
@@ -38,7 +56,17 @@ export interface Armazon {
  * devuelve un curso es porque la base ha decidido que puedes verlo. Repetir el
  * filtro aquí duplicaría la regla en dos sitios que pueden divergir.
  */
-export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> {
+export async function cargarArmazon(
+  supabase: SupabaseClient,
+  /**
+   * La academia que esta persona eligió en ESTE navegador (el conmutador la
+   * fija en el store). Por defecto se lee de ahí, así los diez sitios que
+   * recargan el armazón tras editar algo conservan la elección sin saberlo.
+   * Si ya no está en la lista —la echaron, se suspendió— cae al orden de
+   * siempre: la propia, y si no, la primera inscrita.
+   */
+  academiaPreferida: string | null = useAppStore.getState().academiaActivaId
+): Promise<Armazon> {
   const { data: sesion } = await supabase.auth.getUser();
   const usuario = sesion.user;
   if (!usuario) throw new Error("cargarArmazon requiere una sesión activa");
@@ -64,40 +92,46 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
   const CAMPOS_COMUNIDAD =
     "id, slug, nombre, descripcion, logo_url, favicon_url, color_acento, propietario_id, plan_id, estado, nombres_niveles, marca_auth, nombre_ia, avatar_ia, creado_el";
 
-  // Primero la que POSEES, y solo si no posees ninguna, la que estudias.
-  //
-  // Antes esto era un `.limit(1)` a secas, confiando en que «RLS ya deja pasar
-  // solo la tuya». Es falso para un superadmin: su política le deja ver TODAS
-  // las academias de la plataforma, así que Postgres le devolvía la primera que
-  // le viniera bien — la de otro. Con una sola academia en la base nunca se
-  // notó; con dos, el panel de creador enseñaba la ajena.
+  // TODAS mis academias: las que poseo y las que estudio. Cada consulta parte
+  // de algo mío (`propietario_id` propio, ids de MIS inscripciones) y nunca de
+  // «lo que RLS deje pasar»: a un superadmin su política le enseña todas las
+  // academias de la plataforma, y ese fue el bug del `.limit(1)` de antes.
   const { data: propias } = await supabase
     .from("comunidades")
     .select(CAMPOS_COMUNIDAD)
     .eq("propietario_id", usuario.id)
-    .limit(1);
+    .order("creado_el");
 
-  let c = propias?.[0] ?? null;
+  const { data: inscFilas } = await supabase
+    .from("inscripciones")
+    .select("comunidad_id")
+    .eq("usuario_id", usuario.id)
+    .eq("estado", "activo");
 
-  if (!c) {
-    // La del alumno, alcanzada por su inscripción. Se pregunta por el id en vez
-    // de leer `comunidades` a pelo por lo mismo de arriba: el resultado tiene
-    // que salir de algo suyo, no del orden de la tabla.
-    const { data: suya } = await supabase
-      .from("inscripciones")
-      .select("comunidad_id")
-      .eq("usuario_id", usuario.id)
-      .limit(1);
-
-    if (suya?.[0]) {
-      const { data: filas } = await supabase
+  const idsAjenas = (inscFilas ?? [])
+    .map((i) => i.comunidad_id)
+    .filter((id) => !(propias ?? []).some((p) => p.id === id));
+  const { data: inscritas } = idsAjenas.length
+    ? await supabase
         .from("comunidades")
         .select(CAMPOS_COMUNIDAD)
-        .eq("id", suya[0].comunidad_id)
-        .limit(1);
-      c = filas?.[0] ?? null;
-    }
-  }
+        .in("id", idsAjenas)
+        .order("creado_el")
+    : { data: [] };
+
+  const todas = [...(propias ?? []), ...(inscritas ?? [])];
+
+  // La activa: la preferida de este navegador si sigue en la lista; si no, la
+  // propia; y si no, la primera inscrita.
+  const c = todas.find((t) => t.id === academiaPreferida) ?? todas[0] ?? null;
+
+  const misAcademias: AcademiaMia[] = todas.map((t) => ({
+    id: t.id,
+    slug: t.slug,
+    nombre: t.nombre,
+    logoUrl: t.logo_url,
+    estado: t.estado as AcademiaMia["estado"],
+  }));
 
   // La fecha de entrada de esta persona a la academia, que es el reloj del
   // goteo por días. Se pregunta aquí y no en el bloque de arriba porque el
@@ -235,5 +269,5 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
     (p) => p.leccion_id
   );
 
-  return { perfil, comunidad, cursos, progreso, entradaEl };
+  return { perfil, comunidad, misAcademias, cursos, progreso, entradaEl };
 }
