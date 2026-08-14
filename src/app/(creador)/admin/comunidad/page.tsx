@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
+  Lock,
+  LockOpen,
   MessagesSquare,
   Pin,
   Plus,
@@ -253,16 +255,18 @@ function EspaciosTab({
     espacio: CommunitySpace;
   } | null>(null);
 
-  async function persistir(siguiente: CommunitySection[]) {
+  async function persistir(siguiente: CommunitySection[]): Promise<boolean> {
     setSecciones(siguiente);
     try {
       await guardarSecciones(crearClienteNavegador(), cursoId, siguiente);
       await onGuardado();
+      return true;
     } catch (e) {
       // Se revierte lo pintado: dejar en pantalla un cambio que la base
       // rechazó haría creer que se guardó.
       setSecciones(seccionesIniciales);
       toast.error(e instanceof Error ? e.message : "No se pudieron guardar los espacios");
+      return false;
     }
   }
 
@@ -284,6 +288,32 @@ function EspaciosTab({
             }
       )
     );
+  }
+
+  // El candado se guarda al momento, sin blur: es un clic, no un campo de
+  // texto. La política de `publicaciones` lo hace cumplir del lado de la base.
+  function alternarSoloLectura(seccionId: string, espacioId: string) {
+    const siguiente = secciones.map((s) =>
+      s.id !== seccionId
+        ? s
+        : {
+            ...s,
+            espacios: s.espacios.map((e) =>
+              e.id === espacioId ? { ...e, soloLectura: !e.soloLectura } : e
+            ),
+          }
+    );
+    const espacio = siguiente
+      .find((s) => s.id === seccionId)
+      ?.espacios.find((e) => e.id === espacioId);
+    void persistir(siguiente).then((guardado) => {
+      if (!guardado) return;
+      toast.success(
+        espacio?.soloLectura
+          ? `En «${espacio.nombre}» ahora solo publicas tú.`
+          : `En «${espacio?.nombre}» ahora publica cualquiera.`
+      );
+    });
   }
 
   function handleBlurGuardar(seccionId: string, espacioId: string) {
@@ -353,7 +383,8 @@ function EspaciosTab({
         Estos espacios aparecen en la barra lateral del feed, agrupados por sección.{" "}
         <span className="font-medium text-foreground">{nombreGeneral}</span> es el espacio de
         respaldo: no se puede eliminar, y recibe las publicaciones de cualquier espacio que
-        borres.
+        borres. El candado <Lock className="inline size-3.5 align-text-bottom" /> deja un
+        espacio en solo lectura: tus alumnos leen y comentan, pero solo tú publicas.
       </p>
 
       {secciones.map((seccion) => (
@@ -390,6 +421,27 @@ function EspaciosTab({
                     className="h-8"
                     aria-label={`Nombre del espacio ${espacio.nombre}`}
                   />
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => alternarSoloLectura(seccion.id, espacio.id)}
+                    title={
+                      espacio.soloLectura
+                        ? "Solo tú publicas aquí — toca para abrirlo a todos"
+                        : "Aquí publica cualquiera — toca para que solo publiques tú"
+                    }
+                    aria-label={
+                      espacio.soloLectura
+                        ? `Abrir ${espacio.nombre} a publicaciones de todos`
+                        : `Dejar ${espacio.nombre} en solo lectura`
+                    }
+                  >
+                    {espacio.soloLectura ? (
+                      <Lock className="size-4 text-foreground" />
+                    ) : (
+                      <LockOpen className="size-4 text-muted-foreground/60" />
+                    )}
+                  </Button>
                   {esGeneral ? (
                     <span className="shrink-0 text-xs text-muted-foreground">Fijo</span>
                   ) : (

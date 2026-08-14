@@ -5,6 +5,8 @@ import { montarEscenario, desmontar, type Escenario } from "./escenario";
 let e: Escenario;
 let publicacionA: string;
 let leccionA: string;
+let espacioAbiertoA: string;
+let espacioCerradoA: string;
 
 beforeAll(async () => {
   e = await montarEscenario("feed");
@@ -17,6 +19,15 @@ beforeAll(async () => {
     .from("espacios")
     .insert({ seccion_id: sec!.id, slug: "general", nombre: "General", orden: 1 })
     .select("id").single();
+  espacioAbiertoA = esp!.id;
+  const { data: espCerrado } = await admin
+    .from("espacios")
+    .insert({
+      seccion_id: sec!.id, slug: "anuncios", nombre: "Anuncios", orden: 2,
+      solo_lectura: true,
+    })
+    .select("id").single();
+  espacioCerradoA = espCerrado!.id;
   const { data: pub } = await admin
     .from("publicaciones")
     .insert({
@@ -63,6 +74,51 @@ test("6c. nadie publica a nombre de otro", async () => {
     autor_id: e.duenoA.id, titulo: "suplantada", cuerpo: "x",
   });
   expect(error).not.toBeNull();
+});
+
+test("6f. un alumno no publica en un espacio de solo lectura", async () => {
+  const { error } = await e.alumnoA.cliente.from("publicaciones").insert({
+    comunidad_id: e.comunidadA, espacio_id: espacioCerradoA,
+    autor_id: e.alumnoA.id, titulo: "colada", cuerpo: "x",
+  });
+  expect(error).not.toBeNull();
+});
+
+test("6g. el dueno si publica en su espacio de solo lectura", async () => {
+  const { data, error } = await e.duenoA.cliente.from("publicaciones").insert({
+    comunidad_id: e.comunidadA, espacio_id: espacioCerradoA,
+    autor_id: e.duenoA.id, titulo: "anuncio", cuerpo: "del dueno",
+  }).select("id");
+  expect(error).toBeNull();
+  expect(data?.length).toBe(1);
+});
+
+test("6h. un espacio ajeno no se cuela en el feed propio", async () => {
+  // Espacio de la comunidad B, publicacion dirigida a la comunidad A: la
+  // politica exige que el espacio sea DE la misma comunidad.
+  const { data: secB } = await admin
+    .from("secciones")
+    .insert({ comunidad_id: e.comunidadB, titulo: "B", orden: 1 })
+    .select("id").single();
+  const { data: espB } = await admin
+    .from("espacios")
+    .insert({ seccion_id: secB!.id, slug: "general-b", nombre: "General", orden: 1 })
+    .select("id").single();
+
+  const { error } = await e.alumnoA.cliente.from("publicaciones").insert({
+    comunidad_id: e.comunidadA, espacio_id: espB!.id,
+    autor_id: e.alumnoA.id, titulo: "cruzada", cuerpo: "x",
+  });
+  expect(error).not.toBeNull();
+});
+
+test("6i. un alumno si publica en un espacio abierto", async () => {
+  const { data, error } = await e.alumnoA.cliente.from("publicaciones").insert({
+    comunidad_id: e.comunidadA, espacio_id: espacioAbiertoA,
+    autor_id: e.alumnoA.id, titulo: "normal", cuerpo: "del alumno",
+  }).select("id");
+  expect(error).toBeNull();
+  expect(data?.length).toBe(1);
 });
 
 test("6d. el progreso de un alumno es privado hasta para el dueno", async () => {
