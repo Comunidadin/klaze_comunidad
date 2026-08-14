@@ -22,6 +22,8 @@ export type PostConAutor = Post & {
   numComentarios: number;
   /** Presente solo si la publicación es una encuesta. */
   encuesta?: { opciones: OpcionEncuesta[]; totalVotos: number };
+  /** `true` si es LA encuesta que salta al entrar a la academia. */
+  esEncuestaEntrada: boolean;
   /** Si el usuario de la sesión le ha dado me gusta. */
   meGusta: boolean;
 };
@@ -47,7 +49,7 @@ export interface FiltroFeed {
  * consulta entera se cae.
  */
 const CAMPOS = `
-  id, comunidad_id, espacio_id, autor_id, titulo, cuerpo, imagen_url, fijado, creado_el,
+  id, comunidad_id, espacio_id, autor_id, titulo, cuerpo, imagen_url, fijado, encuesta_entrada, creado_el,
   perfiles!publicaciones_autor_id_fkey ( id, nombre, email, avatar_url, bio, rol, creado_el ),
   comentarios ( id, autor_id, cuerpo, padre_id, creado_el, perfiles!comentarios_autor_id_fkey ( nombre, email, avatar_url ) ),
   me_gusta ( usuario_id ),
@@ -158,6 +160,7 @@ function aPost(f: any, yo: string, puntosPor: Map<string, number>): PostConAutor
     cuerpo: f.cuerpo,
     imagenUrl: f.imagen_url ?? undefined,
     encuesta,
+    esEncuestaEntrada: Boolean(f.encuesta_entrada),
     fijado: f.fijado,
     likes: meGusta.map((m) => m.usuario_id),
     comentarios: raices,
@@ -286,6 +289,42 @@ export async function crearPost(
       throw new Error(`Se publicó, pero la encuesta no: ${errOpciones.message}`);
     }
   }
+}
+
+/** La encuesta de entrada de la academia, si la hay. La pinta el popup. */
+export async function leerEncuestaEntrada(
+  supabase: SupabaseClient,
+  comunidadId: string
+): Promise<PostConAutor | null> {
+  const { data, error } = await supabase
+    .from("publicaciones")
+    .select(CAMPOS)
+    .eq("comunidad_id", comunidadId)
+    .eq("encuesta_entrada", true)
+    .limit(1);
+
+  if (error) throw new Error(`No se pudo leer la encuesta de entrada: ${error.message}`);
+
+  const yo = await idDeSesion(supabase);
+  // El popup no enseña niveles de autor: el mapa vacío basta.
+  return data?.[0] ? aPost(data[0], yo, new Map()) : null;
+}
+
+/**
+ * Marca (o desmarca) una encuesta como la de entrada. Pasa por la función de
+ * la base, que comprueba que quien llama es el dueño de la academia y apaga
+ * la anterior — moderar no es editar, así que no va por un update a pelo.
+ */
+export async function marcarEncuestaEntrada(
+  supabase: SupabaseClient,
+  publicacionId: string,
+  activa: boolean
+): Promise<void> {
+  const { error } = await supabase.rpc("marcar_encuesta_entrada", {
+    p_publicacion: publicacionId,
+    p_activa: activa,
+  });
+  if (error) throw new Error(`No se pudo cambiar la encuesta de entrada: ${error.message}`);
 }
 
 /**

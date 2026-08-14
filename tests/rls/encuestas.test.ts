@@ -96,3 +96,44 @@ test("las opciones solo las crea el autor de la publicacion", async () => {
     .select("id");
   expect(data ?? []).toEqual([]);
 });
+
+test("la encuesta de entrada la decide el dueno, no un alumno", async () => {
+  const { error } = await e.alumnoA.cliente.rpc("marcar_encuesta_entrada", {
+    p_publicacion: postA,
+    p_activa: true,
+  });
+  expect(error).not.toBeNull();
+
+  const { error: eDueno } = await e.duenoA.cliente.rpc("marcar_encuesta_entrada", {
+    p_publicacion: postA,
+    p_activa: true,
+  });
+  expect(eDueno).toBeNull();
+
+  const { data } = await admin
+    .from("publicaciones")
+    .select("encuesta_entrada")
+    .eq("id", postA)
+    .single();
+  expect(data!.encuesta_entrada).toBe(true);
+});
+
+test("una publicacion sin opciones no puede ser encuesta de entrada", async () => {
+  const { data: otro } = await admin
+    .from("publicaciones")
+    .insert({
+      comunidad_id: e.comunidadA,
+      espacio_id: (await admin.from("espacios").select("id").eq("slug", "general").limit(1).single()).data!.id,
+      autor_id: e.duenoA.id,
+      titulo: "sin opciones",
+      cuerpo: "x",
+    })
+    .select("id")
+    .single();
+
+  const { error } = await e.duenoA.cliente.rpc("marcar_encuesta_entrada", {
+    p_publicacion: otro!.id,
+    p_activa: true,
+  });
+  expect(error).not.toBeNull();
+});

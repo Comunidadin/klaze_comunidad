@@ -20,7 +20,7 @@ import { crearClienteNavegador } from "@/lib/supabase/client";
 import { guardarSecciones, leerSecciones } from "@/lib/supabase/espacios";
 import { guardarComunidad } from "@/lib/supabase/perfil";
 import { cargarArmazon } from "@/lib/supabase/consultas";
-import { eliminarPost, fijarPost } from "@/lib/supabase/feed";
+import { eliminarPost, fijarPost, marcarEncuestaEntrada } from "@/lib/supabase/feed";
 import { useEspacios } from "@/lib/hooks/use-espacios";
 import { slugify, useAppStore } from "@/lib/store";
 import { formatFechaLarga } from "@/lib/format-fecha";
@@ -75,10 +75,12 @@ function PostModeracionRow({
   post,
   onFijar,
   onEliminar,
+  onPopup,
 }: {
   post: PostConAutor;
   onFijar: () => void;
   onEliminar: () => void;
+  onPopup: () => void;
 }) {
   // Cambio 3: los espacios de un post viven en `Course.secciones` (namespaced
   // por curso), no en `Community.secciones` — hay que resolver con el
@@ -109,6 +111,11 @@ function PostModeracionRow({
           {post.fijado && (
             <Badge className="border-transparent bg-primary/15 text-primary">📌 Fijado</Badge>
           )}
+          {post.esEncuestaEntrada && (
+            <Badge className="border-transparent bg-primary/15 text-primary">
+              📊 Popup de entrada
+            </Badge>
+          )}
         </div>
         <p className="mt-1 line-clamp-1 text-sm font-semibold text-foreground">{post.titulo}</p>
         <p className="line-clamp-2 text-xs text-pretty text-muted-foreground">{post.cuerpo}</p>
@@ -119,6 +126,12 @@ function PostModeracionRow({
         <Button variant="outline" size="sm" onClick={onFijar} disabled={post.fijado}>
           <Pin className="size-3.5" /> {post.fijado ? "Fijado" : "Fijar"}
         </Button>
+        {post.encuesta && (
+          <Button variant="outline" size="sm" onClick={onPopup}>
+            <MessagesSquare className="size-3.5" />
+            {post.esEncuestaEntrada ? "Quitar popup" : "Popup de entrada"}
+          </Button>
+        )}
         <Button variant="outline" size="sm" onClick={onEliminar}>
           <Trash2 className="size-3.5" /> Eliminar
         </Button>
@@ -159,6 +172,20 @@ function PostsTab({
     }
   }
 
+  async function handlePopup(post: PostConAutor) {
+    try {
+      await marcarEncuestaEntrada(crearClienteNavegador(), post.id, !post.esEncuestaEntrada);
+      await onCambio();
+      toast.success(
+        post.esEncuestaEntrada
+          ? "La encuesta ya no salta al entrar."
+          : `«${post.titulo}» saltará al entrar a la academia — reemplaza a la anterior.`
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo cambiar el popup");
+    }
+  }
+
   async function handleFijar(post: PostConAutor) {
     try {
       await fijarPost(crearClienteNavegador(), post.id);
@@ -187,6 +214,7 @@ function PostsTab({
           key={post.id}
           post={post}
           onFijar={() => handleFijar(post)}
+          onPopup={() => handlePopup(post)}
           onEliminar={() => setPostAEliminar(post)}
         />
       ))}

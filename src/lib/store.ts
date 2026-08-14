@@ -91,6 +91,13 @@ export interface AppState {
    */
   notificacionesVistas: Record<string, string>;
   marcarNotificacionesVistas: (comunidadId: string) => void;
+
+  /**
+   * Encuestas de entrada ya atendidas en este navegador (publicacionId ->
+   * true): votadas o descartadas. El popup no vuelve a salir para esa.
+   */
+  encuestasEntradaVistas: Record<string, true>;
+  marcarEncuestaEntradaVista: (publicacionId: string) => void;
 }
 
 /**
@@ -151,6 +158,15 @@ export const useAppStore = create<AppState>()(
           notificacionesVistas: {
             ...state.notificacionesVistas,
             [comunidadId]: new Date().toISOString(),
+          },
+        })),
+
+      encuestasEntradaVistas: {},
+      marcarEncuestaEntradaVista: (publicacionId) =>
+        set((state) => ({
+          encuestasEntradaVistas: {
+            ...state.encuestasEntradaVistas,
+            [publicacionId]: true,
           },
         })),
     }),

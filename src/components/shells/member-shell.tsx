@@ -23,6 +23,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { AcademiaSuspendida } from "@/components/shared/academia-suspendida";
 import { Buscador } from "@/components/shared/buscador";
 import { Campanita } from "@/components/shared/campanita";
+import { EncuestaEntrada } from "@/components/community/encuesta-entrada";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { cargarArmazon, type AcademiaMia } from "@/lib/supabase/consultas";
 import { useAppStore } from "@/lib/store";
@@ -290,6 +291,8 @@ export function MemberShell({ communitySlug, children }: MemberShellProps) {
         open={buscadorAbierto}
         onOpenChange={setBuscadorAbierto}
       />
+
+      <EncuestaEntrada comunidadId={community.id} />
     </div>
   );
 }
