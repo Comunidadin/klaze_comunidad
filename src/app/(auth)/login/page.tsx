@@ -105,7 +105,11 @@ export default function LoginPage() {
     if (r.ok) {
       // El layout de (auth) redirige por rol en cuanto hay sesión; esto solo
       // adelanta la navegación para que no se vea un parpadeo del formulario.
-      router.replace("/callback");
+      // La academia viaja en la consulta para que `/callback` conserve SU
+      // marca durante la transición, en vez del azul de Klaze.
+      router.replace(
+        params.academia ? `/callback?academia=${params.academia}` : "/callback"
+      );
       return;
     }
 

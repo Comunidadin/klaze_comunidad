@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useHydrated, useSession } from "@/lib/hooks/use-session";
 import { useMarcaAuth } from "@/lib/hooks/use-marca-auth";
@@ -80,8 +80,20 @@ function AuthSplit({ children }: { children: React.ReactNode }) {
 
   // La academia sale de la URL: `/login/mentoria-v7` → "mentoria-v7". El
   // `/login` pelado no pertenece a ninguna, y entonces la pantalla es de Klaze.
+  //
+  // `/callback` no lleva slug en la ruta, así que el login se lo pasa como
+  // `?academia=` — sin esto, la transición tras entrar por la puerta de una
+  // academia parpadeaba en azul Klaze. Se lee de `window.location` y no de
+  // `useSearchParams` para no obligar a un límite de Suspense; el estado
+  // perezoso basta porque la marca arranca vacía igual en servidor y cliente.
+  const [slugConsulta] = useState(() =>
+    typeof window === "undefined"
+      ? null
+      : new URLSearchParams(window.location.search).get("academia")
+  );
   const partes = (pathname ?? "").split("/").filter(Boolean);
-  const slug = partes[0] === "login" ? partes[1] : undefined;
+  const slug =
+    partes[0] === "login" ? partes[1] : (slugConsulta ?? undefined);
   const marca = useMarcaAuth(slug);
 
   return (
