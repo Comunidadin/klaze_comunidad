@@ -37,10 +37,13 @@ function ConfiguracionSkeleton() {
 const COLORES_PRESET = [
   { nombre: "Cian", valor: "#06ABEB" },
   { nombre: "Índigo", valor: "#6366F1" },
+  { nombre: "Violeta", valor: "#8B5CF6" },
+  { nombre: "Rojo", valor: "#DC2626" },
   { nombre: "Naranja", valor: "#F97316" },
-  { nombre: "Esmeralda", valor: "#10B981" },
-  { nombre: "Rosa", valor: "#EC4899" },
   { nombre: "Ámbar", valor: "#F59E0B" },
+  { nombre: "Esmeralda", valor: "#10B981" },
+  { nombre: "Verde", valor: "#16A34A" },
+  { nombre: "Rosa", valor: "#EC4899" },
 ];
 
 /** Logo de la comunidad en el formulario, con el mismo fallback (inicial + gradiente) que `CoursePortada`. */
