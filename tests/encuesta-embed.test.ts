@@ -7,6 +7,14 @@ test("extrae el src de un iframe de Typeform", () => {
   expect(urlDeEmbed(codigo)).toBe("https://empresa.typeform.com/to/abc123");
 });
 
+test("el embed live de Typeform (div + script, sin iframe) se convierte en su URL", () => {
+  const codigo =
+    '<div data-tf-live="01M016RPRH3C1M68JE97S33KG4"></div><script src="//embed.typeform.com/next/embed.js"></script>';
+  expect(urlDeEmbed(codigo)).toBe(
+    "https://form.typeform.com/to/01M016RPRH3C1M68JE97S33KG4"
+  );
+});
+
 test("una URL pelada tambien vale", () => {
   expect(urlDeEmbed("https://docs.google.com/forms/d/e/XYZ/viewform")).toBe(
     "https://docs.google.com/forms/d/e/XYZ/viewform"
