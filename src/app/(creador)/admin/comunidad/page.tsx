@@ -24,14 +24,6 @@ import { slugify, useAppStore } from "@/lib/store";
 import { formatFechaLarga } from "@/lib/format-fecha";
 import { NIVEL_MAXIMO } from "@/lib/levels";
 import { LevelBadge } from "@/components/shared/level-badge";
-import { useAdminCourses } from "@/lib/hooks/use-admin-courses";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -237,12 +229,12 @@ type NuevoEspacioForm = { nombre: string; icono: string };
  * miembros ya no leía. Ahora el padre elige el curso y le pasa sus secciones.
  */
 function EspaciosTab({
-  cursoId,
+  comunidadId,
   seccionesIniciales,
   posts,
   onGuardado,
 }: {
-  cursoId: string;
+  comunidadId: string;
   seccionesIniciales: CommunitySection[];
   posts: PostConAutor[];
   onGuardado: () => Promise<void>;
@@ -258,7 +250,7 @@ function EspaciosTab({
   async function persistir(siguiente: CommunitySection[]): Promise<boolean> {
     setSecciones(siguiente);
     try {
-      await guardarSecciones(crearClienteNavegador(), cursoId, siguiente);
+      await guardarSecciones(crearClienteNavegador(), comunidadId, siguiente);
       await onGuardado();
       return true;
     } catch (e) {
@@ -617,85 +609,49 @@ export default function ComunidadPage() {
 }
 
 /**
- * Elige el curso y carga sus espacios.
+ * Carga los espacios DE LA COMUNIDAD y monta el editor.
  *
- * Los espacios cuelgan del curso desde el cimiento, así que editar "los
- * espacios de la academia" ya no significa nada: hay que decir de cuál.
+ * Hubo aquí un selector de «Módulo:» — fósil de cuando los espacios colgaban
+ * de cada curso. Al subir la comunidad al nivel de la academia (`secciones`
+ * pasó a `comunidad_id`), esta pantalla se quedó pasando ids de curso a
+ * `leerSecciones`, que filtraba por comunidad y devolvía vacío: parecía que
+ * no había espacios que editar. Ahora se pide y se guarda por la comunidad,
+ * que es donde viven.
  */
-function EspaciosPorCurso({
+function EspaciosDeLaComunidad({
   community,
   posts,
 }: {
   community: Community;
   posts: PostConAutor[];
 }) {
-  const { cursos } = useAdminCourses(community.id);
-  const [cursoId, setCursoId] = useState<string>("");
   const [secciones, setSecciones] = useState<CommunitySection[] | null>(null);
 
-  const elegido = cursoId || cursos[0]?.id || "";
-
   const cargar = useCallback(async () => {
-    if (!elegido) {
-      setSecciones([]);
-      return;
-    }
-    setSecciones(await leerSecciones(crearClienteNavegador(), elegido));
-  }, [elegido]);
+    setSecciones(await leerSecciones(crearClienteNavegador(), community.id));
+  }, [community.id]);
 
   useEffect(() => {
     let vivo = true;
-    void (elegido
-      ? leerSecciones(crearClienteNavegador(), elegido)
-      : Promise.resolve([])
-    ).then((s) => {
+    void leerSecciones(crearClienteNavegador(), community.id).then((s) => {
       if (vivo) setSecciones(s);
     });
     return () => {
       vivo = false;
     };
-  }, [elegido]);
+  }, [community.id]);
 
-  if (cursos.length === 0) {
-    return (
-      <EmptyState
-        icono={MessagesSquare}
-        titulo="Todavía no tienes módulos"
-        descripcion="Los espacios de comunidad viven dentro de cada módulo. Crea uno primero."
-      />
-    );
+  if (secciones === null) {
+    return <Skeleton className="h-64 rounded-xl" />;
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <span className="text-sm text-muted-foreground">Módulo:</span>
-        <Select value={elegido} onValueChange={setCursoId}>
-          <SelectTrigger className="w-[260px]" aria-label="Curso">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {cursos.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.titulo}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {secciones === null ? (
-        <Skeleton className="h-64 rounded-xl" />
-      ) : (
-        <EspaciosTab
-          key={elegido}
-          cursoId={elegido}
-          seccionesIniciales={secciones}
-          posts={posts}
-          onGuardado={cargar}
-        />
-      )}
-    </div>
+    <EspaciosTab
+      comunidadId={community.id}
+      seccionesIniciales={secciones}
+      posts={posts}
+      onGuardado={cargar}
+    />
   );
 }
 
@@ -732,7 +688,7 @@ function ComunidadContenido({
         </TabsContent>
 
         <TabsContent value="espacios">
-          <EspaciosPorCurso community={community} posts={posts} />
+          <EspaciosDeLaComunidad community={community} posts={posts} />
         </TabsContent>
 
         <TabsContent value="niveles">
