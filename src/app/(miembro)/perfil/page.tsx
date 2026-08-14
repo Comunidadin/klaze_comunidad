@@ -262,6 +262,7 @@ function PerfilContenido({ user }: { user: User }) {
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               rows={3}
+              className="max-h-40 overflow-y-auto"
               placeholder="Contale a la comunidad quién sos…"
             />
           </div>

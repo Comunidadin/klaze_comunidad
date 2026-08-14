@@ -110,7 +110,11 @@ export function PostComposer({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      {/* `max-h` + scroll interno: el Textarea crece con el contenido
+          (`field-sizing-content`), y con un texto largo pegado —unas normas de
+          comunidad enteras— el diálogo desbordaba la pantalla sin forma de
+          llegar al botón de publicar. */}
+      <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Crear publicación</DialogTitle>
@@ -138,6 +142,7 @@ export function PostComposer({
                 value={cuerpo}
                 onChange={(e) => setCuerpo(e.target.value)}
                 rows={5}
+                className="max-h-64 overflow-y-auto"
                 placeholder="Cuéntanos con detalle…"
               />
             </div>

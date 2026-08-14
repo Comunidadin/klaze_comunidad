@@ -58,7 +58,7 @@ function CampoNuevoComentario({
         placeholder={placeholder}
         aria-label={ariaLabel}
         autoFocus={autoFocus}
-        className="min-h-8 py-1.5"
+        className="max-h-40 min-h-8 overflow-y-auto py-1.5"
       />
       <Button
         type="button"

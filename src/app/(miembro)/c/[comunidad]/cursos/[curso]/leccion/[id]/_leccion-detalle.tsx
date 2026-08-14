@@ -118,7 +118,7 @@ function SeccionComentarios({ leccionId }: { leccionId: string }) {
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             placeholder="Escribe un comentario…"
-            className="min-h-20"
+            className="max-h-48 min-h-20 overflow-y-auto"
           />
           <div className="flex justify-end">
             <Button size="sm" onClick={enviar} disabled={!texto.trim()}>
