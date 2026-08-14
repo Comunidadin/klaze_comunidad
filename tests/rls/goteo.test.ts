@@ -149,7 +149,9 @@ test("G6. el candado por nivel ahora tambien corta en la base", async () => {
   // Hasta hoy `nivel_requerido` se aplicaba SOLO en `use-courses.ts`: un alumno
   // por debajo del nivel pedia la clase por su id y la base se la entregaba.
   await sinGoteo();
-  await admin.from("perfiles").update({ puntos: 0 }).eq("id", e.alumnoA.id);
+  // Los puntos son derivados del progreso: dejarlo a cero ES dejar los puntos
+  // a cero (el contador `perfiles.puntos` se retiro con multi-academia).
+  await admin.from("progreso").delete().eq("usuario_id", e.alumnoA.id);
   await admin.from("cursos").update({ nivel_requerido: 5 }).eq("id", e.cursoAPublicado);
 
   expect((await loQueVeElAlumno()).clases).toBe(0);

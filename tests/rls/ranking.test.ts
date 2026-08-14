@@ -25,13 +25,22 @@ afterAll(async () => {
   await desmontar(e);
 });
 
+/**
+ * Los puntos ya no viven en una columna: se derivan del progreso por academia.
+ * Se leen como los leería la app — por `ranking_de_comunidad`, con la sesión
+ * del propio alumno (la función exige pertenecer; el service role no tiene
+ * `auth.uid()` y vería vacío).
+ */
 async function puntosDe(usuarioId: string): Promise<number> {
-  const { data } = await admin
-    .from("perfiles")
-    .select("puntos")
-    .eq("id", usuarioId)
-    .single();
-  return data!.puntos;
+  const { data } = await e.alumnoA.cliente.rpc("ranking_de_comunidad", {
+    p_comunidad: e.comunidadA,
+    p_desde: null,
+    p_curso: null,
+  });
+  const fila = ((data ?? []) as { usuario_id: string; puntos: number }[]).find(
+    (r) => r.usuario_id === usuarioId
+  );
+  return fila?.puntos ?? 0;
 }
 
 test("completar una leccion suma 10 puntos", async () => {
@@ -109,4 +118,52 @@ test("un alumno de otra empresa recibe vacio", async () => {
     p_desde: null,
   });
   expect(data ?? []).toEqual([]);
+});
+
+test("los puntos de una academia no abren candados de nivel en otra", async () => {
+  // alumnoA con puntos de sobra en A...
+  await marcarLeccion(e.alumnoA.cliente, leccionId, true);
+
+  // ...entra tambien en la academia B, con acceso a su curso.
+  await admin.from("inscripciones").insert({
+    usuario_id: e.alumnoA.id,
+    comunidad_id: e.comunidadB,
+    estado: "activo",
+    todos_los_cursos: true,
+  });
+  const { data: modB } = await admin
+    .from("modulos")
+    .insert({ curso_id: e.cursoB, titulo: "MB", orden: 1 })
+    .select("id")
+    .single();
+  const { data: lecB } = await admin
+    .from("lecciones")
+    .insert({ modulo_id: modB!.id, titulo: "LB", orden: 1 })
+    .select("id")
+    .single();
+
+  // El curso B exige nivel 2 (20 puntos). En B tiene cero: cerrado, por muchos
+  // puntos que tenga en A.
+  await admin.from("cursos").update({ nivel_requerido: 2 }).eq("id", e.cursoB);
+  const { data: cerradas } = await e.alumnoA.cliente
+    .from("lecciones")
+    .select("id")
+    .eq("id", lecB!.id);
+  expect((cerradas ?? []).length).toBe(0);
+
+  // Con dos clases completadas EN B (20 puntos alli), el candado abre.
+  const { data: lecB2 } = await admin
+    .from("lecciones")
+    .insert({ modulo_id: modB!.id, titulo: "LB2", orden: 2 })
+    .select("id")
+    .single();
+  await admin.from("progreso").insert([
+    { usuario_id: e.alumnoA.id, leccion_id: lecB!.id },
+    { usuario_id: e.alumnoA.id, leccion_id: lecB2!.id },
+  ]);
+  const { data: abiertas } = await e.alumnoA.cliente
+    .from("lecciones")
+    .select("id")
+    .eq("id", lecB!.id);
+  expect((abiertas ?? []).length).toBe(1);
 });

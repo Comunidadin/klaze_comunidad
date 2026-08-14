@@ -39,8 +39,8 @@ export interface FiltroFeed {
  */
 const CAMPOS = `
   id, comunidad_id, espacio_id, autor_id, titulo, cuerpo, imagen_url, fijado, creado_el,
-  perfiles!publicaciones_autor_id_fkey ( id, nombre, email, avatar_url, bio, rol, puntos, creado_el ),
-  comentarios ( id, autor_id, cuerpo, padre_id, creado_el, perfiles!comentarios_autor_id_fkey ( nombre, email, avatar_url, puntos ) ),
+  perfiles!publicaciones_autor_id_fkey ( id, nombre, email, avatar_url, bio, rol, creado_el ),
+  comentarios ( id, autor_id, cuerpo, padre_id, creado_el, perfiles!comentarios_autor_id_fkey ( nombre, email, avatar_url ) ),
   me_gusta ( usuario_id )
 `;
 
@@ -51,7 +51,6 @@ interface FilaPerfilAutor {
   avatar_url: string;
   bio: string;
   rol: string;
-  puntos: number;
   creado_el: string;
 }
 
@@ -74,22 +73,23 @@ interface FilaPerfilComentario {
   nombre: string;
   email: string;
   avatar_url: string;
-  puntos: number;
 }
 
-function autorDe(c: FilaComentario) {
+function autorDe(c: FilaComentario, puntosPor: Map<string, number>) {
   const p = Array.isArray(c.perfiles) ? c.perfiles[0] : c.perfiles;
   return {
     autorNombre: nombreVisible(p?.nombre ?? "", p?.email ?? ""),
     autorAvatar: p?.avatar_url ?? "",
-    autorNivel: nivelPorPuntos(p?.puntos ?? 0),
+    // Nivel POR ACADEMIA: sale del mapa de `ranking_de_comunidad`, no de un
+    // contador global en el perfil (que se retiro con multi-academia).
+    autorNivel: nivelPorPuntos(puntosPor.get(c.autor_id) ?? 0),
   };
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- la fila anidada de
    PostgREST no tiene tipo generado. Se normaliza aquí y no sale de este
    archivo, así que el `any` no se propaga. */
-function aPost(f: any, yo: string): PostConAutor {
+function aPost(f: any, yo: string, puntosPor: Map<string, number>): PostConAutor {
   const perfil = (Array.isArray(f.perfiles) ? f.perfiles[0] : f.perfiles) as
     | FilaPerfilAutor
     | undefined;
@@ -103,7 +103,7 @@ function aPost(f: any, yo: string): PostConAutor {
     .map((c) => ({
       id: c.id,
       autorId: c.autor_id,
-      ...autorDe(c),
+      ...autorDe(c, puntosPor),
       cuerpo: c.cuerpo,
       likes: [],
       creadoEl: c.creado_el,
@@ -113,7 +113,7 @@ function aPost(f: any, yo: string): PostConAutor {
         .map((r) => ({
           id: r.id,
           autorId: r.autor_id,
-          ...autorDe(r),
+          ...autorDe(r, puntosPor),
           cuerpo: r.cuerpo,
           likes: [],
           respuestas: [],
@@ -142,8 +142,8 @@ function aPost(f: any, yo: string): PostConAutor {
           bio: perfil.bio,
           rol: perfil.rol as UserRole,
           comunidadIds: [],
-          puntos: perfil.puntos,
-          nivel: nivelPorPuntos(perfil.puntos),
+          puntos: puntosPor.get(perfil.id) ?? 0,
+          nivel: nivelPorPuntos(puntosPor.get(perfil.id) ?? 0),
           creadoEl: perfil.creado_el,
         }
       : AUTOR_DESCONOCIDO,
@@ -173,7 +173,8 @@ async function idDeSesion(supabase: SupabaseClient): Promise<string> {
 export async function leerPagina(
   supabase: SupabaseClient,
   filtro: FiltroFeed,
-  antesDe: string | null
+  antesDe: string | null,
+  puntosPor: Map<string, number>
 ): Promise<PostConAutor[]> {
   if (!filtro.comunidadId) return [];
 
@@ -192,13 +193,14 @@ export async function leerPagina(
   if (error) throw new Error(`No se pudo leer el feed: ${error.message}`);
 
   const yo = await idDeSesion(supabase);
-  return (data ?? []).map((f) => aPost(f, yo));
+  return (data ?? []).map((f) => aPost(f, yo, puntosPor));
 }
 
 /** La publicación fijada de la academia, si la hay. Fuera de la paginación. */
 export async function leerFijado(
   supabase: SupabaseClient,
-  comunidadId: string
+  comunidadId: string,
+  puntosPor: Map<string, number>
 ): Promise<PostConAutor | null> {
   const { data, error } = await supabase
     .from("publicaciones")
@@ -210,7 +212,7 @@ export async function leerFijado(
   if (error) throw new Error(`No se pudo leer la publicación fijada: ${error.message}`);
 
   const yo = await idDeSesion(supabase);
-  return data?.[0] ? aPost(data[0], yo) : null;
+  return data?.[0] ? aPost(data[0], yo, puntosPor) : null;
 }
 
 /** El autor sale de la sesión: no existe forma de publicar a nombre de otro. */

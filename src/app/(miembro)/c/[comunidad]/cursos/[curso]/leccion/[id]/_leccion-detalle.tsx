@@ -65,9 +65,15 @@ export interface LeccionDetalleProps {
  * legible sin depender de `@tailwindcss/typography`: detecta listas
  * numeradas ("1. ...") por bloque y el resto lo trata como párrafo. */
 
-function SeccionComentarios({ leccionId }: { leccionId: string }) {
+function SeccionComentarios({
+  leccionId,
+  comunidadId,
+}: {
+  leccionId: string;
+  comunidadId: string;
+}) {
   const { user } = useSession();
-  const { comentarios, agregar } = useLessonComments(leccionId);
+  const { comentarios, agregar } = useLessonComments(leccionId, comunidadId);
   const [texto, setTexto] = useState("");
 
   async function enviar() {
@@ -409,7 +415,7 @@ export function LeccionDetalle({ comunidadSlug, cursoSlug, leccionId }: LeccionD
         )}
 
         {/* Comentarios */}
-        <SeccionComentarios leccionId={leccion.id} />
+        <SeccionComentarios leccionId={leccion.id} comunidadId={community.id} />
       </div>
 
       {/* Temario — desktop */}

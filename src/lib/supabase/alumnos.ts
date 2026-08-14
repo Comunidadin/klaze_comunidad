@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fechaDeApertura, type ConfigGoteo } from "@/lib/goteo";
+import { leerRanking } from "@/lib/supabase/ranking";
 
 export type EstadoAlumno = "invitado" | "activo" | "suspendido";
 
@@ -11,6 +12,7 @@ export interface AlumnoEnComunidad {
   avatarUrl: string;
   bio: string;
   rol: string;
+  /** De ESTA academia, derivados del ranking — no un total global. */
   puntos: number;
   creadoEl: string;
   estado: EstadoAlumno;
@@ -24,7 +26,6 @@ interface FilaPerfil {
   avatar_url: string;
   bio: string;
   rol: string;
-  puntos: number;
   creado_el: string;
 }
 
@@ -39,10 +40,14 @@ export async function listarAlumnos(
   supabase: SupabaseClient,
   comunidadId: string
 ): Promise<AlumnoEnComunidad[]> {
+  // Los puntos son POR ACADEMIA: salen del ranking de esta comunidad, no de
+  // un contador en el perfil (retirado con multi-academia).
+  const puntosPor = await leerRanking(supabase, comunidadId);
+
   const { data, error } = await supabase
     .from("inscripciones")
     .select(
-      "usuario_id, estado, todos_los_cursos, perfiles(nombre, email, avatar_url, bio, rol, puntos, creado_el), inscripcion_cursos(curso_id)"
+      "usuario_id, estado, todos_los_cursos, perfiles(nombre, email, avatar_url, bio, rol, creado_el), inscripcion_cursos(curso_id)"
     )
     .eq("comunidad_id", comunidadId);
 
@@ -62,7 +67,7 @@ export async function listarAlumnos(
       avatarUrl: perfil?.avatar_url ?? "",
       bio: perfil?.bio ?? "",
       rol: perfil?.rol ?? "alumno",
-      puntos: perfil?.puntos ?? 0,
+      puntos: puntosPor.get(f.usuario_id) ?? 0,
       creadoEl: perfil?.creado_el ?? "",
       estado: f.estado as EstadoAlumno,
       todosLosCursos: f.todos_los_cursos,

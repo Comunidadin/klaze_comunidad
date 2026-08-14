@@ -10,6 +10,9 @@ import {
   POR_PAGINA,
 } from "../../src/lib/supabase/feed";
 
+// Estas pruebas miran permisos, no niveles: un mapa vacio basta.
+const sinPuntos = new Map<string, number>();
+
 let e: Escenario;
 let espacioId: string;
 
@@ -49,10 +52,10 @@ afterAll(async () => {
 
 test("la primera pagina trae 20 y la segunda el resto, sin repetir", async () => {
   const filtro = { comunidadId: e.comunidadA, espacioId };
-  const p1 = await leerPagina(e.alumnoA.cliente, filtro, null);
+  const p1 = await leerPagina(e.alumnoA.cliente, filtro, null, sinPuntos);
   expect(p1.length).toBe(POR_PAGINA);
 
-  const p2 = await leerPagina(e.alumnoA.cliente, filtro, p1[p1.length - 1].creadoEl);
+  const p2 = await leerPagina(e.alumnoA.cliente, filtro, p1[p1.length - 1].creadoEl, sinPuntos);
   expect(p2.length).toBe(5);
 
   const ids = new Set([...p1, ...p2].map((p) => p.id));
@@ -63,7 +66,7 @@ test("publicar entre pagina y pagina NO duplica ninguna", async () => {
   // El fallo exacto que motiva paginar por fecha: con paginas numeradas, una
   // publicacion nueva desplaza a las demas y la 20 reaparece en la pagina 2.
   const filtro = { comunidadId: e.comunidadA, espacioId };
-  const p1 = await leerPagina(e.alumnoA.cliente, filtro, null);
+  const p1 = await leerPagina(e.alumnoA.cliente, filtro, null, sinPuntos);
 
   await crearPost(e.alumnoA.cliente, {
     comunidadId: e.comunidadA,
@@ -72,14 +75,14 @@ test("publicar entre pagina y pagina NO duplica ninguna", async () => {
     cuerpo: "y",
   });
 
-  const p2 = await leerPagina(e.alumnoA.cliente, filtro, p1[p1.length - 1].creadoEl);
+  const p2 = await leerPagina(e.alumnoA.cliente, filtro, p1[p1.length - 1].creadoEl, sinPuntos);
   const repetidos = p2.filter((x) => p1.some((y) => y.id === x.id));
   expect(repetidos).toEqual([]);
 });
 
 test("la publicacion fijada sale aparte, no en la paginacion", async () => {
   const filtro = { comunidadId: e.comunidadA, espacioId };
-  const p1 = await leerPagina(e.alumnoA.cliente, filtro, null);
+  const p1 = await leerPagina(e.alumnoA.cliente, filtro, null, sinPuntos);
   // La mas antigua: si entrara en el orden por fecha no la veria nadie.
   const { data: vieja } = await admin
     .from("publicaciones")
@@ -91,10 +94,10 @@ test("la publicacion fijada sale aparte, no en la paginacion", async () => {
 
   await fijarPost(e.duenoA.cliente, vieja!.id);
 
-  const fijada = await leerFijado(e.alumnoA.cliente, e.comunidadA);
+  const fijada = await leerFijado(e.alumnoA.cliente, e.comunidadA, sinPuntos);
   expect(fijada?.id).toBe(vieja!.id);
 
-  const tras = await leerPagina(e.alumnoA.cliente, filtro, null);
+  const tras = await leerPagina(e.alumnoA.cliente, filtro, null, sinPuntos);
   expect(tras.some((p) => p.id === vieja!.id)).toBe(false);
   expect(p1.length).toBeGreaterThan(0);
 });

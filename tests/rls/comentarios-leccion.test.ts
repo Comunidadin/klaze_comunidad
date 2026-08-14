@@ -6,6 +6,9 @@ import {
   comentarLeccion,
 } from "../../src/lib/supabase/comentarios-leccion";
 
+// Estas pruebas miran permisos, no niveles: un mapa vacio basta.
+const sinPuntos = new Map<string, number>();
+
 let e: Escenario;
 let leccionId: string;
 
@@ -30,29 +33,29 @@ afterAll(async () => {
 
 test("un alumno con acceso comenta y lo relee", async () => {
   await comentarLeccion(e.alumnoA.cliente, leccionId, "Esto aplica a servicios?", null);
-  const lista = await leerComentarios(e.alumnoA.cliente, leccionId);
+  const lista = await leerComentarios(e.alumnoA.cliente, leccionId, sinPuntos);
   expect(lista.map((c) => c.cuerpo)).toContain("Esto aplica a servicios?");
 });
 
 test("el comentario llega con el nombre de su autor", async () => {
-  const lista = await leerComentarios(e.alumnoA.cliente, leccionId);
+  const lista = await leerComentarios(e.alumnoA.cliente, leccionId, sinPuntos);
   // Sin el nombre, la pantalla mostraria comentarios sin firmar.
   expect(lista[0].autorId).toBe(e.alumnoA.id);
   expect(lista[0].autorNombre).not.toBe("");
 });
 
 test("el dueno responde y el alumno lo ve", async () => {
-  const lista = await leerComentarios(e.duenoA.cliente, leccionId);
+  const lista = await leerComentarios(e.duenoA.cliente, leccionId, sinPuntos);
   await comentarLeccion(e.duenoA.cliente, leccionId, "Si, igual.", lista[0].id);
 
-  const trasResponder = await leerComentarios(e.alumnoA.cliente, leccionId);
+  const trasResponder = await leerComentarios(e.alumnoA.cliente, leccionId, sinPuntos);
   const respuesta = trasResponder.find((c) => c.cuerpo === "Si, igual.");
   expect(respuesta).toBeDefined();
   expect(respuesta?.padreId).toBe(lista[0].id);
 });
 
 test("un alumno de otra empresa no ve nada", async () => {
-  const lista = await leerComentarios(e.alumnoB.cliente, leccionId);
+  const lista = await leerComentarios(e.alumnoB.cliente, leccionId, sinPuntos);
   expect(lista).toEqual([]);
 });
 
@@ -87,7 +90,7 @@ test("con el goteo activo, un alumno con acceso al curso no puede leer ni escrib
 
   // Los comentarios de las pruebas anteriores ya existen, y el goteo los
   // esconde igual que esconde la clase.
-  const lista = await leerComentarios(e.alumnoA.cliente, leccionId);
+  const lista = await leerComentarios(e.alumnoA.cliente, leccionId, sinPuntos);
   expect(lista).toEqual([]);
 
   await expect(
@@ -96,7 +99,7 @@ test("con el goteo activo, un alumno con acceso al curso no puede leer ni escrib
 
   // El dueno los sigue viendo: es su rama de las politicas, la que no mira
   // `curso_disponible`.
-  const listaDueno = await leerComentarios(e.duenoA.cliente, leccionId);
+  const listaDueno = await leerComentarios(e.duenoA.cliente, leccionId, sinPuntos);
   expect(listaDueno.length).toBeGreaterThan(0);
 
   await admin
@@ -104,6 +107,6 @@ test("con el goteo activo, un alumno con acceso al curso no puede leer ni escrib
     .update({ goteo_modo: "ninguno", goteo_dias: null, goteo_desde: null })
     .eq("id", e.cursoAPublicado);
 
-  const listaTrasAbrir = await leerComentarios(e.alumnoA.cliente, leccionId);
+  const listaTrasAbrir = await leerComentarios(e.alumnoA.cliente, leccionId, sinPuntos);
   expect(listaTrasAbrir.length).toBeGreaterThan(0);
 });

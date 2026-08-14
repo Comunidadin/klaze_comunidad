@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { leerFijado, leerPagina, POR_PAGINA } from "@/lib/supabase/feed";
+import { leerRanking } from "@/lib/supabase/ranking";
 import type { Post } from "@/lib/types";
 import type { PostConAutor } from "@/lib/supabase/feed";
 
@@ -32,16 +33,24 @@ export interface UseFeedResult {
 async function leerTodo(
   comunidadId: string,
   espacioId: string | undefined
-): Promise<{ pagina: PostConAutor[]; elFijado: PostConAutor | null }> {
-  if (!comunidadId) return { pagina: [], elFijado: null };
+): Promise<{
+  pagina: PostConAutor[];
+  elFijado: PostConAutor | null;
+  puntosPor: Map<string, number>;
+}> {
+  if (!comunidadId) return { pagina: [], elFijado: null, puntosPor: new Map() };
 
   const supabase = crearClienteNavegador();
+  // Los niveles junto a cada autor salen del ranking DE ESTA academia — el
+  // contador global del perfil se retiró con multi-academia. Primero el mapa,
+  // porque las páginas lo necesitan para armar cada post.
+  const puntosPor = await leerRanking(supabase, comunidadId);
   const [pagina, elFijado] = await Promise.all([
-    leerPagina(supabase, { comunidadId, espacioId }, null),
-    leerFijado(supabase, comunidadId),
+    leerPagina(supabase, { comunidadId, espacioId }, null, puntosPor),
+    leerFijado(supabase, comunidadId, puntosPor),
   ]);
 
-  return { pagina, elFijado };
+  return { pagina, elFijado, puntosPor };
 }
 
 /**
@@ -67,9 +76,12 @@ export function useFeed(comunidadId: string, espacioId?: string): UseFeedResult 
   const [fijado, setFijado] = useState<PostConAutor | null>(null);
   const [cargando, setCargando] = useState(true);
   const [hayMas, setHayMas] = useState(false);
+  // Ref y no estado: `cargarMas` lo necesita pero pintar no depende de él.
+  const puntosPorRef = useRef<Map<string, number>>(new Map());
 
   const recargar = useCallback(async () => {
-    const { pagina, elFijado } = await leerTodo(comunidadId, espacioId);
+    const { pagina, elFijado, puntosPor } = await leerTodo(comunidadId, espacioId);
+    puntosPorRef.current = puntosPor;
     setPosts(pagina);
     setFijado(elFijado);
     setHayMas(pagina.length === POR_PAGINA);
@@ -80,8 +92,9 @@ export function useFeed(comunidadId: string, espacioId?: string): UseFeedResult 
     let vivo = true;
     // Se llama a `leerTodo` y no a `recargar` para que el `setState` viva en un
     // `.then()` y nunca corra de forma síncrona dentro del efecto.
-    void leerTodo(comunidadId, espacioId).then(({ pagina, elFijado }) => {
+    void leerTodo(comunidadId, espacioId).then(({ pagina, elFijado, puntosPor }) => {
       if (!vivo) return;
+      puntosPorRef.current = puntosPor;
       setPosts(pagina);
       setFijado(elFijado);
       setHayMas(pagina.length === POR_PAGINA);
@@ -99,7 +112,8 @@ export function useFeed(comunidadId: string, espacioId?: string): UseFeedResult 
     const siguiente = await leerPagina(
       crearClienteNavegador(),
       { comunidadId, espacioId },
-      ultima
+      ultima,
+      puntosPorRef.current
     );
 
     setPosts((previas) => [...previas, ...siguiente]);

@@ -22,7 +22,7 @@ export interface RankingEntry {
 
 const DIA = 24 * 60 * 60 * 1000;
 
-/** Cuántos puntos vale una lección. Debe coincidir con el trigger `ajustar_puntos`. */
+/** Cuántos puntos vale una clase. Debe coincidir con `ranking_de_comunidad` y `privado.puntos_en` (10 × clase). */
 export const PUNTOS_POR_LECCION = 10;
 
 /**

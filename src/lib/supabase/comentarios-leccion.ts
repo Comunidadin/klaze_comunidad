@@ -19,7 +19,6 @@ interface FilaPerfilAutor {
   nombre: string;
   email: string;
   avatar_url: string;
-  puntos: number;
 }
 
 /**
@@ -35,12 +34,14 @@ interface FilaPerfilAutor {
  */
 export async function leerComentarios(
   supabase: SupabaseClient,
-  leccionId: string
+  leccionId: string,
+  /** Puntos por usuario en ESTA academia (`leerRanking`) — de ahí el nivel. */
+  puntosPor: Map<string, number>
 ): Promise<ComentarioLeccion[]> {
   const { data, error } = await supabase
     .from("comentarios_leccion")
     .select(
-      "id, autor_id, cuerpo, padre_id, creado_el, perfiles!comentarios_leccion_autor_id_fkey ( nombre, email, avatar_url, puntos )"
+      "id, autor_id, cuerpo, padre_id, creado_el, perfiles!comentarios_leccion_autor_id_fkey ( nombre, email, avatar_url )"
     )
     .eq("leccion_id", leccionId)
     .order("creado_el", { ascending: true });
@@ -58,7 +59,7 @@ export async function leerComentarios(
       autorId: f.autor_id,
       autorNombre: nombreVisible(perfil?.nombre ?? "", perfil?.email ?? ""),
       autorAvatar: perfil?.avatar_url ?? "",
-      autorNivel: nivelPorPuntos(perfil?.puntos ?? 0),
+      autorNivel: nivelPorPuntos(puntosPor.get(f.autor_id) ?? 0),
       cuerpo: f.cuerpo,
       padreId: f.padre_id,
       creadoEl: f.creado_el,

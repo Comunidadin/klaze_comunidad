@@ -7,6 +7,7 @@ import {
   leerComentarios,
   type ComentarioLeccion,
 } from "@/lib/supabase/comentarios-leccion";
+import { leerRanking } from "@/lib/supabase/ranking";
 import type { User } from "@/lib/types";
 
 /**
@@ -60,9 +61,16 @@ export interface UseLessonCommentsResult {
  * Es `async` aunque la rama sin lección no espere nada, para que el `.then()`
  * que fija el estado no corra de forma síncrona dentro del efecto.
  */
-async function leer(leccionId: string): Promise<LessonCommentConAutor[]> {
+async function leer(
+  leccionId: string,
+  comunidadId: string
+): Promise<LessonCommentConAutor[]> {
   if (!leccionId) return [];
-  const lista = await leerComentarios(crearClienteNavegador(), leccionId);
+  const supabase = crearClienteNavegador();
+  // El nivel junto a cada autor es el de ESTA academia (ranking derivado);
+  // el contador global del perfil se retiro con multi-academia.
+  const puntosPor = comunidadId ? await leerRanking(supabase, comunidadId) : new Map<string, number>();
+  const lista = await leerComentarios(supabase, leccionId, puntosPor);
   return lista.map(aComentario);
 }
 
@@ -73,7 +81,7 @@ async function leer(leccionId: string): Promise<LessonCommentConAutor[]> {
  * lección, aparecían solo en el curso 1, y escribir uno y recargar lo borraba.
  * Ahora viven en su propia tabla, con los mismos permisos que el feed.
  */
-export function useLessonComments(leccionId: string): UseLessonCommentsResult {
+export function useLessonComments(leccionId: string, comunidadId: string): UseLessonCommentsResult {
   // El estado guarda DE QUÉ lección son los comentarios, no solo los
   // comentarios. Así "está cargando" se deriva de comparar identificadores en
   // vez de fijarse a mano, y al navegar a otra lección no se ven un instante
@@ -85,20 +93,20 @@ export function useLessonComments(leccionId: string): UseLessonCommentsResult {
 
   useEffect(() => {
     let vivo = true;
-    void leer(leccionId).then((lista) => {
+    void leer(leccionId, comunidadId).then((lista) => {
       if (vivo) setEstado({ leccionId, lista });
     });
     return () => {
       vivo = false;
     };
-  }, [leccionId]);
+  }, [leccionId, comunidadId]);
 
   const agregar = useCallback(
     async (cuerpo: string, padreId: string | null = null) => {
       await comentarLeccion(crearClienteNavegador(), leccionId, cuerpo, padreId);
-      setEstado({ leccionId, lista: await leer(leccionId) });
+      setEstado({ leccionId, lista: await leer(leccionId, comunidadId) });
     },
-    [leccionId]
+    [leccionId, comunidadId]
   );
 
   const alDia = estado?.leccionId === leccionId;

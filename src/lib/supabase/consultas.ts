@@ -54,7 +54,7 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
 
   const { data: perfilFila, error: errPerfil } = await supabase
     .from("perfiles")
-    .select("id, nombre, avatar_url, bio, rol, puntos, creado_el")
+    .select("id, nombre, avatar_url, bio, rol, creado_el")
     .eq("id", usuario.id)
     .single();
   if (errPerfil) {
@@ -133,6 +133,19 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
         .eq("comunidad_id", c.id)
     : { data: [] };
 
+  // Los puntos son POR ACADEMIA y derivados: 10 por cada clase de ESTA
+  // academia que aparezca en el progreso propio. El contador global
+  // (`perfiles.puntos`) se retiró — puntos de una academia no abren candados
+  // ni podios de otra. Los dos ingredientes ya están cargados arriba.
+  const leccionesDeLaAcademia = new Set(
+    (cursosFilas ?? []).flatMap((f) =>
+      (f.modulos ?? []).flatMap((m) => (m.lecciones ?? []).map((l) => l.id))
+    )
+  );
+  const puntos =
+    10 *
+    (progresoFilas ?? []).filter((p) => leccionesDeLaAcademia.has(p.leccion_id)).length;
+
   const perfil: User = {
     id: perfilFila.id,
     email: usuario.email ?? "",
@@ -141,8 +154,8 @@ export async function cargarArmazon(supabase: SupabaseClient): Promise<Armazon> 
     bio: perfilFila.bio,
     rol: perfilFila.rol as UserRole,
     comunidadIds: c ? [c.id] : [],
-    puntos: perfilFila.puntos,
-    nivel: nivelPorPuntos(perfilFila.puntos),
+    puntos,
+    nivel: nivelPorPuntos(puntos),
     creadoEl: perfilFila.creado_el,
   };
 
