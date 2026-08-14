@@ -8,7 +8,6 @@ import { useCourses, type CourseConAcceso } from "@/lib/hooks/use-courses";
 import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
-import { SiteFooter } from "@/components/shared/site-footer";
 import { CourseCard } from "@/components/course/course-card";
 import { CoursePortada } from "@/components/course/course-portada";
 import { leccionParaSeguir, moduloDeLeccion } from "@/components/course/course-utils";
@@ -152,12 +151,6 @@ export function CursosGrid({ comunidadSlug }: CursosGridProps) {
         </div>
       )}
 
-      <SiteFooter
-        comunidadSlug={comunidadSlug}
-        nombreComunidad={community.nombre}
-        logoUrl={community.logoUrl}
-        colorAcento={community.colorAcento}
-      />
     </div>
   );
 }
