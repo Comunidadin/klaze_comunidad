@@ -84,6 +84,13 @@ export interface AppState {
    */
   checklistOculto: Record<string, true>;
   ocultarChecklist: (comunidadId: string) => void;
+
+  /**
+   * Hasta cuándo están vistas las notificaciones de cada academia
+   * (comunidadId -> ISO). Al abrir la campanita se adelanta a «ahora».
+   */
+  notificacionesVistas: Record<string, string>;
+  marcarNotificacionesVistas: (comunidadId: string) => void;
 }
 
 /**
@@ -136,6 +143,15 @@ export const useAppStore = create<AppState>()(
       ocultarChecklist: (comunidadId) =>
         set((state) => ({
           checklistOculto: { ...state.checklistOculto, [comunidadId]: true },
+        })),
+
+      notificacionesVistas: {},
+      marcarNotificacionesVistas: (comunidadId) =>
+        set((state) => ({
+          notificacionesVistas: {
+            ...state.notificacionesVistas,
+            [comunidadId]: new Date().toISOString(),
+          },
         })),
     }),
     {

@@ -22,6 +22,7 @@ import { LevelBadge } from "@/components/shared/level-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { AcademiaSuspendida } from "@/components/shared/academia-suspendida";
 import { Buscador } from "@/components/shared/buscador";
+import { Campanita } from "@/components/shared/campanita";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { cargarArmazon, type AcademiaMia } from "@/lib/supabase/consultas";
 import { useAppStore } from "@/lib/store";
@@ -195,6 +196,7 @@ export function MemberShell({ communitySlug, children }: MemberShellProps) {
             >
               <Search className="size-4" />
             </button>
+            <Campanita comunidadId={community.id} comunidadSlug={community.slug} />
             {user && <LevelBadge nivel={user.nivel} size="sm" />}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
