@@ -628,7 +628,11 @@ function NivelesTab({
 export default function ComunidadPage() {
   const hydrated = useHydrated();
   const community = useMyCommunity();
-  const { posts, recargar } = useFeed(community?.id ?? "");
+  const { posts, fijado, recargar } = useFeed(community?.id ?? "");
+  // La fijada viaja FUERA de la paginación (ver `useFeed`), pero moderar es
+  // moderar todo: sin esto, una academia cuya única publicación es la fijada
+  // enseñaba «Todavía no hay publicaciones» con una publicación delante.
+  const todos = fijado ? [fijado, ...posts] : posts;
 
   if (!hydrated) {
     return <ComunidadSkeleton />;
@@ -648,7 +652,7 @@ export default function ComunidadPage() {
     <ComunidadContenido
       key={community.id}
       community={community}
-      posts={posts}
+      posts={todos}
       onCambio={recargar}
     />
   );

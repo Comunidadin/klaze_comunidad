@@ -7,11 +7,11 @@ import { crearClienteNavegador } from "@/lib/supabase/client";
  * Búsqueda del área de alumno: clases, publicaciones y miembros de la
  * academia activa, mientras se escribe.
  *
- * Tres consultas `ilike` por las políticas existentes — RLS ya esconde los
- * borradores, las clases con goteo cerrado y los perfiles de otras academias,
- * así que aquí no hay que repetir ninguna condición de acceso. Sin índices ni
- * infraestructura: a este tamaño `ilike` sobra, y si un día es lento se añade
- * `pg_trgm` sin tocar esta interfaz.
+ * Llama a `buscar_en_comunidad`, que busca POR PALABRAS y sin acentos:
+ * «como comunidad» encuentra «Cómo usar la comunidad». La función es
+ * `security invoker`, así que las políticas se aplican solas — solo aparece
+ * lo que esa persona ya puede ver (ni borradores, ni goteo cerrado, ni
+ * perfiles de otras academias).
  */
 export interface ResultadoClase {
   id: string;
@@ -40,9 +40,12 @@ export interface Resultados {
 
 const VACIO: Resultados = { clases: [], publicaciones: [], miembros: [] };
 
-/** `%`, `_` y los separadores de `.or()` harían de la consulta otra cosa. */
-function patronDe(q: string): string {
-  return `%${q.replace(/[%_,()]/g, " ").trim()}%`;
+interface FilaBusqueda {
+  tipo: "clase" | "publicacion" | "miembro";
+  id: string;
+  titulo: string;
+  detalle: string | null;
+  ruta_slug: string | null;
 }
 
 export function useBusqueda(comunidadId: string, q: string) {
@@ -55,7 +58,7 @@ export function useBusqueda(comunidadId: string, q: string) {
 
     // El patrón del proyecto: nunca `setState` síncrono dentro de un efecto,
     // ni siquiera en la rama que no espera nada (ver CLAUDE.md).
-    if (limpio.length < 2) {
+    if (limpio.length < 2 || !comunidadId) {
       void Promise.resolve().then(() => {
         if (!vivo) return;
         setResultados(VACIO);
@@ -72,58 +75,37 @@ export function useBusqueda(comunidadId: string, q: string) {
 
     // Rebote: se consulta cuando la persona deja de teclear un momento.
     const timer = setTimeout(() => {
-      const supabase = crearClienteNavegador();
-      const patron = patronDe(limpio);
-
-      void Promise.all([
-        supabase
-          .from("lecciones")
-          .select("id, titulo, modulos!inner( cursos!inner( slug, titulo, comunidad_id ) )")
-          .eq("modulos.cursos.comunidad_id", comunidadId)
-          .ilike("titulo", patron)
-          .limit(8),
-        supabase
-          .from("publicaciones")
-          .select("id, titulo, espacios ( slug )")
-          .eq("comunidad_id", comunidadId)
-          .or(`titulo.ilike.${patron},cuerpo.ilike.${patron}`)
-          .limit(8),
-        supabase
-          .from("perfiles")
-          .select("id, nombre, avatar_url")
-          .ilike("nombre", patron)
-          .limit(8),
-      ]).then(([lecciones, publicaciones, perfiles]) => {
-        if (!vivo) return;
-        /* eslint-disable @typescript-eslint/no-explicit-any -- filas anidadas
-           de PostgREST sin tipo generado; se normalizan aquí y no salen. */
-        const clases = ((lecciones.data ?? []) as any[]).map((l) => {
-          const mod = Array.isArray(l.modulos) ? l.modulos[0] : l.modulos;
-          const curso = Array.isArray(mod?.cursos) ? mod.cursos[0] : mod?.cursos;
-          return {
-            id: l.id as string,
-            titulo: l.titulo as string,
-            cursoSlug: (curso?.slug as string) ?? "",
-            cursoTitulo: (curso?.titulo as string) ?? "",
-          };
+      void crearClienteNavegador()
+        .rpc("buscar_en_comunidad", { p_comunidad: comunidadId, p_q: limpio })
+        .then(({ data }) => {
+          if (!vivo) return;
+          const filas = (data ?? []) as FilaBusqueda[];
+          setResultados({
+            clases: filas
+              .filter((f) => f.tipo === "clase")
+              .map((f) => ({
+                id: f.id,
+                titulo: f.titulo,
+                cursoSlug: f.ruta_slug ?? "",
+                cursoTitulo: f.detalle ?? "",
+              })),
+            publicaciones: filas
+              .filter((f) => f.tipo === "publicacion")
+              .map((f) => ({
+                id: f.id,
+                titulo: f.titulo,
+                espacioSlug: f.ruta_slug ?? "",
+              })),
+            miembros: filas
+              .filter((f) => f.tipo === "miembro")
+              .map((f) => ({
+                id: f.id,
+                nombre: f.titulo || "Miembro",
+                avatarUrl: f.detalle ?? "",
+              })),
+          });
+          setBuscando(false);
         });
-        const posts = ((publicaciones.data ?? []) as any[]).map((p) => {
-          const esp = Array.isArray(p.espacios) ? p.espacios[0] : p.espacios;
-          return {
-            id: p.id as string,
-            titulo: p.titulo as string,
-            espacioSlug: (esp?.slug as string) ?? "",
-          };
-        });
-        const miembros = ((perfiles.data ?? []) as any[]).map((m) => ({
-          id: m.id as string,
-          nombre: (m.nombre as string) || "Miembro",
-          avatarUrl: (m.avatar_url as string) ?? "",
-        }));
-        /* eslint-enable @typescript-eslint/no-explicit-any */
-        setResultados({ clases, publicaciones: posts, miembros });
-        setBuscando(false);
-      });
     }, 300);
 
     return () => {
