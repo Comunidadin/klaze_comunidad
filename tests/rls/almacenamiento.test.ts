@@ -104,6 +104,28 @@ test("nadie puede subir al avatar de otro", async () => {
   ).rejects.toThrow();
 });
 
+test("un alumno sube la imagen de su propio post", async () => {
+  const url = await subirImagen(
+    e.alumnoA.cliente,
+    { tipo: "publicacion", usuarioId: e.alumnoA.id },
+    pngMinimo(),
+    "png"
+  );
+  anotar(url);
+  expect(url).toContain(`/publico/publicaciones/${e.alumnoA.id}/`);
+});
+
+test("nadie sube a la carpeta de posts de otro", async () => {
+  await expect(
+    subirImagen(
+      e.alumnoB.cliente,
+      { tipo: "publicacion", usuarioId: e.alumnoA.id },
+      pngMinimo(),
+      "png"
+    )
+  ).rejects.toThrow();
+});
+
 test("sin sesion no se puede subir nada", async () => {
   await expect(
     subirImagen(

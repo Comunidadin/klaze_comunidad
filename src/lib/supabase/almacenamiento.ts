@@ -10,13 +10,57 @@ const BUCKET = "publico";
  */
 export type DestinoImagen =
   | { tipo: "academia"; comunidadId: string; uso: "logo" | "favicon" | "portada" | "modulo" | "auth" }
-  | { tipo: "avatar"; usuarioId: string };
+  | { tipo: "avatar"; usuarioId: string }
+  | { tipo: "publicacion"; usuarioId: string };
 
 function rutaDe(destino: DestinoImagen, extension: string): string {
   const nombre = `${crypto.randomUUID()}.${extension}`;
-  return destino.tipo === "avatar"
-    ? `avatares/${destino.usuarioId}/${nombre}`
-    : `academias/${destino.comunidadId}/${destino.uso}/${nombre}`;
+  switch (destino.tipo) {
+    case "avatar":
+      return `avatares/${destino.usuarioId}/${nombre}`;
+    case "publicacion":
+      return `publicaciones/${destino.usuarioId}/${nombre}`;
+    default:
+      return `academias/${destino.comunidadId}/${destino.uso}/${nombre}`;
+  }
+}
+
+/**
+ * Reduce una foto en el navegador antes de subirla: lado mayor ≤ 1600 px,
+ * WebP. Sin encuadre — la imagen de un post no se recorta, se enseña entera.
+ * Existe porque una foto de móvil pesa 8 MB y en el feed se ve a 600 px:
+ * subir el original sería pagar dos veces por lo mismo.
+ */
+export async function reducirImagen(archivo: File, ladoMaximo = 1600): Promise<Blob> {
+  const url = URL.createObjectURL(archivo);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolver, rechazar) => {
+      const el = new Image();
+      el.addEventListener("load", () => resolver(el));
+      el.addEventListener("error", () => rechazar(new Error("No se pudo leer la imagen")));
+      el.src = url;
+    });
+
+    const escala = Math.min(1, ladoMaximo / Math.max(img.width, img.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(img.width * escala));
+    canvas.height = Math.max(1, Math.round(img.height * escala));
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Tu navegador no permite procesar imágenes aquí");
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    return await new Promise<Blob>((resolver, rechazar) => {
+      canvas.toBlob(
+        (blob) => (blob ? resolver(blob) : rechazar(new Error("No se pudo generar la imagen"))),
+        "image/webp",
+        0.85
+      );
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 /**

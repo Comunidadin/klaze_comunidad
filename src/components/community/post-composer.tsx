@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { toast } from "sonner";
+import { ImageUp, X } from "lucide-react";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { crearPost } from "@/lib/supabase/feed";
+import { borrarImagen, reducirImagen, subirImagen } from "@/lib/supabase/almacenamiento";
 import { useSession } from "@/lib/hooks/use-session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,13 +57,19 @@ export function PostComposer({
 }: PostComposerProps) {
   const { user } = useSession();
 
-  async function publicar(espacio: string, titulo: string, cuerpo: string) {
+  async function publicar(
+    espacio: string,
+    titulo: string,
+    cuerpo: string,
+    imagen: string
+  ) {
     try {
       await crearPost(crearClienteNavegador(), {
         comunidadId,
         espacioId: espacio,
         titulo,
         cuerpo,
+        imagenUrl: imagen || undefined,
       });
       await onCambio?.();
       toast.success("Tu publicación ya está en el feed.");
@@ -75,6 +83,40 @@ export function PostComposer({
   const [titulo, setTitulo] = useState("");
   const [cuerpo, setCuerpo] = useState("");
   const [espacioId, setEspacioId] = useState(espacioDefault);
+  const [imagenUrl, setImagenUrl] = useState("");
+  const [subiendoImagen, setSubiendoImagen] = useState(false);
+  const inputImagenRef = useRef<HTMLInputElement>(null);
+
+  async function elegirImagen(archivo: File | undefined) {
+    if (!archivo || !user) return;
+    if (!archivo.type.startsWith("image/")) {
+      toast.error("Tiene que ser una imagen.");
+      return;
+    }
+    setSubiendoImagen(true);
+    try {
+      const blob = await reducirImagen(archivo);
+      const url = await subirImagen(
+        crearClienteNavegador(),
+        { tipo: "publicacion", usuarioId: user.id },
+        blob
+      );
+      // Si ya había una elegida y la reemplaza, la vieja no es de nadie más.
+      const anterior = imagenUrl;
+      setImagenUrl(url);
+      void borrarImagen(crearClienteNavegador(), anterior);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo subir la imagen");
+    } finally {
+      setSubiendoImagen(false);
+    }
+  }
+
+  function quitarImagen() {
+    const anterior = imagenUrl;
+    setImagenUrl("");
+    void borrarImagen(crearClienteNavegador(), anterior);
+  }
 
   // `Feed` remonta por completo al navegar entre la pestaña "Comunidad"
   // agregada y `.../comunidad/espacio/[slug]` (son páginas distintas), así
@@ -86,6 +128,13 @@ export function PostComposer({
     setTitulo("");
     setCuerpo("");
     setEspacioId(espacioDefault);
+    // Cerrar sin publicar deja la imagen huérfana en el bucket: se borra.
+    // Al publicar, `handleSubmit` vacía el estado ANTES de cerrar, así que
+    // aquí ya no hay nada que borrar y la imagen del post sobrevive.
+    if (imagenUrl) {
+      void borrarImagen(crearClienteNavegador(), imagenUrl);
+      setImagenUrl("");
+    }
   }
 
   function handleOpenChange(siguienteAbierto: boolean) {
@@ -104,7 +153,9 @@ export function PostComposer({
       return;
     }
 
-    void publicar(espacioId || espacioDefault, tituloLimpio, cuerpoLimpio);
+    const imagen = imagenUrl;
+    setImagenUrl("");
+    void publicar(espacioId || espacioDefault, tituloLimpio, cuerpoLimpio, imagen);
     handleOpenChange(false);
   }
 
@@ -144,6 +195,47 @@ export function PostComposer({
                 rows={5}
                 className="max-h-64 overflow-y-auto"
                 placeholder="Cuéntanos con detalle…"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              {imagenUrl ? (
+                <div className="relative overflow-hidden rounded-lg ring-1 ring-foreground/10">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- imagen recién subida al bucket */}
+                  <img src={imagenUrl} alt="" className="max-h-48 w-full object-cover" />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon-sm"
+                    className="absolute top-2 right-2"
+                    onClick={quitarImagen}
+                    aria-label="Quitar la imagen"
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={subiendoImagen}
+                  onClick={() => inputImagenRef.current?.click()}
+                >
+                  <ImageUp /> {subiendoImagen ? "Subiendo…" : "Añadir imagen"}
+                </Button>
+              )}
+              <input
+                ref={inputImagenRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="absolute size-px overflow-hidden opacity-0"
+                tabIndex={-1}
+                aria-label="Imagen de la publicación"
+                onChange={(e) => {
+                  void elegirImagen(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
               />
             </div>
 

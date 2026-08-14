@@ -38,7 +38,7 @@ export interface FiltroFeed {
  * consulta entera se cae.
  */
 const CAMPOS = `
-  id, comunidad_id, espacio_id, autor_id, titulo, cuerpo, fijado, creado_el,
+  id, comunidad_id, espacio_id, autor_id, titulo, cuerpo, imagen_url, fijado, creado_el,
   perfiles!publicaciones_autor_id_fkey ( id, nombre, email, avatar_url, bio, rol, puntos, creado_el ),
   comentarios ( id, autor_id, cuerpo, padre_id, creado_el, perfiles!comentarios_autor_id_fkey ( nombre, email, avatar_url, puntos ) ),
   me_gusta ( usuario_id )
@@ -128,6 +128,7 @@ function aPost(f: any, yo: string): PostConAutor {
     espacioId: f.espacio_id,
     titulo: f.titulo,
     cuerpo: f.cuerpo,
+    imagenUrl: f.imagen_url ?? undefined,
     fijado: f.fijado,
     likes: meGusta.map((m) => m.usuario_id),
     comentarios: raices,
@@ -215,7 +216,13 @@ export async function leerFijado(
 /** El autor sale de la sesión: no existe forma de publicar a nombre de otro. */
 export async function crearPost(
   supabase: SupabaseClient,
-  datos: { comunidadId: string; espacioId: string; titulo: string; cuerpo: string }
+  datos: {
+    comunidadId: string;
+    espacioId: string;
+    titulo: string;
+    cuerpo: string;
+    imagenUrl?: string;
+  }
 ): Promise<void> {
   const autorId = await idDeSesion(supabase);
   if (!autorId) throw new Error("Publicar requiere una sesión activa");
@@ -226,6 +233,7 @@ export async function crearPost(
     autor_id: autorId,
     titulo: datos.titulo,
     cuerpo: datos.cuerpo,
+    imagen_url: datos.imagenUrl ?? null,
   });
   if (error) throw new Error(`No se pudo publicar: ${error.message}`);
 }

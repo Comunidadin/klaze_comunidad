@@ -115,6 +115,15 @@ export function PostCard({ post, onCambio, className }: PostCardProps) {
           {expandido ? "Ver menos" : "Ver más"}
         </button>
       )}
+      {post.imagenUrl && (
+        /* eslint-disable-next-line @next/next/no-img-element -- imagen subida por el autor, dominio del bucket */
+        <img
+          src={post.imagenUrl}
+          alt=""
+          loading="lazy"
+          className="mt-3 max-h-[28rem] w-full rounded-xl object-cover ring-1 ring-foreground/10"
+        />
+      )}
 
       <div className="mt-4 flex items-center gap-1 border-t border-border pt-3">
         <button

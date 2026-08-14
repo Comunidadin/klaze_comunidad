@@ -198,6 +198,8 @@ export interface Post {
   espacioId: string;
   titulo: string;
   cuerpo: string;
+  /** Imagen adjunta, si la hay. URL del bucket público. */
+  imagenUrl?: string;
   fijado: boolean;
   likes: string[]; // userIds
   comentarios: PostComment[];
