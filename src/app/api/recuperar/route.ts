@@ -125,7 +125,14 @@ export async function POST(request: NextRequest) {
       bloqueRecuperacion(enlace)
     );
 
-    await enviarCorreo({ para: email, asunto, html }).catch(() => {
+    // Con slug firma la academia; desde el `/login` pelado no se sabe cuál es
+    // y firma la plataforma — igual que esa pantalla lleva la marca de Klaze.
+    await enviarCorreo({
+      para: email,
+      asunto,
+      html,
+      remitenteNombre: academia?.nombre ?? "Klaze",
+    }).catch(() => {
       /* Si el correo no sale, tampoco se lo decimos a quien pregunta. */
     });
   }

@@ -98,7 +98,13 @@ export async function POST(request: NextRequest) {
       correo: email,
       password: r.passwordTemporal,
     });
-    const correo = await enviarCorreo({ para: email, asunto, html });
+    // Firma la plataforma: el alta se la anuncia Klaze, no su propia academia.
+    const correo = await enviarCorreo({
+      para: email,
+      asunto,
+      html,
+      remitenteNombre: "Klaze",
+    });
 
     // `enviarCorreo` no lanza a propósito: la academia ya existe y el creador ya
     // puede entrar. Se devuelve si salió para que la pantalla lo diga — con la

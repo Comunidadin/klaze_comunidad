@@ -37,5 +37,10 @@ export async function avisarBaja(
     nombre: o.nombre,
   });
 
-  return enviarCorreo({ para: o.email, asunto, html });
+  return enviarCorreo({
+    para: o.email,
+    asunto,
+    html,
+    remitenteNombre: o.comunidadNombre,
+  });
 }
