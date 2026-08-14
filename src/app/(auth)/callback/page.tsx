@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { useHydrated, useSession } from "@/lib/hooks/use-session";
 import { homePorRol } from "@/lib/routes";
-import { FullScreenLoader } from "@/components/shared/full-screen-loader";
+import { CargaConMarca } from "@/components/shared/carga-con-marca";
 
 /**
  * Lee el retorno del enlace de acceso y, si trae credenciales, las canjea.
@@ -82,6 +82,14 @@ async function resolverRetorno(): Promise<Retorno> {
 
 export default function CallbackPage() {
   const [canjeado, setCanjeado] = useState(false);
+  // La academia por cuya puerta se entro, si el login la puso en la consulta:
+  // pinta la pantalla de carga con SU marca y decide a que login volver si
+  // el canje falla. Estado perezoso y no useSearchParams: sin Suspense.
+  const [academia] = useState(() =>
+    typeof window === "undefined"
+      ? null
+      : new URLSearchParams(window.location.search).get("academia")
+  );
   const [error, setError] = useState<string | null>(null);
   const [tipo, setTipo] = useState<string | null>(null);
   const [destino, setDestino] = useState<string | null>(null);
@@ -115,8 +123,10 @@ export default function CallbackPage() {
       return;
     }
 
-    router.replace(user ? homePorRol(user) : "/login");
-  }, [canjeado, hydrated, error, tipo, destino, user, router]);
+    router.replace(
+      user ? homePorRol(user) : academia ? `/login/${academia}` : "/login"
+    );
+  }, [canjeado, hydrated, error, tipo, destino, user, router, academia]);
 
   if (error) {
     return (
@@ -126,7 +136,10 @@ export default function CallbackPage() {
         </p>
         <p className="text-sm text-muted-foreground">
           El enlace puede haber caducado o haberse usado ya. Vuelve a{" "}
-          <Link href="/login" className="text-primary underline underline-offset-4">
+          <Link
+            href={academia ? `/login/${academia}` : "/login"}
+            className="text-primary underline underline-offset-4"
+          >
             entrar
           </Link>
           .
@@ -135,5 +148,5 @@ export default function CallbackPage() {
     );
   }
 
-  return <FullScreenLoader />;
+  return <CargaConMarca slug={academia ?? undefined} />;
 }

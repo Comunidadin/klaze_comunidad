@@ -47,11 +47,20 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   const exenta =
     (pathname?.startsWith("/invitacion") ?? false) ||
     (pathname?.startsWith("/nueva-clave") ?? false);
+  // `/callback` va SIN el split y fuera del guard: es la transición de entrar
+  // y pinta su propia pantalla de carga con la marca de la academia
+  // (`CargaConMarca`). Antes montaba el split azul de Klaze un instante y
+  // desconcertaba. Su página ya redirige por rol en cuanto hay sesión.
+  const esCallback = pathname?.startsWith("/callback") ?? false;
 
   useEffect(() => {
-    if (!hydrated || !user || exenta) return;
+    if (!hydrated || !user || exenta || esCallback) return;
     router.replace(homePorRol(user));
-  }, [hydrated, user, router, exenta]);
+  }, [hydrated, user, router, exenta, esCallback]);
+
+  if (esCallback) {
+    return <>{children}</>;
+  }
 
   if (!exenta && (!hydrated || user)) {
     return <FullScreenLoader />;
