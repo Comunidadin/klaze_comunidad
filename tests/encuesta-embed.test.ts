@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { urlDeEmbed } from "../src/lib/encuesta-embed";
+import { idTfLive, idTfWidget, urlDeEmbed } from "../src/lib/encuesta-embed";
 
 test("extrae el src de un iframe de Typeform", () => {
   const codigo =
@@ -7,12 +7,20 @@ test("extrae el src de un iframe de Typeform", () => {
   expect(urlDeEmbed(codigo)).toBe("https://empresa.typeform.com/to/abc123");
 });
 
-test("el embed live de Typeform (div + script, sin iframe) se convierte en su URL", () => {
+test("el embed live de Typeform se detecta y su id no se confunde con una URL", () => {
   const codigo =
     '<div data-tf-live="01M016RPRH3C1M68JE97S33KG4"></div><script src="//embed.typeform.com/next/embed.js"></script>';
-  expect(urlDeEmbed(codigo)).toBe(
-    "https://form.typeform.com/to/01M016RPRH3C1M68JE97S33KG4"
-  );
+  // El id live NO es el formulario: la URL final la da la API de Typeform
+  // (resolverEmbed). Aquí solo se detecta y se extrae.
+  expect(idTfLive(codigo)).toBe("01M016RPRH3C1M68JE97S33KG4");
+  expect(urlDeEmbed(codigo)).toBeNull();
+});
+
+test("del HTML de la API de Typeform sale el id real del formulario", () => {
+  const html =
+    '<div data-tf-widget="azmakJNO" data-tf-opacity="100" style="width:100%;height:500px;"></div>';
+  expect(idTfWidget(html)).toBe("azmakJNO");
+  expect(idTfWidget("<div>nada</div>")).toBeNull();
 });
 
 test("una URL pelada tambien vale", () => {

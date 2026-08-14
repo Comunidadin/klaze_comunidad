@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { SubirImagen } from "@/components/shared/subir-imagen";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { urlDeEmbed } from "@/lib/encuesta-embed";
+import { resolverEmbed } from "@/lib/encuesta-embed";
 import { Separator } from "@/components/ui/separator";
 import { CorreosDeLaAcademia } from "./_correos";
 import { paletaDeAcademia, type TonosTema } from "@/lib/color-academia";
@@ -232,7 +232,9 @@ function ConfiguracionForm({
       return;
     }
 
-    const encuestaUrl = encuestaTexto.trim() ? urlDeEmbed(encuestaTexto) : "";
+    // El embed «live» de Typeform exige preguntarle a su API cuál es el
+    // formulario de verdad — por eso esta línea espera.
+    const encuestaUrl = encuestaTexto.trim() ? await resolverEmbed(encuestaTexto) : "";
     if (encuestaUrl === null) {
       toast.error(
         "No reconocimos la encuesta: pega el código de incrustación (iframe) o una URL https."
