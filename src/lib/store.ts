@@ -77,6 +77,13 @@ export interface AppState {
    */
   academiaActivaId: string | null;
   fijarAcademiaActiva: (id: string | null) => void;
+
+  /**
+   * Academias donde el alumno descartó la tarjeta «Empieza aquí»
+   * (comunidadId -> true). Preferencia de este navegador, persistida.
+   */
+  checklistOculto: Record<string, true>;
+  ocultarChecklist: (comunidadId: string) => void;
 }
 
 /**
@@ -124,6 +131,12 @@ export const useAppStore = create<AppState>()(
 
       academiaActivaId: null,
       fijarAcademiaActiva: (id) => set({ academiaActivaId: id }),
+
+      checklistOculto: {},
+      ocultarChecklist: (comunidadId) =>
+        set((state) => ({
+          checklistOculto: { ...state.checklistOculto, [comunidadId]: true },
+        })),
     }),
     {
       name: "intercambio-v1",

@@ -9,6 +9,7 @@ import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { CourseCard } from "@/components/course/course-card";
+import { ChecklistBienvenida } from "@/components/course/checklist-bienvenida";
 import { CoursePortada } from "@/components/course/course-portada";
 import { leccionParaSeguir, moduloDeLeccion } from "@/components/course/course-utils";
 
@@ -123,6 +124,12 @@ export function CursosGrid({ comunidadSlug }: CursosGridProps) {
           </div>
         </div>
       )}
+
+      <ChecklistBienvenida
+        comunidadId={community.id}
+        comunidadSlug={comunidadSlug}
+        ownerId={community.ownerId}
+      />
 
       {/* Cuadrícula, no filas que se deslizan: en una cuadrícula se ven diez
           módulos de golpe y en una fila caben cuatro. Con el catálogo que tiene
