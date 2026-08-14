@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, SearchX, User as UserIcon } from "lucide-react";
+import { LogOut, Search, SearchX, User as UserIcon } from "lucide-react";
 import { useCommunity } from "@/lib/hooks/use-community";
 import { useSession } from "@/lib/hooks/use-session";
 import { useThemeToggle } from "@/components/shared/theme-toggle";
 import { LevelBadge } from "@/components/shared/level-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { AcademiaSuspendida } from "@/components/shared/academia-suspendida";
+import { Buscador } from "@/components/shared/buscador";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import {
@@ -52,6 +54,19 @@ export function MemberShell({ communitySlug, children }: MemberShellProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { Icono: IconoTema, etiqueta: etiquetaTema, toggle: toggleTema } = useThemeToggle();
+  const [buscadorAbierto, setBuscadorAbierto] = useState(false);
+
+  // ⌘K / Ctrl-K abre el buscador desde cualquier pantalla del área.
+  useEffect(() => {
+    function onTecla(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setBuscadorAbierto(true);
+      }
+    }
+    window.addEventListener("keydown", onTecla);
+    return () => window.removeEventListener("keydown", onTecla);
+  }, []);
 
   if (!resultado) {
     return (
@@ -144,6 +159,15 @@ export function MemberShell({ communitySlug, children }: MemberShellProps) {
           </nav>
 
           <div className="flex shrink-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setBuscadorAbierto(true)}
+              className="flex size-8 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Buscar en la academia"
+              title="Buscar (⌘K)"
+            >
+              <Search className="size-4" />
+            </button>
             {user && <LevelBadge nivel={user.nivel} size="sm" />}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -185,6 +209,13 @@ export function MemberShell({ communitySlug, children }: MemberShellProps) {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>
+
+      <Buscador
+        comunidadId={community.id}
+        comunidadSlug={community.slug}
+        open={buscadorAbierto}
+        onOpenChange={setBuscadorAbierto}
+      />
     </div>
   );
 }
