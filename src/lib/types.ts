@@ -49,6 +49,10 @@ export interface Community {
   nombreIa?: string;
   /** Su cara en el chat. Sin ella, un icono. */
   avatarIa?: string;
+  /** URL https de la encuesta externa (Typeform, etc.) que salta al entrar. */
+  encuestaUrl?: string;
+  /** `true` = el popup no se puede descartar sin responder. */
+  encuestaObligatoria?: boolean;
   secciones: CommunitySection[]; // navegación de espacios del feed, agrupada
   creadoEl: string;
   /**

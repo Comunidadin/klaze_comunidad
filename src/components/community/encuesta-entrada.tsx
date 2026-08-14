@@ -27,7 +27,90 @@ import { cn } from "@/lib/utils";
  * navegador. Votar enseña los resultados ahí mismo; cerrar de cualquier
  * forma la da por atendida — un popup que insiste cada visita es spam.
  */
-export function EncuestaEntrada({ comunidadId }: { comunidadId: string }) {
+export interface EncuestaEntradaProps {
+  comunidadId: string;
+  /** Encuesta externa (Typeform, etc.) de Configuración. Manda sobre la nativa. */
+  encuestaUrl?: string;
+  encuestaObligatoria?: boolean;
+}
+
+/**
+ * La variante externa: el Typeform (o similar) de Configuración, en un
+ * iframe que construye Klaze — del código pegado solo sobrevivió la URL
+ * (`urlDeEmbed`), así que aquí no entra HTML de nadie. Si es obligatoria, la
+ * ventana no se cierra con Esc ni tocando fuera: solo «Ya la respondí» — no
+ * podemos ver dentro del iframe de otro dominio, así que la palabra del
+ * alumno es el cierre.
+ */
+function EncuestaExterna({
+  url,
+  obligatoria,
+}: {
+  url: string;
+  obligatoria: boolean;
+}) {
+  const marcarVista = useAppStore((s) => s.marcarEncuestaEntradaVista);
+  const clave = `iframe:${url}`;
+  const [abierta, setAbierta] = useState(
+    () => !useAppStore.getState().encuestasEntradaVistas[clave]
+  );
+
+  function cerrar() {
+    setAbierta(false);
+    marcarVista(clave);
+  }
+
+  return (
+    <Dialog
+      open={abierta}
+      onOpenChange={(abierto) => {
+        if (!abierto && obligatoria) return;
+        if (!abierto) cerrar();
+      }}
+    >
+      <DialogContent
+        showCloseButton={!obligatoria}
+        onEscapeKeyDown={(e) => obligatoria && e.preventDefault()}
+        onInteractOutside={(e) => obligatoria && e.preventDefault()}
+        className="max-h-[90dvh] gap-3 sm:max-w-xl"
+      >
+        <DialogHeader>
+          <DialogTitle>Una pregunta rápida</DialogTitle>
+          <DialogDescription>
+            {obligatoria
+              ? "Respóndela para seguir — es un momento."
+              : "Nos ayuda a mejorar. Puedes responderla luego."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <iframe
+          src={url}
+          title="Encuesta de la academia"
+          className="h-[55dvh] w-full rounded-lg border border-border"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          allow="camera; microphone"
+        />
+
+        <div className="flex justify-end gap-2">
+          {!obligatoria && (
+            <Button variant="ghost" size="sm" onClick={cerrar}>
+              Ahora no
+            </Button>
+          )}
+          <Button size="sm" onClick={cerrar}>
+            Ya la respondí
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function EncuestaEntrada({
+  comunidadId,
+  encuestaUrl,
+  encuestaObligatoria,
+}: EncuestaEntradaProps) {
   const { user } = useSession();
   const marcarVista = useAppStore((s) => s.marcarEncuestaEntradaVista);
 
@@ -60,6 +143,10 @@ export function EncuestaEntrada({ comunidadId }: { comunidadId: string }) {
     // Las vistas se leen con `getState()` dentro del efecto a propósito:
     // marcar la vista al cerrar no debe relanzar la consulta.
   }, [comunidadId, user]);
+
+  if (encuestaUrl) {
+    return <EncuestaExterna url={encuestaUrl} obligatoria={Boolean(encuestaObligatoria)} />;
+  }
 
   if (!post?.encuesta) return null;
 

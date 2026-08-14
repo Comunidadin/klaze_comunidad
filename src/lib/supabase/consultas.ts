@@ -90,7 +90,7 @@ export async function cargarArmazon(
   }
 
   const CAMPOS_COMUNIDAD =
-    "id, slug, nombre, descripcion, logo_url, favicon_url, color_acento, propietario_id, plan_id, estado, nombres_niveles, marca_auth, nombre_ia, avatar_ia, creado_el";
+    "id, slug, nombre, descripcion, logo_url, favicon_url, color_acento, propietario_id, plan_id, estado, nombres_niveles, marca_auth, nombre_ia, avatar_ia, encuesta_url, encuesta_obligatoria, creado_el";
 
   // TODAS mis academias: las que poseo y las que estudio. Cada consulta parte
   // de algo mío (`propietario_id` propio, ids de MIS inscripciones) y nunca de
@@ -208,6 +208,8 @@ export async function cargarArmazon(
         nombresNiveles: c.nombres_niveles,
         nombreIa: c.nombre_ia ?? undefined,
         avatarIa: c.avatar_ia ?? undefined,
+        encuestaUrl: c.encuesta_url ?? undefined,
+        encuestaObligatoria: Boolean(c.encuesta_obligatoria),
         // Los espacios del feed llegan en la rebanada 3, con el resto de la
         // vida social. Vacío aquí no es un olvido.
         secciones: [],

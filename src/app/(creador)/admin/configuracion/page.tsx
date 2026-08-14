@@ -17,6 +17,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SubirImagen } from "@/components/shared/subir-imagen";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { urlDeEmbed } from "@/lib/encuesta-embed";
 import { Separator } from "@/components/ui/separator";
 import { CorreosDeLaAcademia } from "./_correos";
 import { paletaDeAcademia, type TonosTema } from "@/lib/color-academia";
@@ -210,6 +213,10 @@ function ConfiguracionForm({
   const [colorAcento, setColorAcento] = useState(community.colorAcento);
   const [nombreIa, setNombreIa] = useState(community.nombreIa ?? "");
   const [avatarIa, setAvatarIa] = useState(community.avatarIa ?? "");
+  const [encuestaTexto, setEncuestaTexto] = useState(community.encuestaUrl ?? "");
+  const [encuestaObligatoria, setEncuestaObligatoria] = useState(
+    community.encuestaObligatoria ?? false
+  );
   const [videoAuth, setVideoAuth] = useState(community.marcaAuth?.videoUrl ?? "");
   const [posterAuth, setPosterAuth] = useState(community.marcaAuth?.posterUrl ?? "");
 
@@ -222,6 +229,14 @@ function ConfiguracionForm({
     const slugLimpio = slugDesde(slug);
     if (!slug.trim()) {
       toast.error("La dirección de la academia no puede estar vacía.");
+      return;
+    }
+
+    const encuestaUrl = encuestaTexto.trim() ? urlDeEmbed(encuestaTexto) : "";
+    if (encuestaUrl === null) {
+      toast.error(
+        "No reconocimos la encuesta: pega el código de incrustación (iframe) o una URL https."
+      );
       return;
     }
 
@@ -241,6 +256,8 @@ function ConfiguracionForm({
           videoUrl: videoAuth.trim() || undefined,
           posterUrl: posterAuth.trim() || undefined,
         },
+        encuestaUrl,
+        encuestaObligatoria,
       });
       // Recargar el armazón para que el nombre y el color nuevos se vean en
       // toda la app, no solo en esta pantalla.
@@ -432,6 +449,47 @@ function ConfiguracionForm({
                 color de marca.
               </p>
             </div>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="config-encuesta">Encuesta de entrada</Label>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Pega el código de incrustación (iframe) de Typeform, Google
+                Forms, Tally o la herramienta que uses — o su URL. A cada
+                alumno le aparece en una ventana al entrar, una sola vez.
+                Guardamos solo la dirección, nunca el HTML. Déjalo vacío para
+                apagarla. (Las encuestas nativas del feed también pueden salir
+                como popup: Admin → Comunidad → Posts → «Popup de entrada».)
+              </p>
+            </div>
+            <Textarea
+              id="config-encuesta"
+              value={encuestaTexto}
+              onChange={(e) => setEncuestaTexto(e.target.value)}
+              rows={3}
+              className="max-h-40 overflow-y-auto font-mono text-xs"
+              placeholder='<iframe src="https://tuempresa.typeform.com/to/abc123"…></iframe>'
+            />
+            <div className="flex items-center gap-2.5">
+              <Switch
+                id="config-encuesta-obligatoria"
+                checked={encuestaObligatoria}
+                onCheckedChange={setEncuestaObligatoria}
+              />
+              <Label htmlFor="config-encuesta-obligatoria" className="font-normal">
+                Obligatoria — no se puede cerrar sin responder
+              </Label>
+            </div>
+            {encuestaObligatoria && (
+              <p className="text-xs text-muted-foreground">
+                La ventana no tendrá «Ahora no»: solo el botón «Ya la
+                respondí» la cierra. Úsalo con cariño — un popup que atrapa
+                también puede espantar.
+              </p>
+            )}
           </div>
 
           <div className="space-y-1.5">

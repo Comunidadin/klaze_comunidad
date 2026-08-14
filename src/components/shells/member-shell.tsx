@@ -292,7 +292,11 @@ export function MemberShell({ communitySlug, children }: MemberShellProps) {
         onOpenChange={setBuscadorAbierto}
       />
 
-      <EncuestaEntrada comunidadId={community.id} />
+      <EncuestaEntrada
+        comunidadId={community.id}
+        encuestaUrl={community.encuestaUrl}
+        encuestaObligatoria={community.encuestaObligatoria}
+      />
     </div>
   );
 }

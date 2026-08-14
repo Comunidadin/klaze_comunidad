@@ -42,6 +42,8 @@ export type CambiosComunidad = Partial<
     | "marcaAuth"
     | "nombreIa"
     | "avatarIa"
+    | "encuestaUrl"
+    | "encuestaObligatoria"
   >
 >;
 
@@ -74,6 +76,10 @@ export async function guardarComunidad(
   if (cambios.marcaAuth !== undefined) fila.marca_auth = cambios.marcaAuth;
   if (cambios.nombreIa !== undefined) fila.nombre_ia = cambios.nombreIa.trim() || null;
   if (cambios.avatarIa !== undefined) fila.avatar_ia = cambios.avatarIa.trim() || null;
+  if (cambios.encuestaUrl !== undefined) fila.encuesta_url = cambios.encuestaUrl || null;
+  if (cambios.encuestaObligatoria !== undefined) {
+    fila.encuesta_obligatoria = cambios.encuestaObligatoria;
+  }
 
   if (Object.keys(fila).length === 0) return;
 
