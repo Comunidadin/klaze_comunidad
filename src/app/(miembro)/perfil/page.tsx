@@ -128,7 +128,10 @@ function PerfilContenido({ user }: { user: User }) {
     // navegar. Sin el await, el redirect puede adelantarse y dejar la cookie
     // viva un instante, con lo que el guard del layout te devuelve dentro.
     await logout();
-    router.replace("/login");
+    // A la puerta de su academia si la hay: la generica es la de Klaze y un
+    // alumno de una academia no tiene por que ver esa marca.
+    const slug = comunidadPrincipal?.slug;
+    router.replace(slug ? `/login/${slug}` : "/login");
   }
 
   const esNivelMaximo = miNivel >= NIVEL_MAXIMO;

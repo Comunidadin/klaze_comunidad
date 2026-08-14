@@ -102,7 +102,9 @@ export function MemberShell({ communitySlug, children }: MemberShellProps) {
     // redirect puede adelantarse y dejar la cookie viva un instante, con lo
     // que el guard del layout te devuelve dentro.
     await logout();
-    router.replace("/login");
+    // A la puerta DE ESTA academia, no a la generica de Klaze: quien sale de
+    // Vivir de IA debe aterrizar en el login con la marca de Vivir de IA.
+    router.replace(`/login/${community.slug}`);
   }
 
   // Academia suspendida: el superadmin la suspende desde
