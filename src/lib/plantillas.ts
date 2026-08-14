@@ -227,6 +227,53 @@ export function bloqueRecuperacion(enlace: string): string {
 }
 
 /**
+ * El correo que recibe el **creador** cuando se le da de alta su academia.
+ *
+ * Es el único de este archivo que no lo escribe un dueño ni lo recibe un
+ * alumno: lo manda Klaze, y no se puede editar. Una academia recién creada no
+ * tiene todavía plantillas, y quien la recibe tampoco es alumno de nadie — así
+ * que aquí no hay `leerPlantilla` que valga.
+ *
+ * Vive en este archivo, y no en cada ruta, porque salen de dos sitios: el alta
+ * a mano desde `/plataforma` y el súper enlace. Estuvo escrito solo en el
+ * segundo, y la pantalla del panel no mandaba nada: quien daba de alta tenía
+ * que copiar la contraseña y pasarla por su cuenta.
+ *
+ * Reutiliza `bloqueAcceso`, el mismo que lleva la bienvenida de los alumnos, y
+ * con él la rama de «ya tenías cuenta»: a quien ya estudiaba en la academia de
+ * otro no se le toca la contraseña, porque eso le dejaría fuera de allí sin
+ * avisarle.
+ */
+export function correoAltaAcademia(o: {
+  /** El origen de la petición, p. ej. `https://klaze.app`. Sin barra final. */
+  origen: string;
+  empresa: string;
+  slug: string;
+  correo: string;
+  password: string | null;
+}): { asunto: string; html: string } {
+  // El creador entra por `/login`, no por `/login/{slug}`: la segunda es la
+  // puerta de sus alumnos, con la marca de la academia. Se le dan las dos
+  // porque va a necesitar la suya para repartirla.
+  const suEntrada = escapar(`${o.origen}/login/${o.slug}`);
+
+  return {
+    // El asunto no es HTML: escaparlo dejaría un `&amp;` a la vista en la
+    // bandeja de entrada, igual que en `componerCorreo`.
+    asunto: `Tu academia ${o.empresa} ya está lista`,
+    html:
+      `<p>Ya puedes empezar a subir tus clases a ${escapar(o.empresa)}.</p>\n` +
+      bloqueAcceso({
+        loginUrl: `${o.origen}/login`,
+        correo: o.correo,
+        password: o.password,
+      }) +
+      `\n<p>Tus alumnos entrarán por <a href="${suEntrada}">${suEntrada}</a>.</p>` +
+      `\n<p ${GRIS}>El nombre y la dirección de tu academia se cambian desde Configuración.</p>`,
+  };
+}
+
+/**
  * La plantilla de esa academia, o la de por defecto.
  *
  * Se le pasa el cliente **admin**: quien llama a esto es un Route Handler que

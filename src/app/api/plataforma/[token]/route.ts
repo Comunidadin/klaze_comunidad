@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { crearAcademia } from "@/lib/academia";
 import { enviarCorreo } from "@/lib/correo";
 import { slugLibre } from "@/lib/slug";
-import { escapar } from "@/lib/plantillas";
+import { correoAltaAcademia, escapar } from "@/lib/plantillas";
 import {
   academiasDe,
   canalPorToken,
@@ -134,7 +134,6 @@ export async function POST(
 
     const empresa = empresaDelCuerpo(campos);
     const slug = await slugLibre(admin, empresa);
-    const suEntrada = escapar(`${origen}/login/${slug}`);
 
     // `crearAcademia` ya monta cuenta, perfil, rol, comunidad y la inscripción
     // del propio creador —sin ella, "Ver como alumno" le enseña una academia
@@ -161,36 +160,18 @@ export async function POST(
       return NextResponse.json({ ok: false, motivo: "identificador_ocupado" }, { status: 409 });
     }
 
-    const correo = r.passwordTemporal
-      ? await enviarCorreo({
-          para: email,
-          asunto: `Tu academia ${empresa} ya está lista`,
-          html: `
-            <p>Ya puedes empezar a subir tus clases.</p>
-            <p>Entra en <a href="${entrada}">${entrada}</a> con:</p>
-            <p>
-              Correo: <strong>${escapar(email)}</strong><br>
-              Contraseña: <strong style="font-family:monospace">${escapar(r.passwordTemporal)}</strong>
-            </p>
-            <p>Tus alumnos entrarán por
-               <a href="${suEntrada}">${suEntrada}</a>.</p>
-            <p style="color:#666;font-size:13px">
-              Puedes cambiar la contraseña desde tu perfil, y el nombre y la
-              dirección de tu academia desde Configuración.
-            </p>`,
-        })
-      : // Ya tenía cuenta en Klaze pero no academia: estudiaba en la de otro.
-        // No se le toca la contraseña — le dejaría fuera de allí sin avisar.
-        await enviarCorreo({
-          para: email,
-          asunto: `Tu academia ${empresa} ya está lista`,
-          html: `
-            <p>Ya puedes empezar a subir tus clases.</p>
-            <p>Ya tenías cuenta en Klaze, así que entra en
-               <a href="${entrada}">${entrada}</a> con tu contraseña de siempre.</p>
-            <p>Tus alumnos entrarán por
-               <a href="${suEntrada}">${suEntrada}</a>.</p>`,
-        });
+    // El mismo correo que sale del alta a mano en `/plataforma`. Estuvo escrito
+    // aquí a pelo, con sus dos ramas, mientras la pantalla del panel no mandaba
+    // nada; ahora los dos caminos comparten `correoAltaAcademia` para que no
+    // acaben diciendo cosas distintas.
+    const { asunto, html } = correoAltaAcademia({
+      origen,
+      empresa,
+      slug,
+      correo: email,
+      password: r.passwordTemporal,
+    });
+    const correo = await enviarCorreo({ para: email, asunto, html });
 
     await registrar(admin, canal.id, {
       email,
