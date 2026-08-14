@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { tiempoRelativo } from "@/lib/fechas-ui";
+import { Markdown } from "@/components/shared/markdown";
 import { cn } from "@/lib/utils";
 import type { PostComment } from "@/lib/types";
 
@@ -145,7 +146,7 @@ export function CommentThread({ postId, comentarios, onCambio, className }: Comm
                       {tiempoRelativo(raiz.creadoEl)}
                     </span>
                   </div>
-                  <p className="mt-0.5 text-sm text-pretty text-foreground/90">{raiz.cuerpo}</p>
+                  <Markdown texto={raiz.cuerpo} className="mt-0.5 text-sm text-pretty text-foreground/90" />
                   <button
                     type="button"
                     onClick={() => abrirRespuesta(raiz.id)}
@@ -199,9 +200,10 @@ export function CommentThread({ postId, comentarios, onCambio, className }: Comm
                                   {tiempoRelativo(respuesta.creadoEl)}
                                 </span>
                               </div>
-                              <p className="mt-0.5 text-sm text-pretty text-foreground/90">
-                                {respuesta.cuerpo}
-                              </p>
+                              <Markdown
+                                texto={respuesta.cuerpo}
+                                className="mt-0.5 text-sm text-pretty text-foreground/90"
+                              />
                             </div>
                           </div>
                         );

@@ -11,6 +11,7 @@ import { useEspacios } from "@/lib/hooks/use-espacios";
 import { contarComentariosPost, type PostConAutor } from "@/lib/hooks/use-feed";
 import { CommentThread } from "@/components/community/comment-thread";
 import { LevelBadge } from "@/components/shared/level-badge";
+import { Markdown } from "@/components/shared/markdown";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { tiempoRelativo } from "@/lib/fechas-ui";
@@ -98,14 +99,13 @@ export function PostCard({ post, onCambio, className }: PostCardProps) {
       <h3 className="mt-3 font-display text-base font-semibold text-balance text-foreground">
         {post.titulo}
       </h3>
-      <p
+      <Markdown
+        texto={post.cuerpo}
         className={cn(
-          "mt-1.5 text-sm whitespace-pre-line text-pretty text-foreground/90",
+          "mt-1.5 text-sm text-pretty text-foreground/90",
           !expandido && esLargo && "line-clamp-4"
         )}
-      >
-        {post.cuerpo}
-      </p>
+      />
       {esLargo && (
         <button
           type="button"
