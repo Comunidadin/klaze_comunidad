@@ -394,22 +394,6 @@ function ConfiguracionForm({
 
           <div className="space-y-2.5">
             <Label htmlFor="config-color">Color de acento</Label>
-            <div className="flex items-center gap-3">
-              <input
-                id="config-color"
-                type="color"
-                value={colorAcento}
-                onChange={(e) => setColorAcento(e.target.value)}
-                className="size-10 shrink-0 cursor-pointer rounded-lg border border-border bg-transparent p-1"
-                aria-label="Elegir color de acento personalizado"
-              />
-              <Input
-                value={colorAcento}
-                onChange={(e) => setColorAcento(e.target.value)}
-                className="max-w-32 font-mono uppercase"
-                aria-label="Código hexadecimal del color de acento"
-              />
-            </div>
             <div className="flex flex-wrap gap-2 pt-1">
               {COLORES_PRESET.map((preset) => (
                 <button
@@ -426,6 +410,27 @@ function ConfiguracionForm({
                   style={{ backgroundColor: preset.valor }}
                 />
               ))}
+            </div>
+            <div className="flex items-center gap-3 pt-1">
+              <input
+                id="config-color"
+                type="color"
+                value={colorAcento}
+                onChange={(e) => setColorAcento(e.target.value)}
+                className="size-10 shrink-0 cursor-pointer rounded-lg border border-border bg-transparent p-1"
+                aria-label="Elegir color de acento personalizado"
+              />
+              <Input
+                value={colorAcento}
+                onChange={(e) => setColorAcento(e.target.value)}
+                className="max-w-32 font-mono uppercase"
+                aria-label="Código hexadecimal del color de acento"
+              />
+              <p className="text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">Personalizado:</span>{" "}
+                toca el cuadro para abrir el selector, o escribe el código de tu
+                color de marca.
+              </p>
             </div>
           </div>
 

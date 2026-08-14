@@ -46,7 +46,9 @@ async function rpcPublica(
         apikey: SUPABASE_PUBLISHABLE_KEY,
         Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
       },
-      next: { revalidate: 300 },
+      // 60 y no más: cuando un creador cambia su color quiere verlo YA, y
+      // esperar 5 minutos ya se confundió una vez con "no funciona".
+      next: { revalidate: 60 },
       signal: AbortSignal.timeout(3000),
     });
     if (!r.ok) return null;
