@@ -98,6 +98,10 @@ export interface AppState {
    */
   encuestasEntradaVistas: Record<string, true>;
   marcarEncuestaEntradaVista: (publicacionId: string) => void;
+
+  /** Academias donde se descartó el aviso de «Instala la app». */
+  instalarAppOculto: Record<string, true>;
+  ocultarInstalarApp: (comunidadId: string) => void;
 }
 
 /**
@@ -168,6 +172,12 @@ export const useAppStore = create<AppState>()(
             ...state.encuestasEntradaVistas,
             [publicacionId]: true,
           },
+        })),
+
+      instalarAppOculto: {},
+      ocultarInstalarApp: (comunidadId) =>
+        set((state) => ({
+          instalarAppOculto: { ...state.instalarAppOculto, [comunidadId]: true },
         })),
     }),
     {

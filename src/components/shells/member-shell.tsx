@@ -24,6 +24,7 @@ import { AcademiaSuspendida } from "@/components/shared/academia-suspendida";
 import { Buscador } from "@/components/shared/buscador";
 import { Campanita } from "@/components/shared/campanita";
 import { EncuestaEntrada } from "@/components/community/encuesta-entrada";
+import { InstalarApp } from "@/components/shared/instalar-app";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { cargarArmazon, type AcademiaMia } from "@/lib/supabase/consultas";
 import { useAppStore } from "@/lib/store";
@@ -297,6 +298,8 @@ export function MemberShell({ communitySlug, children }: MemberShellProps) {
         encuestaUrl={community.encuestaUrl}
         encuestaObligatoria={community.encuestaObligatoria}
       />
+
+      <InstalarApp comunidadId={community.id} nombreAcademia={community.nombre} />
     </div>
   );
 }
