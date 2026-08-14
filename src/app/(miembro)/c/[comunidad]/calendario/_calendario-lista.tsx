@@ -2,7 +2,6 @@
 
 import { CalendarX2 } from "lucide-react";
 import { useCommunity } from "@/lib/hooks/use-community";
-import { useCourses } from "@/lib/hooks/use-courses";
 import { useEvents } from "@/lib/hooks/use-events";
 import { useAhora } from "@/lib/hooks/use-ahora";
 import { EventCard } from "@/components/community/event-card";
@@ -12,7 +11,6 @@ import type { CommunityEvent } from "@/lib/types";
 
 export interface CalendarioListaProps {
   comunidadSlug: string;
-  cursoSlug: string;
 }
 
 interface GrupoDia {
@@ -37,26 +35,28 @@ function agruparPorDia(eventos: CommunityEvent[]): GrupoDia[] {
 }
 
 /**
- * Lista mensual de eventos DE UN CURSO (Cambio 3), agrupada por día (a
- * propósito, no un grid de calendario — con 4-5 eventos al mes un grid solo
- * agrega ceremonia sin ayudar a escanear). `CursoTabsShell` ya garantiza que
- * el curso existe y que el usuario tiene acceso.
+ * Lista de eventos DE LA ACADEMIA, agrupada por día (a propósito, no un grid
+ * de calendario — con 4-5 eventos al mes un grid solo agrega ceremonia sin
+ * ayudar a escanear).
+ *
+ * Fue por curso (Cambio 3) y quedó fósil al subir los eventos a la academia:
+ * esta pantalla esperaba un `cursoSlug` que su ruta ya no tiene, no
+ * encontraba el curso y devolvía `null` — la pestaña Calendario en blanco.
  */
-export function CalendarioLista({ comunidadSlug, cursoSlug }: CalendarioListaProps) {
+export function CalendarioLista({ comunidadSlug }: CalendarioListaProps) {
   const resultado = useCommunity(comunidadSlug);
-  const { cursos } = useCourses(resultado?.community.id ?? "");
-  const curso = cursos.find((c) => c.slug === cursoSlug);
-  const { eventos } = useEvents(resultado?.community.id ?? "", curso?.id ?? "");
+  const { eventos } = useEvents(resultado?.community.id ?? "");
   const ahora = useAhora();
 
-  if (!resultado || !curso) return null;
+  if (!resultado) return null;
+  const { community } = resultado;
 
   if (eventos.length === 0) {
     return (
       <EmptyState
         icono={CalendarX2}
         titulo="Todavía no hay eventos"
-        descripcion={`Cuando el creador de esta comunidad programe una sesión en vivo de ${curso.titulo}, va a aparecer aquí.`}
+        descripcion={`Cuando el creador de ${community.nombre} programe una sesión en vivo, va a aparecer aquí.`}
       />
     );
   }
@@ -76,7 +76,7 @@ export function CalendarioLista({ comunidadSlug, cursoSlug }: CalendarioListaPro
           Calendario
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Sesiones en vivo, talleres y mentorías de {curso.titulo}.
+          Sesiones en vivo, talleres y mentorías de {community.nombre}.
         </p>
       </div>
 

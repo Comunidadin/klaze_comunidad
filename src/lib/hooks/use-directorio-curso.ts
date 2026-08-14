@@ -85,3 +85,43 @@ export function useDirectorioCurso(cursoId: string): MiembroDirectorio[] {
 
   return miembros;
 }
+
+async function leerDirectorioComunidad(comunidadId: string): Promise<MiembroDirectorio[]> {
+  if (!comunidadId) return VACIO;
+
+  const { data } = await crearClienteNavegador().rpc("miembros_de_comunidad", {
+    p_comunidad: comunidadId,
+  });
+
+  return ((data ?? []) as FilaMiembro[]).map((f) => ({
+    id: f.usuario_id,
+    nombre: nombreVisible(f.nombre, f.alias),
+    avatarUrl: f.avatar_url,
+    bio: f.bio,
+    puntos: f.puntos,
+    nivel: nivelPorPuntos(f.puntos),
+    creadoEl: f.creado_el,
+  }));
+}
+
+/**
+ * Quién está en LA ACADEMIA — las pestañas Miembros y Ranking del área de
+ * alumno. Misma puerta (`miembros_de_comunidad`, la hermana por academia de
+ * `miembros_del_curso`) y por el mismo motivo: `inscripciones` solo se la
+ * enseña RLS a su dueño y al administrador.
+ */
+export function useDirectorio(comunidadId: string): MiembroDirectorio[] {
+  const [miembros, setMiembros] = useState<MiembroDirectorio[]>(VACIO);
+
+  useEffect(() => {
+    let vivo = true;
+    void leerDirectorioComunidad(comunidadId).then((m) => {
+      if (vivo) setMiembros(m);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [comunidadId]);
+
+  return miembros;
+}

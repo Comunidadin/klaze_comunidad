@@ -1,16 +1,15 @@
 import { MiembrosDirectorio } from "./_miembros-directorio";
 
 /**
- * Pestaña "Miembros" de un curso (Cambio 3) — Server Component: solo
- * desenvuelve `params` (async en Next 16) y delega la data/hidratación a
- * `MiembrosDirectorio` (client).
+ * Pestaña «Miembros» de la academia — Server Component: solo desenvuelve
+ * `params` (async en Next 16) y delega en `MiembrosDirectorio` (client).
  */
-export default async function MiembrosCursoPage({
+export default async function MiembrosPage({
   params,
 }: {
-  params: Promise<{ comunidad: string; curso: string }>;
+  params: Promise<{ comunidad: string }>;
 }) {
-  const { comunidad, curso } = await params;
+  const { comunidad } = await params;
 
-  return <MiembrosDirectorio comunidadSlug={comunidad} cursoSlug={curso} />;
+  return <MiembrosDirectorio comunidadSlug={comunidad} />;
 }

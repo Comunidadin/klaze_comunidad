@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "@/lib/hooks/use-session";
 import { useMembers } from "@/lib/hooks/use-members";
+import { useDirectorio } from "@/lib/hooks/use-directorio-curso";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { leerRanking } from "@/lib/supabase/ranking";
 import { nivelPorPuntos, puntosParaNivel, NIVEL_MAXIMO } from "@/lib/levels";
@@ -135,6 +136,71 @@ export function useGamification(
       vivo = false;
     };
   }, [comunidadId, cursoId]);
+
+  const rankingPorPeriodo = useMemo(
+    () => ({
+      "7d": construirRanking(miembros, puntos["7d"], "7d"),
+      "30d": construirRanking(miembros, puntos["30d"], "30d"),
+      total: construirRanking(miembros, puntos.total, "total"),
+    }),
+    [miembros, puntos]
+  );
+
+  const miNivel = user ? nivelPorPuntos(user.puntos) : 1;
+  const puntosParaSiguiente =
+    user && miNivel < NIVEL_MAXIMO
+      ? Math.max(puntosParaNivel(miNivel + 1) - user.puntos, 0)
+      : 0;
+
+  return {
+    ranking: rankingPorPeriodo.total,
+    rankingPorPeriodo,
+    miNivel,
+    puntosParaSiguiente,
+  };
+}
+
+/**
+ * El ranking del AREA DE ALUMNO.
+ *
+ * `useGamification` lista miembros con `useMembers`, que lee `inscripciones`
+ * — y esa tabla solo se la enseña RLS a su dueño y al administrador: a un
+ * alumno el ranking le salia con una sola persona (él). Aquí la lista sale de
+ * `miembros_de_comunidad`, la puerta pensada para compañeros de clase, y los
+ * periodos de `ranking_de_comunidad`, como siempre.
+ */
+export function useRankingComunidad(comunidadId: string): UseGamificationResult {
+  const { user } = useSession();
+  const directorio = useDirectorio(comunidadId);
+  const [puntos, setPuntos] = useState<PuntosPorPeriodo>(VACIO);
+
+  useEffect(() => {
+    let vivo = true;
+    const ahora = Date.now();
+    void leerPuntos(comunidadId, undefined, ahora).then((p) => {
+      if (vivo) setPuntos(p);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [comunidadId]);
+
+  const miembros: User[] = useMemo(
+    () =>
+      directorio.map((m) => ({
+        id: m.id,
+        email: "",
+        nombre: m.nombre,
+        avatarUrl: m.avatarUrl,
+        bio: m.bio,
+        rol: "alumno" as const,
+        comunidadIds: [comunidadId],
+        puntos: m.puntos,
+        nivel: m.nivel,
+        creadoEl: m.creadoEl,
+      })),
+    [directorio, comunidadId]
+  );
 
   const rankingPorPeriodo = useMemo(
     () => ({

@@ -1,16 +1,15 @@
 import { RankingTablero } from "./_ranking-tablero";
 
 /**
- * Pestaña "Ranking" de un curso (Cambio 3) — Server Component: solo
- * desenvuelve `params` (async en Next 16) y delega la data/hidratación a
- * `RankingTablero` (client).
+ * Pestaña «Ranking» de la academia — Server Component: solo desenvuelve
+ * `params` (async en Next 16) y delega en `RankingTablero` (client).
  */
-export default async function RankingCursoPage({
+export default async function RankingPage({
   params,
 }: {
-  params: Promise<{ comunidad: string; curso: string }>;
+  params: Promise<{ comunidad: string }>;
 }) {
-  const { comunidad, curso } = await params;
+  const { comunidad } = await params;
 
-  return <RankingTablero comunidadSlug={comunidad} cursoSlug={curso} />;
+  return <RankingTablero comunidadSlug={comunidad} />;
 }

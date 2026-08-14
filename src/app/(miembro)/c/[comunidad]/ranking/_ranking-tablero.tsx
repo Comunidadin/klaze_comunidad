@@ -3,8 +3,7 @@
 import { useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Minus, Trophy } from "lucide-react";
 import { useCommunity } from "@/lib/hooks/use-community";
-import { useCourses } from "@/lib/hooks/use-courses";
-import { useGamification, type PeriodoRanking, type RankingEntry } from "@/lib/hooks/use-gamification";
+import { useRankingComunidad, type PeriodoRanking, type RankingEntry } from "@/lib/hooks/use-gamification";
 import { useHydrated, useSession } from "@/lib/hooks/use-session";
 import { LevelBadge } from "@/components/shared/level-badge";
 import { AnimatedCounter } from "@/components/shared/animated-counter";
@@ -18,7 +17,6 @@ import { cn } from "@/lib/utils";
 
 export interface RankingTableroProps {
   comunidadSlug: string;
-  cursoSlug: string;
 }
 
 const PERIODOS: { value: PeriodoRanking; label: string }[] = [
@@ -74,7 +72,7 @@ function DeltaIndicator({ delta }: { delta: RankingEntry["delta"] }) {
 /**
  * Ranking DE UN CURSO (Cambio 3: los puntos son los likes recibidos en los
  * posts que cada quien publicó dentro de este curso, ver docstring de
- * `useGamification`): tabs de periodo (7d/30d/total), podio del top 3 y
+ * `useRankingComunidad`): tabs de periodo (7d/30d/total), podio del top 3 y
  * lista del resto. `CursoTabsShell` ya garantiza que el curso existe y que
  * el usuario tiene acceso.
  *
@@ -86,21 +84,18 @@ function DeltaIndicator({ delta }: { delta: RankingEntry["delta"] }) {
  * complejidad extra de observar una fila que puede no existir (top 3 vive en
  * el podio, no en la lista).
  */
-export function RankingTablero({ comunidadSlug, cursoSlug }: RankingTableroProps) {
+export function RankingTablero({ comunidadSlug }: RankingTableroProps) {
   const resultado = useCommunity(comunidadSlug);
-  const { cursos } = useCourses(resultado?.community.id ?? "");
-  const curso = cursos.find((c) => c.slug === cursoSlug);
   const hydrated = useHydrated();
   const { user } = useSession();
   const [periodo, setPeriodo] = useState<PeriodoRanking>("7d");
-  const { rankingPorPeriodo, miNivel } = useGamification(
-    resultado?.community.id ?? "",
-    curso?.id ?? ""
+  const { rankingPorPeriodo, miNivel } = useRankingComunidad(
+    resultado?.community.id ?? ""
   );
   const filaMiaRef = useRef<HTMLLIElement>(null);
   const podioRef = useRef<HTMLDivElement>(null);
 
-  if (!resultado || !curso) return null;
+  if (!resultado) return null;
   const { community } = resultado;
 
   const ranking = rankingPorPeriodo[periodo];
@@ -119,7 +114,7 @@ export function RankingTablero({ comunidadSlug, cursoSlug }: RankingTableroProps
           Ranking
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Quién suma más puntos en {curso.titulo} — 1 like recibido = 1 punto.
+          Quién suma más puntos en {community.nombre} — 10 por cada clase completada.
         </p>
       </div>
 
@@ -129,7 +124,7 @@ export function RankingTablero({ comunidadSlug, cursoSlug }: RankingTableroProps
         <EmptyState
           icono={Trophy}
           titulo="Todavía no hay puntos que mostrar"
-          descripcion="En cuanto los miembros empiecen a recibir likes en sus posts de este módulo, el ranking se va a llenar acá."
+          descripcion="En cuanto los miembros completen sus primeras clases, el ranking se va a llenar acá."
         />
       ) : (
         <>

@@ -114,3 +114,35 @@ test("un borrador no tiene directorio ni para quien lo compro", async () => {
   // `alumnoA` tiene acceso a `cursoABorrador` en el escenario, a proposito.
   expect(await directorio(e.alumnoA.cliente, e.cursoABorrador)).toEqual([]);
 });
+
+test("miembros_de_comunidad: un alumno ve a TODOS sus companeros de academia", async () => {
+  const { data } = await e.alumnoA.cliente.rpc("miembros_de_comunidad", {
+    p_comunidad: e.comunidadA,
+  });
+  const ids = ((data ?? []) as { usuario_id: string }[]).map((f) => f.usuario_id);
+  expect(ids).toContain(e.alumnoA.id);
+  expect(ids.length).toBeGreaterThan(1);
+});
+
+test("miembros_de_comunidad: un alumno de otra academia recibe vacio", async () => {
+  const { data } = await e.alumnoB.cliente.rpc("miembros_de_comunidad", {
+    p_comunidad: e.comunidadA,
+  });
+  expect(data ?? []).toEqual([]);
+});
+
+test("miembros_de_comunidad: tampoco lleva el correo de nadie", async () => {
+  const { data } = await e.alumnoA.cliente.rpc("miembros_de_comunidad", {
+    p_comunidad: e.comunidadA,
+  });
+  const fila = (data as Record<string, unknown>[])[0];
+  expect(Object.keys(fila).sort()).toEqual([
+    "alias",
+    "avatar_url",
+    "bio",
+    "creado_el",
+    "nombre",
+    "puntos",
+    "usuario_id",
+  ]);
+});

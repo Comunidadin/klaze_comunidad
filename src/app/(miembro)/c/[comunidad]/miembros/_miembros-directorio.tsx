@@ -3,9 +3,8 @@
 import { useMemo, useState } from "react";
 import { Search, Star, Users } from "lucide-react";
 import { useCommunity } from "@/lib/hooks/use-community";
-import { useCourses } from "@/lib/hooks/use-courses";
 import {
-  useDirectorioCurso,
+  useDirectorio,
   type MiembroDirectorio,
 } from "@/lib/hooks/use-directorio-curso";
 import { MemberCard } from "@/components/community/member-card";
@@ -24,7 +23,6 @@ import { formatFechaLarga } from "@/lib/format-fecha";
 
 export interface MiembrosDirectorioProps {
   comunidadSlug: string;
-  cursoSlug: string;
 }
 
 /** Quita tildes para que "jose" encuentre "José" — mismo criterio que `slugify` en el store. */
@@ -36,16 +34,16 @@ function normalizar(texto: string): string {
 }
 
 /**
- * Directorio de miembros CON ACCESO A ESTE CURSO (Cambio 3): buscador por
- * nombre + grid de `MemberCard`. Click en una tarjeta abre un Dialog con el
- * perfil completo del miembro. `CursoTabsShell` ya garantiza que el curso
- * existe y que el usuario actual tiene acceso.
+ * Directorio de miembros DE LA ACADEMIA: buscador por nombre + grid de
+ * `MemberCard`; click abre el perfil en un Dialog.
+ *
+ * Fue por curso (Cambio 3) y quedó fósil al subir la comunidad a la
+ * academia: esperaba un `cursoSlug` que la ruta ya no tiene, no encontraba
+ * el curso y devolvía `null` — la pestaña en blanco.
  */
-export function MiembrosDirectorio({ comunidadSlug, cursoSlug }: MiembrosDirectorioProps) {
+export function MiembrosDirectorio({ comunidadSlug }: MiembrosDirectorioProps) {
   const resultado = useCommunity(comunidadSlug);
-  const { cursos } = useCourses(resultado?.community.id ?? "");
-  const curso = cursos.find((c) => c.slug === cursoSlug);
-  const miembros = useDirectorioCurso(curso?.id ?? "");
+  const miembros = useDirectorio(resultado?.community.id ?? "");
   const [busqueda, setBusqueda] = useState("");
   const [seleccionado, setSeleccionado] = useState<MiembroDirectorio | null>(null);
 
@@ -55,7 +53,7 @@ export function MiembrosDirectorio({ comunidadSlug, cursoSlug }: MiembrosDirecto
     return miembros.filter((m) => normalizar(m.nombre).includes(q));
   }, [miembros, busqueda]);
 
-  if (!resultado || !curso) return null;
+  if (!resultado) return null;
   const { community } = resultado;
 
   return (
@@ -66,8 +64,8 @@ export function MiembrosDirectorio({ comunidadSlug, cursoSlug }: MiembrosDirecto
             Miembros
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {miembros.length} {miembros.length === 1 ? "persona tiene" : "personas tienen"} acceso
-            a {curso.titulo}.
+            {miembros.length} {miembros.length === 1 ? "persona" : "personas"} en{" "}
+            {community.nombre}.
           </p>
         </div>
         <div className="relative sm:w-72">
