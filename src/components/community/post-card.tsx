@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Heart, MessageCircle } from "lucide-react";
 import { crearClienteNavegador } from "@/lib/supabase/client";
-import { alternarMeGusta } from "@/lib/supabase/feed";
+import { alternarMeGusta, votarEncuesta } from "@/lib/supabase/feed";
 import { toast } from "sonner";
 import { useSession } from "@/lib/hooks/use-session";
 import { useEspacios } from "@/lib/hooks/use-espacios";
@@ -40,6 +40,7 @@ const CUERPO_LARGO_UMBRAL = 220;
 export function PostCard({ post, onCambio, className }: PostCardProps) {
   const { user } = useSession();
   const [guardandoLike, setGuardandoLike] = useState(false);
+  const [guardandoVoto, setGuardandoVoto] = useState(false);
   const { secciones } = useEspacios(post.comunidadId);
 
   const [expandido, setExpandido] = useState(false);
@@ -49,6 +50,19 @@ export function PostCard({ post, onCambio, className }: PostCardProps) {
   const esLargo = post.cuerpo.length > CUERPO_LARGO_UMBRAL;
   const totalComentarios = contarComentariosPost(post);
   const espacio = secciones.flatMap((s) => s.espacios).find((e) => e.id === post.espacioId);
+
+  async function handleVoto(opcionId: string) {
+    if (!user || guardandoVoto) return;
+    setGuardandoVoto(true);
+    try {
+      await votarEncuesta(crearClienteNavegador(), post.id, opcionId);
+      await onCambio?.();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo votar");
+    } finally {
+      setGuardandoVoto(false);
+    }
+  }
 
   async function handleLike() {
     if (!user || guardandoLike) return;
@@ -115,6 +129,57 @@ export function PostCard({ post, onCambio, className }: PostCardProps) {
           {expandido ? "Ver menos" : "Ver más"}
         </button>
       )}
+      {post.encuesta && (
+        <div className="mt-3 space-y-2">
+          {post.encuesta.opciones.map((opcion) => {
+            const pct =
+              post.encuesta!.totalVotos > 0
+                ? Math.round((opcion.votos / post.encuesta!.totalVotos) * 100)
+                : 0;
+            return (
+              <button
+                key={opcion.id}
+                type="button"
+                disabled={guardandoVoto}
+                onClick={() => void handleVoto(opcion.id)}
+                className={cn(
+                  "relative w-full cursor-pointer overflow-hidden rounded-lg border px-3 py-2 text-left text-sm transition-colors",
+                  opcion.miVoto
+                    ? "border-primary/50 text-foreground"
+                    : "border-border text-foreground/90 hover:border-foreground/30"
+                )}
+              >
+                {/* La barra del resultado, detrás del texto. */}
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "absolute inset-y-0 left-0 transition-all",
+                    opcion.miVoto ? "bg-primary/15" : "bg-muted"
+                  )}
+                  style={{ width: `${pct}%` }}
+                />
+                <span className="relative flex items-center justify-between gap-2">
+                  <span className="min-w-0 truncate">
+                    {opcion.miVoto && <span aria-hidden="true">✓ </span>}
+                    {opcion.texto}
+                  </span>
+                  {post.encuesta!.totalVotos > 0 && (
+                    <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                      {pct}%
+                    </span>
+                  )}
+                </span>
+              </button>
+            );
+          })}
+          <p className="text-xs text-muted-foreground">
+            {post.encuesta.totalVotos === 0
+              ? "Sé quien abra la votación."
+              : `${post.encuesta.totalVotos} ${post.encuesta.totalVotos === 1 ? "voto" : "votos"} — toca para cambiar el tuyo.`}
+          </p>
+        </div>
+      )}
+
       {post.imagenUrl && (
         /* eslint-disable-next-line @next/next/no-img-element -- imagen subida por el autor, dominio del bucket */
         <img

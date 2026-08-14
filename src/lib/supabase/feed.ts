@@ -10,9 +10,18 @@ export const POR_PAGINA = 20;
  * que ya consumen las cinco pantallas del feed. Cambiarla obligaría a tocarlas
  * todas para no ganar nada.
  */
+export interface OpcionEncuesta {
+  id: string;
+  texto: string;
+  votos: number;
+  miVoto: boolean;
+}
+
 export type PostConAutor = Post & {
   autor: User;
   numComentarios: number;
+  /** Presente solo si la publicación es una encuesta. */
+  encuesta?: { opciones: OpcionEncuesta[]; totalVotos: number };
   /** Si el usuario de la sesión le ha dado me gusta. */
   meGusta: boolean;
 };
@@ -41,7 +50,8 @@ const CAMPOS = `
   id, comunidad_id, espacio_id, autor_id, titulo, cuerpo, imagen_url, fijado, creado_el,
   perfiles!publicaciones_autor_id_fkey ( id, nombre, email, avatar_url, bio, rol, creado_el ),
   comentarios ( id, autor_id, cuerpo, padre_id, creado_el, perfiles!comentarios_autor_id_fkey ( nombre, email, avatar_url ) ),
-  me_gusta ( usuario_id )
+  me_gusta ( usuario_id ),
+  encuesta_opciones ( id, texto, orden, encuesta_votos ( usuario_id ) )
 `;
 
 interface FilaPerfilAutor {
@@ -96,6 +106,24 @@ function aPost(f: any, yo: string, puntosPor: Map<string, number>): PostConAutor
   const comentarios = (f.comentarios ?? []) as FilaComentario[];
   const meGusta = (f.me_gusta ?? []) as { usuario_id: string }[];
 
+  const filasOpciones = (f.encuesta_opciones ?? []) as {
+    id: string; texto: string; orden: number;
+    encuesta_votos?: { usuario_id: string }[];
+  }[];
+  const opciones: OpcionEncuesta[] = filasOpciones
+    .slice()
+    .sort((a, b) => a.orden - b.orden)
+    .map((o) => ({
+      id: o.id,
+      texto: o.texto,
+      votos: (o.encuesta_votos ?? []).length,
+      miVoto: (o.encuesta_votos ?? []).some((v) => v.usuario_id === yo),
+    }));
+  const encuesta =
+    opciones.length > 0
+      ? { opciones, totalVotos: opciones.reduce((t, o) => t + o.votos, 0) }
+      : undefined;
+
   // Dos niveles: raíces y sus respuestas. Es lo que soporta el modelo.
   const raices: PostComment[] = comentarios
     .filter((c) => !c.padre_id)
@@ -129,6 +157,7 @@ function aPost(f: any, yo: string, puntosPor: Map<string, number>): PostConAutor
     titulo: f.titulo,
     cuerpo: f.cuerpo,
     imagenUrl: f.imagen_url ?? undefined,
+    encuesta,
     fijado: f.fijado,
     likes: meGusta.map((m) => m.usuario_id),
     comentarios: raices,
@@ -224,20 +253,62 @@ export async function crearPost(
     titulo: string;
     cuerpo: string;
     imagenUrl?: string;
+    /** 2 a 6 textos: convierte la publicación en encuesta. */
+    opciones?: string[];
   }
 ): Promise<void> {
   const autorId = await idDeSesion(supabase);
   if (!autorId) throw new Error("Publicar requiere una sesión activa");
 
-  const { error } = await supabase.from("publicaciones").insert({
-    comunidad_id: datos.comunidadId,
-    espacio_id: datos.espacioId,
-    autor_id: autorId,
-    titulo: datos.titulo,
-    cuerpo: datos.cuerpo,
-    imagen_url: datos.imagenUrl ?? null,
-  });
+  const { data, error } = await supabase
+    .from("publicaciones")
+    .insert({
+      comunidad_id: datos.comunidadId,
+      espacio_id: datos.espacioId,
+      autor_id: autorId,
+      titulo: datos.titulo,
+      cuerpo: datos.cuerpo,
+      imagen_url: datos.imagenUrl ?? null,
+    })
+    .select("id");
   if (error) throw new Error(`No se pudo publicar: ${error.message}`);
+
+  const opciones = (datos.opciones ?? []).map((t) => t.trim()).filter(Boolean);
+  if (opciones.length >= 2 && data?.[0]) {
+    const { error: errOpciones } = await supabase.from("encuesta_opciones").insert(
+      opciones.slice(0, 6).map((texto, i) => ({
+        publicacion_id: data[0].id,
+        texto,
+        orden: i + 1,
+      }))
+    );
+    if (errOpciones) {
+      throw new Error(`Se publicó, pero la encuesta no: ${errOpciones.message}`);
+    }
+  }
+}
+
+/**
+ * Vota (o cambia el voto) en la encuesta de una publicación. El upsert sobre
+ * la clave (publicación, usuario) es lo que hace imposible votar dos veces.
+ */
+export async function votarEncuesta(
+  supabase: SupabaseClient,
+  publicacionId: string,
+  opcionId: string
+): Promise<void> {
+  const yo = await idDeSesion(supabase);
+  if (!yo) throw new Error("Votar requiere una sesión activa");
+
+  const { data, error } = await supabase
+    .from("encuesta_votos")
+    .upsert(
+      { publicacion_id: publicacionId, usuario_id: yo, opcion_id: opcionId },
+      { onConflict: "publicacion_id,usuario_id" }
+    )
+    .select("opcion_id");
+  if (error) throw new Error(`No se pudo votar: ${error.message}`);
+  if (!data || data.length === 0) throw new Error("No se pudo votar");
 }
 
 /** Alterna el me gusta del usuario de la sesión. Nunca a nombre de otro. */

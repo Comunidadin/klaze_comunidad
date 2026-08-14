@@ -2,7 +2,7 @@
 
 import { useRef, useState, type FormEvent } from "react";
 import { toast } from "sonner";
-import { ImageUp, X } from "lucide-react";
+import { BarChart3, ImageUp, Plus, X } from "lucide-react";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { crearPost } from "@/lib/supabase/feed";
 import { borrarImagen, reducirImagen, subirImagen } from "@/lib/supabase/almacenamiento";
@@ -61,7 +61,8 @@ export function PostComposer({
     espacio: string,
     titulo: string,
     cuerpo: string,
-    imagen: string
+    imagen: string,
+    opcionesEncuesta: string[]
   ) {
     try {
       await crearPost(crearClienteNavegador(), {
@@ -70,6 +71,7 @@ export function PostComposer({
         titulo,
         cuerpo,
         imagenUrl: imagen || undefined,
+        opciones: opcionesEncuesta.length ? opcionesEncuesta : undefined,
       });
       await onCambio?.();
       toast.success("Tu publicación ya está en el feed.");
@@ -85,6 +87,8 @@ export function PostComposer({
   const [espacioId, setEspacioId] = useState(espacioDefault);
   const [imagenUrl, setImagenUrl] = useState("");
   const [subiendoImagen, setSubiendoImagen] = useState(false);
+  const [esEncuesta, setEsEncuesta] = useState(false);
+  const [opciones, setOpciones] = useState<string[]>(["", ""]);
   const inputImagenRef = useRef<HTMLInputElement>(null);
 
   async function elegirImagen(archivo: File | undefined) {
@@ -128,6 +132,8 @@ export function PostComposer({
     setTitulo("");
     setCuerpo("");
     setEspacioId(espacioDefault);
+    setEsEncuesta(false);
+    setOpciones(["", ""]);
     // Cerrar sin publicar deja la imagen huérfana en el bucket: se borra.
     // Al publicar, `handleSubmit` vacía el estado ANTES de cerrar, así que
     // aquí ya no hay nada que borrar y la imagen del post sobrevive.
@@ -148,14 +154,34 @@ export function PostComposer({
 
     const tituloLimpio = titulo.trim();
     const cuerpoLimpio = cuerpo.trim();
-    if (!tituloLimpio || !cuerpoLimpio) {
+    const opcionesLimpias = esEncuesta
+      ? opciones.map((o) => o.trim()).filter(Boolean)
+      : [];
+
+    if (esEncuesta) {
+      // En una encuesta la pregunta es el título; el cuerpo es opcional.
+      if (!tituloLimpio) {
+        toast.error("Escribe la pregunta de la encuesta.");
+        return;
+      }
+      if (opcionesLimpias.length < 2) {
+        toast.error("Una encuesta necesita al menos 2 opciones.");
+        return;
+      }
+    } else if (!tituloLimpio || !cuerpoLimpio) {
       toast.error("Escribe un título y un cuerpo antes de publicar.");
       return;
     }
 
     const imagen = imagenUrl;
     setImagenUrl("");
-    void publicar(espacioId || espacioDefault, tituloLimpio, cuerpoLimpio, imagen);
+    void publicar(
+      espacioId || espacioDefault,
+      tituloLimpio,
+      cuerpoLimpio,
+      imagen,
+      opcionesLimpias
+    );
     handleOpenChange(false);
   }
 
@@ -175,19 +201,85 @@ export function PostComposer({
           </DialogHeader>
 
           <div className="mt-4 space-y-4">
+            <div className="flex gap-1 rounded-lg bg-muted p-1">
+              {([
+                { valor: false, etiqueta: "Publicación" },
+                { valor: true, etiqueta: "Encuesta" },
+              ] as const).map((m) => (
+                <button
+                  key={m.etiqueta}
+                  type="button"
+                  onClick={() => setEsEncuesta(m.valor)}
+                  className={
+                    esEncuesta === m.valor
+                      ? "flex-1 cursor-pointer rounded-md bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-sm"
+                      : "flex-1 cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+                  }
+                >
+                  {m.valor && <BarChart3 className="mr-1 inline size-3.5 align-text-bottom" />}
+                  {m.etiqueta}
+                </button>
+              ))}
+            </div>
+
             <div className="space-y-1.5">
-              <Label htmlFor="post-titulo">Título</Label>
+              <Label htmlFor="post-titulo">{esEncuesta ? "Pregunta" : "Título"}</Label>
               <Input
                 id="post-titulo"
                 value={titulo}
                 onChange={(e) => setTitulo(e.target.value)}
-                placeholder="Un título claro y directo"
+                placeholder={
+                  esEncuesta ? "¿Qué le preguntas a la comunidad?" : "Un título claro y directo"
+                }
                 autoFocus
               />
             </div>
 
+            {esEncuesta && (
+              <div className="space-y-2">
+                <Label>Opciones</Label>
+                {opciones.map((opcion, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Input
+                      value={opcion}
+                      onChange={(e) =>
+                        setOpciones((prev) =>
+                          prev.map((o, j) => (j === i ? e.target.value : o))
+                        )
+                      }
+                      placeholder={`Opción ${i + 1}`}
+                      aria-label={`Opción ${i + 1} de la encuesta`}
+                    />
+                    {opciones.length > 2 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() =>
+                          setOpciones((prev) => prev.filter((_, j) => j !== i))
+                        }
+                        aria-label={`Quitar la opción ${i + 1}`}
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                {opciones.length < 6 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setOpciones((prev) => [...prev, ""])}
+                  >
+                    <Plus /> Otra opción
+                  </Button>
+                )}
+              </div>
+            )}
+
             <div className="space-y-1.5">
-              <Label htmlFor="post-cuerpo">Cuerpo</Label>
+              <Label htmlFor="post-cuerpo">{esEncuesta ? "Contexto (opcional)" : "Cuerpo"}</Label>
               <Textarea
                 id="post-cuerpo"
                 value={cuerpo}
