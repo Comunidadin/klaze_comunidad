@@ -74,8 +74,11 @@ export function MarcaAcademia({
     >
       <span
         className={cn(
-          "flex shrink-0 items-center justify-center overflow-hidden rounded-lg ring-1 ring-black/10",
-          tieneLogo && "bg-white",
+          // Sin fondo detrás del logo, a propósito: un PNG con transparencia
+          // se pinta sobre lo que haya. El `bg-white` que hubo aquí le ponía
+          // un plato blanco a todo logo — y en modo oscuro, un logo de arte
+          // oscuro con esquinas transparentes salía con esquinas blancas.
+          "flex shrink-0 items-center justify-center overflow-hidden rounded-lg ring-1 ring-foreground/10",
           vertical ? "size-14 rounded-2xl" : MARCA_TAMANO[size]
         )}
         // El acento va inline porque es dato de cada academia, no un token del
