@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -19,6 +19,15 @@ const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-displ
  * escogía el más grande — el de Klaze, y el favicon de la academia no se veía
  * nunca. Un `icons` de metadata sí se sustituye entero en las rutas hijas.
  */
+/**
+ * `viewportFit: cover` es lo que hace válidos los `env(safe-area-inset-*)`
+ * en el iPhone: sin él valen 0 y la interfaz se mete bajo la barra de inicio
+ * cuando la app corre instalada (standalone).
+ */
+export const viewport: Viewport = {
+  viewportFit: "cover",
+};
+
 export const metadata: Metadata = {
   title: "Klaze — Módulos y comunidad para tu empresa",
   description: "Plataforma de módulos en video y comunidad, una por empresa.",

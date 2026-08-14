@@ -49,7 +49,7 @@ export function InstalarApp({
     <>
       {/* Sobre la barra de pestañas del móvil; en escritorio no hace falta
           invitar — el navegador ya enseña su icono de instalar en la barra. */}
-      <div className="fixed inset-x-0 bottom-14 z-40 mb-[env(safe-area-inset-bottom)] flex items-center gap-3 border-t border-border bg-card/95 px-4 py-2.5 backdrop-blur supports-backdrop-filter:bg-card/85 md:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-border bg-card/95 px-4 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur supports-backdrop-filter:bg-card/85 md:hidden">
         <Smartphone className="size-5 shrink-0 text-primary" />
         <p className="min-w-0 flex-1 text-xs text-pretty text-foreground">
           Instala <span className="font-semibold">{nombreAcademia}</span> en tu

@@ -256,35 +256,41 @@ export function MemberShell({ communitySlug, children }: MemberShellProps) {
             </DropdownMenu>
           </div>
         </div>
+
+        {/* En móvil las pestañas van AQUÍ, segunda fila del encabezado.
+            Estuvieron abajo, fijas, y chocaban con la barra de inicio del
+            iPhone: la zona del gesto de salir es la peor del teléfono para
+            poner botones. */}
+        <nav
+          className="grid grid-cols-5 border-t border-border md:hidden"
+          aria-label="Secciones de la academia"
+        >
+          {NAV.map(({ label, segmento, Icono }) => {
+            const href = `/c/${community.slug}${segmento}`;
+            const activo = pathname === href || (pathname?.startsWith(`${href}/`) ?? false);
+            return (
+              <Link
+                key={segmento}
+                href={href}
+                aria-current={activo ? "page" : undefined}
+                className={cn(
+                  "flex flex-col items-center gap-0.5 py-1.5 text-[10px] font-medium transition-colors",
+                  activo
+                    ? "border-b-2 border-primary text-primary"
+                    : "border-b-2 border-transparent text-muted-foreground"
+                )}
+              >
+                <Icono className="size-4.5" />
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8 pb-24 sm:px-6 md:pb-8">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>
 
-      {/* La barra de pestañas de movil: en el pulgar, no arriba. La superior
-          se esconde bajo `md:` — misma lista, dos formas. */}
-      <nav
-        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur supports-backdrop-filter:bg-card/85 md:hidden"
-        aria-label="Secciones de la academia"
-      >
-        {NAV.map(({ label, segmento, Icono }) => {
-          const href = `/c/${community.slug}${segmento}`;
-          const activo = pathname === href || (pathname?.startsWith(`${href}/`) ?? false);
-          return (
-            <Link
-              key={segmento}
-              href={href}
-              aria-current={activo ? "page" : undefined}
-              className={cn(
-                "flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
-                activo ? "text-primary" : "text-muted-foreground"
-              )}
-            >
-              <Icono className="size-5" />
-              {label}
-            </Link>
-          );
-        })}
-      </nav>
+
 
       <Buscador
         comunidadId={community.id}
