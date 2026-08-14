@@ -155,7 +155,15 @@ export async function darAcceso(
     bloqueAcceso({ loginUrl, correo: email, password: passwordTemporal })
   );
 
-  const r = await enviarCorreo({ para: email, asunto, html });
+  // La bienvenida la firma la academia, no la plataforma: para el alumno,
+  // quien le da acceso es «Academia Trading», y un remitente desconocido es
+  // camino directo a la carpeta de spam.
+  const r = await enviarCorreo({
+    para: email,
+    asunto,
+    html,
+    remitenteNombre: o.comunidadNombre,
+  });
 
   return { ...base, enviado: r.enviado, errorCorreo: r.error };
 }

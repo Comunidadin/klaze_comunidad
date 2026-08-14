@@ -108,8 +108,11 @@ export async function POST(
           yaSuyas.map((a) => a.id)
         );
 
+      // Los correos al creador los firma la plataforma: quien le escribe es
+      // Klaze, no su propia academia.
       const correoVuelta = await enviarCorreo({
         para: email,
+        remitenteNombre: "Klaze",
         asunto: `Tu academia ${yaSuyas[0].nombre} ya está activa`,
         html: `
           <p>Tu academia vuelve a estar activa. Tus alumnos ya pueden entrar.</p>
@@ -171,7 +174,12 @@ export async function POST(
       correo: email,
       password: r.passwordTemporal,
     });
-    const correo = await enviarCorreo({ para: email, asunto, html });
+    const correo = await enviarCorreo({
+      para: email,
+      asunto,
+      html,
+      remitenteNombre: "Klaze",
+    });
 
     await registrar(admin, canal.id, {
       email,
